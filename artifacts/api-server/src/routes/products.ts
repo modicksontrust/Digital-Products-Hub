@@ -15,6 +15,8 @@ import {
   GetProductsResponse,
   CreateProductBody,
   CreateProductResponse,
+  ImportManuscriptBody,
+  ImportManuscriptResponse,
   GetProductResponse,
   UpdateProductBody,
   UpdateProductResponse,
@@ -46,6 +48,10 @@ import {
 import { hasPermission } from "../lib/permissions";
 import { serializeProduct, serializeChapter } from "../lib/serialize";
 import { audit, notify, iso } from "../lib/helpers";
+import { extractManuscriptText, splitIntoChapters } from "../lib/manuscript";
+import { ObjectStorageService } from "../lib/objectStorage";
+
+const objectStorageService = new ObjectStorageService();
 
 const router: IRouter = Router();
 router.use(requireAuth, requireOnboarding);
@@ -162,6 +168,82 @@ router.post(
       .status(201)
       .json(
         CreateProductResponse.parse(
+          await serializeProduct(product, user.fullName),
+        ),
+      );
+  },
+);
+
+router.post(
+  "/products/import-manuscript",
+  requirePermission("canCreateProduct"),
+  async (req, res): Promise<void> => {
+    const parsed = ImportManuscriptBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const d = parsed.data;
+    const user = req.user!;
+
+    let rawText: string;
+    try {
+      if (d.objectPath) {
+        const file = await objectStorageService.getObjectEntityFile(d.objectPath);
+        const [buffer] = await file.download();
+        rawText = await extractManuscriptText(buffer, d.fileName || "");
+      } else if (d.pastedText) {
+        rawText = d.pastedText;
+      } else {
+        res.status(400).json({ error: "Provide either an uploaded file or pasted text" });
+        return;
+      }
+    } catch (error) {
+      req.log.error({ err: error }, "Failed to read/parse manuscript");
+      res.status(400).json({ error: "Couldn't read that file. Try a .docx, .pdf, or pasted text instead." });
+      return;
+    }
+
+    const parsedChapters = splitIntoChapters(rawText, d.title);
+    if (parsedChapters.length === 0) {
+      res.status(400).json({ error: "That manuscript looks empty — nothing to import." });
+      return;
+    }
+
+    const [product] = await db
+      .insert(productsTable)
+      .values({
+        ownerId: user.id,
+        type: "ebook",
+        title: d.title,
+        status: "ready",
+        requestedChapterCount: parsedChapters.length,
+      })
+      .returning();
+
+    await db.insert(productChaptersTable).values(
+      parsedChapters.map((c, i) => ({
+        productId: product.id,
+        orderIndex: i,
+        title: c.title,
+        contentMd: c.contentMd,
+        status: "ready" as const,
+      })),
+    );
+
+    await audit({
+      actorId: user.id,
+      actorName: user.fullName,
+      action: "product.created",
+      entityType: "product",
+      entityId: product.id,
+      detail: `Imported eBook "${d.title}" from an existing manuscript (${parsedChapters.length} chapters)`,
+    });
+
+    res
+      .status(201)
+      .json(
+        ImportManuscriptResponse.parse(
           await serializeProduct(product, user.fullName),
         ),
       );

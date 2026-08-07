@@ -560,6 +560,16 @@ export interface CommentInput {
   chapterId?: string;
 }
 
+export interface ImportManuscriptInput {
+  title: string;
+  /** Path returned by the storage upload endpoint, e.g. /objects/uploads/xyz */
+  objectPath?: string;
+  /** Original file name, used to detect docx/pdf/text */
+  fileName?: string;
+  /** Manuscript text pasted directly instead of uploading a file */
+  pastedText?: string;
+}
+
 export type NicheSuggestionsInputNiche = typeof NicheSuggestionsInputNiche[keyof typeof NicheSuggestionsInputNiche];
 
 

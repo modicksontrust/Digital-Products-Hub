@@ -411,6 +411,34 @@ export const CreateProductResponse = zod.object({
 })
 
 
+export const ImportManuscriptBody = zod.object({
+  "title": zod.string(),
+  "objectPath": zod.string().optional().describe('Path returned by the storage upload endpoint, e.g. \/objects\/uploads\/xyz'),
+  "fileName": zod.string().optional().describe('Original file name, used to detect docx\/pdf\/text'),
+  "pastedText": zod.string().optional().describe('Manuscript text pasted directly instead of uploading a file')
+})
+
+export const ImportManuscriptResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "topic": zod.string().nullish(),
+  "audience": zod.string().nullish(),
+  "tone": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "depth": zod.string().nullish(),
+  "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
+  "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "chapterCount": zod.int(),
+  "wordCount": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
 export const GetProductParams = zod.object({
   "productId": zod.coerce.string()
 })

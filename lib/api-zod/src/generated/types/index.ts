@@ -46,6 +46,7 @@ export * from './generationJobStatus';
 export * from './getAuditLogsParams';
 export * from './getProductsParams';
 export * from './healthStatus';
+export * from './importManuscriptInput';
 export * from './invitation';
 export * from './invitationInput';
 export * from './invitationInputRole';

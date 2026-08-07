@@ -51,6 +51,7 @@ import type {
   GetAuditLogsParams,
   GetProductsParams,
   HealthStatus,
+  ImportManuscriptInput,
   Invitation,
   InvitationInput,
   InviteAccept,
@@ -1557,6 +1558,71 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateProductMutationOptions(options));
+    }
+
+export const getImportManuscriptUrl = () => {
+
+
+
+
+  return `/api/products/import-manuscript`
+}
+
+export const importManuscript = async (importManuscriptInput: ImportManuscriptInput, options?: Parameters<typeof customFetch>[1]): Promise<Product> => {
+
+  return customFetch<Product>(getImportManuscriptUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(importManuscriptInput)
+  }
+);}
+
+
+
+
+
+export const getImportManuscriptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importManuscript>>, TError,{data: BodyType<ImportManuscriptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importManuscript>>, TError,{data: BodyType<ImportManuscriptInput>}, TContext> => {
+
+const mutationKey = ['importManuscript'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importManuscript>>, {data: BodyType<ImportManuscriptInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importManuscript(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportManuscriptMutationResult = NonNullable<Awaited<ReturnType<typeof importManuscript>>>
+    export type ImportManuscriptMutationBody = BodyType<ImportManuscriptInput>
+    export type ImportManuscriptMutationError = ErrorType<unknown>
+
+    export const useImportManuscript = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importManuscript>>, TError,{data: BodyType<ImportManuscriptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importManuscript>>,
+        TError,
+        {data: BodyType<ImportManuscriptInput>},
+        TContext
+      > => {
+      return useMutation(getImportManuscriptMutationOptions(options));
     }
 
 export const getGetProductUrl = (productId: string,) => {

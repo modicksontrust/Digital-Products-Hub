@@ -12,15 +12,17 @@ import {
 import { 
   useCreateProduct, useGenerateOutline, useGetJob, useGetProduct, 
   useGenerateChapters, useUpdateChapter, useExportProduct,
-  useGenerateNicheSuggestions,
+  useGenerateNicheSuggestions, useImportManuscript,
   getGetJobQueryKey, getGetProductQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
 } from "@workspace/api-client-react";
+import { useUpload } from "@workspace/object-storage-web";
 import { useLocation, useSearch } from "wouter";
 import { 
   ChevronRight, Loader2, Sparkles, FileText, Settings, PenTool, Layout, Download,
   GripVertical, Palette,
-  AlertCircle, HeartPulse, DollarSign, Users, Flame, Search
+  AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
+  Wand2, UploadCloud, FileUp, ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +34,9 @@ export default function CreateEbook() {
   const urlProductId = searchParams.get("productId");
   const urlJobId = searchParams.get("jobId");
   
-  // Skip niche picking when resuming an existing product — it only applies
-  // to starting a brand new eBook from scratch.
-  const [step, setStep] = useState(() => (urlProductId ? (urlJobId ? 3 : 5) : 1));
+  // Skip the "how do you want to start" choice when resuming an existing
+  // product — it only applies to starting a brand new eBook from scratch.
+  const [step, setStep] = useState(() => (urlProductId ? (urlJobId ? 3 : 5) : 0));
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -58,6 +60,49 @@ export default function CreateEbook() {
       }
     }
   }, [urlProductId, urlJobId, step]);
+
+  // ==========================================
+  // STEP 0: Start With AI vs Upload Manuscript
+  // ==========================================
+  const [manuscriptTitle, setManuscriptTitle] = useState("");
+  const [manuscriptMode, setManuscriptMode] = useState<"upload" | "paste">("upload");
+  const [pastedManuscript, setPastedManuscript] = useState("");
+  const [uploadedManuscript, setUploadedManuscript] = useState<{ objectPath: string; fileName: string } | null>(null);
+  const importManuscript = useImportManuscript();
+  const { uploadFile: uploadManuscriptFile, isUploading: isUploadingManuscript } = useUpload({
+    onSuccess: (res) => setUploadedManuscript({ objectPath: res.objectPath, fileName: res.metadata.name }),
+  });
+
+  const handleStartImport = () => {
+    if (!manuscriptTitle.trim()) {
+      toast({ title: "Give your eBook a title first", variant: "destructive" });
+      return;
+    }
+    if (manuscriptMode === "upload" && !uploadedManuscript) {
+      toast({ title: "Upload a file first", variant: "destructive" });
+      return;
+    }
+    if (manuscriptMode === "paste" && !pastedManuscript.trim()) {
+      toast({ title: "Paste your manuscript text first", variant: "destructive" });
+      return;
+    }
+    importManuscript.mutate({
+      data: {
+        title: manuscriptTitle,
+        ...(manuscriptMode === "upload"
+          ? { objectPath: uploadedManuscript!.objectPath, fileName: uploadedManuscript!.fileName }
+          : { pastedText: pastedManuscript }),
+      },
+    }, {
+      onSuccess: (product) => {
+        setLocation(`/create/ebook?productId=${product.id}`);
+        setStep(5);
+      },
+      onError: () => {
+        toast({ title: "Couldn't import that manuscript", description: "Try a .docx, .pdf, or pasted text.", variant: "destructive" });
+      },
+    });
+  };
 
   // ==========================================
   // STEP 1: Niche Picking State
@@ -213,6 +258,7 @@ export default function CreateEbook() {
         <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
             <h1 className="font-display font-bold text-xl text-ink-900">eBook Generator</h1>
+            {step > 0 && (
             <div className="flex items-center gap-2">
               {steps.map((s, i) => (
                 <div key={s.num} className="flex items-center">
@@ -232,6 +278,7 @@ export default function CreateEbook() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         </div>
 
@@ -239,12 +286,161 @@ export default function CreateEbook() {
         <div className="flex-1 overflow-auto p-8">
           <div className={cn("mx-auto w-full", step === 5 ? "max-w-7xl" : "max-w-4xl")}>
 
+            {/* STEP 0: START WITH AI OR UPLOAD YOUR OWN */}
+            {step === 0 && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-3xl mx-auto">
+                <div className="text-center mb-2">
+                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">How would you like to create your eBook?</h2>
+                  <p className="text-ink-500">Choose the path that fits you best. You can always save and come back anytime.</p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <Card
+                    className="cursor-pointer border-2 border-brand-500 rounded-2xl shadow-soft hover:shadow-md transition-all bg-gradient-to-br from-brand-50/60 to-white"
+                    onClick={() => setStep(1)}
+                  >
+                    <CardContent className="p-6">
+                      <Badge className="bg-brand-500 text-white border-0 mb-4">Recommended</Badge>
+                      <div className="w-11 h-11 rounded-xl bg-brand-500 text-white flex items-center justify-center mb-4">
+                        <Wand2 className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-display font-bold text-xl text-ink-900 mb-1">Let AI write it for me</h3>
+                      <p className="text-sm text-ink-500 leading-snug mb-4">Pick a niche and topic. Our AI researches, outlines, and writes the full book for you.</p>
+                      <div className="text-sm font-semibold text-brand-600 flex items-center gap-1">
+                        Start with AI <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card
+                    className="cursor-pointer border-2 border-ink-200 rounded-2xl shadow-sm hover:shadow-md transition-all"
+                    onClick={() => setStep(1.5)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="w-11 h-11 rounded-xl bg-ink-50 text-ink-500 flex items-center justify-center mb-4">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-display font-bold text-xl text-ink-900 mb-1">I already have a manuscript</h3>
+                      <p className="text-sm text-ink-500 leading-snug mb-4">Upload or paste your existing manuscript. We'll detect chapters and let you design the cover.</p>
+                      <div className="text-sm font-semibold text-ink-600 flex items-center gap-1">
+                        Import manuscript <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                <p className="text-center text-xs text-ink-400">Both paths include AI cover design, sales page generation, and a shareable product link.</p>
+              </div>
+            )}
+
+            {/* STEP 1.5: IMPORT MANUSCRIPT */}
+            {step === 1.5 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 max-w-2xl mx-auto">
+                <button
+                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                  onClick={() => setStep(0)}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
+                <div>
+                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Import Your Manuscript</h2>
+                  <p className="text-ink-500">Upload a .docx or .pdf, or paste your text directly. We'll split it into chapters automatically.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">eBook Title</Label>
+                  <Input
+                    className="h-12 rounded-xl bg-ink-50/50"
+                    placeholder="e.g. The Complete Guide to Freelance Writing"
+                    value={manuscriptTitle}
+                    onChange={(e) => setManuscriptTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex gap-2 border-b border-ink-100">
+                  <button
+                    className={cn("px-4 py-2 text-sm font-semibold border-b-2 -mb-px", manuscriptMode === "upload" ? "border-brand-500 text-brand-700" : "border-transparent text-ink-400")}
+                    onClick={() => setManuscriptMode("upload")}
+                  >
+                    Upload file
+                  </button>
+                  <button
+                    className={cn("px-4 py-2 text-sm font-semibold border-b-2 -mb-px", manuscriptMode === "paste" ? "border-brand-500 text-brand-700" : "border-transparent text-ink-400")}
+                    onClick={() => setManuscriptMode("paste")}
+                  >
+                    Paste text
+                  </button>
+                </div>
+
+                {manuscriptMode === "upload" ? (
+                  <label className={cn(
+                    "flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl p-10 cursor-pointer text-center transition-colors",
+                    uploadedManuscript ? "border-brand-400 bg-brand-50/40" : "border-ink-200 hover:border-brand-300"
+                  )}>
+                    <input
+                      type="file"
+                      accept=".docx,.pdf,.txt,.md"
+                      className="hidden"
+                      disabled={isUploadingManuscript}
+                      onChange={(e) => e.target.files?.[0] && uploadManuscriptFile(e.target.files[0])}
+                    />
+                    {isUploadingManuscript ? (
+                      <>
+                        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+                        <span className="text-sm text-ink-500">Uploading...</span>
+                      </>
+                    ) : uploadedManuscript ? (
+                      <>
+                        <FileUp className="w-8 h-8 text-brand-500" />
+                        <span className="text-sm font-semibold text-ink-800">{uploadedManuscript.fileName}</span>
+                        <span className="text-xs text-ink-400">Click to replace</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-8 h-8 text-ink-400" />
+                        <span className="text-sm font-medium text-ink-600">Click to upload .docx or .pdf</span>
+                      </>
+                    )}
+                  </label>
+                ) : (
+                  <Textarea
+                    className="min-h-[240px] rounded-xl"
+                    placeholder="Paste your full manuscript text here..."
+                    value={pastedManuscript}
+                    onChange={(e) => setPastedManuscript(e.target.value)}
+                  />
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    size="lg"
+                    className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                    onClick={handleStartImport}
+                    disabled={importManuscript.isPending || isUploadingManuscript}
+                  >
+                    {importManuscript.isPending ? (
+                      <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Importing...</>
+                    ) : (
+                      <><FileUp className="w-5 h-5 mr-2" /> Import & Continue</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* STEP 1: NICHE PICKING */}
             {step === 1 && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
-                <div className="mb-6">
-                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Choose Your Niche</h2>
-                  <p className="text-ink-500">Pick a niche and the AI will surface the sub-niches getting the most attention right now.</p>
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Choose Your Niche</h2>
+                    <p className="text-ink-500">Pick a niche and the AI will surface the sub-niches getting the most attention right now.</p>
+                  </div>
+                  <button
+                    className="shrink-0 text-sm font-medium text-ink-500 hover:text-brand-600 underline underline-offset-2"
+                    onClick={() => setStep(2)}
+                  >
+                    I have my own topic
+                  </button>
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-5">
@@ -589,6 +785,7 @@ export default function CreateEbook() {
                   <div className="flex-1 p-6 overflow-auto">
                     {selectedChapter?.status === 'ready' ? (
                       <Textarea 
+                        key={selectedChapterId}
                         className="min-h-full border-0 focus-visible:ring-0 text-base leading-relaxed p-0 resize-none font-sans"
                         defaultValue={selectedChapter?.contentMd || ''}
                         onChange={(e) => {
