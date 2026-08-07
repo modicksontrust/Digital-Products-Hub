@@ -183,7 +183,7 @@ export default function Dashboard() {
                     Recent Activity
                   </h2>
                   <div className="space-y-4">
-                    {activity?.map((event) => (
+                    {activity?.slice(0, 6).map((event) => (
                       <div key={event.id} className="flex gap-3 text-sm">
                         <div className="w-2 h-2 mt-1.5 rounded-full bg-brand-400 flex-shrink-0" />
                         <div>
