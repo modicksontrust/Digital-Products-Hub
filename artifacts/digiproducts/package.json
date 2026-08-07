@@ -76,6 +76,8 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@uppy/core": "^5.2.0",
+    "@workspace/object-storage-web": "workspace:*",
     "canvas-confetti": "^1.9.4"
   }
 }

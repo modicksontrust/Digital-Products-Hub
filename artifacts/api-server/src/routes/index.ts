@@ -6,6 +6,7 @@ import dashboardRouter from "./dashboard";
 import productsRouter from "./products";
 import generationRouter from "./generation";
 import adminRouter from "./admin";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(dashboardRouter);
 router.use(productsRouter);
 router.use(generationRouter);
 router.use(adminRouter);
+router.use(storageRouter);
 
 export default router;

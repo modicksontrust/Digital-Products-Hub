@@ -120,7 +120,15 @@ export default function LessonPlayer() {
         <div className="lg:col-span-2 space-y-6">
           {/* Player placeholder/iframe */}
           <div className="aspect-video bg-ink-900 rounded-2xl overflow-hidden relative shadow-lg border border-ink-800">
-            {lesson.videoUrl ? (
+            {lesson.videoUrl && lesson.videoProvider === "upload" ? (
+              <video
+                key={lesson.id}
+                src={`${import.meta.env.BASE_URL}api/storage${lesson.videoUrl}`}
+                className="w-full h-full"
+                controls
+                controlsList="nodownload"
+              />
+            ) : lesson.videoUrl ? (
               <iframe 
                 src={lesson.videoUrl} 
                 className="w-full h-full border-0"

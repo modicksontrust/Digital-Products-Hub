@@ -46,6 +46,9 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { useUpload } from "@workspace/object-storage-web";
+import { Upload, Link2, X, FileVideo } from "lucide-react";
 
 type StageKey = "create" | "validate" | "sell_scale";
 
@@ -371,21 +374,40 @@ function LessonDialog({
   const isEdit = !!editTarget;
   const [form, setForm] = useState<LessonFormState>(defaultLessonForm);
   const [error, setError] = useState<string | null>(null);
+  const [videoMode, setVideoMode] = useState<"url" | "upload">("url");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createLesson = useCreateLesson();
   const updateLesson = useUpdateLesson();
+  const { uploadFile, isUploading, progress, error: uploadError } = useUpload({
+    onSuccess: (res) => {
+      setForm((f) => ({ ...f, videoProvider: "upload", videoUrl: res.objectPath }));
+      setUploadedFileName(res.metadata.name);
+    },
+  });
 
   // Sync form state whenever the dialog opens
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setForm(
-      editTarget
-        ? lessonFormFromLesson(editTarget)
-        : { ...defaultLessonForm(), orderIndex: String(nextOrderIndex ?? 0) },
+    const initial = editTarget
+      ? lessonFormFromLesson(editTarget)
+      : { ...defaultLessonForm(), orderIndex: String(nextOrderIndex ?? 0) };
+    setForm(initial);
+    setVideoMode(initial.videoProvider === "upload" ? "upload" : "url");
+    setUploadedFileName(
+      initial.videoProvider === "upload" && initial.videoUrl
+        ? initial.videoUrl.split("/").pop() ?? null
+        : null,
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const handleFileSelected = async (file: File | undefined) => {
+    if (!file) return;
+    await uploadFile(file);
+  };
 
   const saving = createLesson.isPending || updateLesson.isPending;
 
@@ -459,33 +481,104 @@ function LessonDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink-700">Video provider</label>
-              <Input
-                value={form.videoProvider}
-                onChange={(e) => setForm((f) => ({ ...f, videoProvider: e.target.value }))}
-                placeholder="youtube / vimeo"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink-700">Duration (seconds)</label>
-              <Input
-                type="number"
-                min={0}
-                value={form.durationSeconds}
-                onChange={(e) => setForm((f) => ({ ...f, durationSeconds: e.target.value }))}
-              />
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-ink-700">Duration (seconds)</label>
+            <Input
+              type="number"
+              min={0}
+              value={form.durationSeconds}
+              onChange={(e) => setForm((f) => ({ ...f, durationSeconds: e.target.value }))}
+              className="max-w-[160px]"
+            />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-ink-700">Video URL</label>
-            <Input
-              value={form.videoUrl}
-              onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-              placeholder="https://…"
-            />
+            <label className="text-sm font-medium text-ink-700">Video</label>
+
+            {/* Mode toggle */}
+            <div className="flex items-center gap-1 bg-ink-50 border border-ink-200 rounded-lg p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setVideoMode("url")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  videoMode === "url" ? "bg-white shadow-sm text-ink-900" : "text-ink-500 hover:text-ink-700",
+                )}
+              >
+                <Link2 className="w-3.5 h-3.5" /> Link
+              </button>
+              <button
+                type="button"
+                onClick={() => setVideoMode("upload")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  videoMode === "upload" ? "bg-white shadow-sm text-ink-900" : "text-ink-500 hover:text-ink-700",
+                )}
+              >
+                <Upload className="w-3.5 h-3.5" /> Upload video
+              </button>
+            </div>
+
+            {videoMode === "url" ? (
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <Input
+                  value={form.videoProvider === "upload" ? "" : form.videoProvider}
+                  onChange={(e) => setForm((f) => ({ ...f, videoProvider: e.target.value }))}
+                  placeholder="Provider (youtube / vimeo)"
+                />
+                <Input
+                  value={form.videoProvider === "upload" ? "" : form.videoUrl}
+                  onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                  placeholder="https://…"
+                />
+              </div>
+            ) : (
+              <div className="mt-2 space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                />
+                {form.videoProvider === "upload" && form.videoUrl ? (
+                  <div className="flex items-center gap-3 border border-ink-200 rounded-xl px-4 py-3 bg-ink-50">
+                    <FileVideo className="w-5 h-5 text-brand-600 flex-shrink-0" />
+                    <span className="text-sm text-ink-700 truncate flex-1">
+                      {uploadedFileName ?? "Uploaded video"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((f) => ({ ...f, videoProvider: "", videoUrl: "" }));
+                        setUploadedFileName(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                      className="text-ink-400 hover:text-red-600 transition-colors flex-shrink-0"
+                      title="Remove video"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-ink-200 rounded-xl px-4 py-6 text-ink-500 hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50/50 transition-colors disabled:opacity-60"
+                  >
+                    <Upload className="w-5 h-5" />
+                    <span className="text-sm font-medium">
+                      {isUploading ? "Uploading…" : "Click to choose a video file"}
+                    </span>
+                  </button>
+                )}
+                {isUploading && <Progress value={progress} className="h-1.5" />}
+                {uploadError && (
+                  <p className="text-xs text-red-600">{uploadError.message}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
