@@ -12,13 +12,15 @@ import {
 import { 
   useCreateProduct, useGenerateOutline, useGetJob, useGetProduct, 
   useGenerateChapters, useUpdateChapter, useExportProduct,
-  getGetJobQueryKey, getGetProductQueryKey
+  useGenerateNicheSuggestions,
+  getGetJobQueryKey, getGetProductQueryKey,
+  type NicheSuggestionsResponseSubNichesItem,
 } from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import { 
   ChevronRight, Loader2, Sparkles, FileText, Settings, PenTool, Layout, Download,
   GripVertical, Palette,
-  AlertCircle
+  AlertCircle, HeartPulse, DollarSign, Users, Flame, Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -30,32 +32,64 @@ export default function CreateEbook() {
   const urlProductId = searchParams.get("productId");
   const urlJobId = searchParams.get("jobId");
   
-  const [step, setStep] = useState(1);
+  // Skip niche picking when resuming an existing product — it only applies
+  // to starting a brand new eBook from scratch.
+  const [step, setStep] = useState(() => (urlProductId ? (urlJobId ? 3 : 5) : 1));
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const steps = [
-    { num: 1, title: "Brief", icon: FileText },
-    { num: 2, title: "Outline", icon: Layout },
-    { num: 3, title: "Generate", icon: Sparkles },
-    { num: 4, title: "Editor", icon: PenTool },
-    { num: 5, title: "Cover", icon: Settings },
-    { num: 6, title: "Export", icon: Download },
+    { num: 1, title: "Niche", icon: Search },
+    { num: 2, title: "Brief", icon: FileText },
+    { num: 3, title: "Outline", icon: Layout },
+    { num: 4, title: "Generate", icon: Sparkles },
+    { num: 5, title: "Editor", icon: PenTool },
+    { num: 6, title: "Cover", icon: Settings },
+    { num: 7, title: "Export", icon: Download },
   ];
 
   // Resume state if URL params are present
   useEffect(() => {
     if (urlProductId) {
-      if (urlJobId && step === 1) {
-        setStep(2); // Waiting for outline job
-      } else if (!urlJobId && step === 1) {
-        setStep(4); // Default to editor if just productId is given
+      if (urlJobId && step <= 2) {
+        setStep(3); // Waiting for outline job
+      } else if (!urlJobId && step <= 2) {
+        setStep(5); // Default to editor if just productId is given
       }
     }
   }, [urlProductId, urlJobId, step]);
 
   // ==========================================
-  // STEP 1: Brief State
+  // STEP 1: Niche Picking State
+  // ==========================================
+  const NICHES: { key: "health_wellness" | "wealth_money" | "relationships"; label: string; description: string; icon: typeof HeartPulse }[] = [
+    { key: "health_wellness", label: "Health & Wellness", description: "Weight loss, fitness, mental health, nutrition, sleep, stress management", icon: HeartPulse },
+    { key: "wealth_money", label: "Wealth & Money", description: "Side hustles, investing, saving, business, freelancing, crypto", icon: DollarSign },
+    { key: "relationships", label: "Relationships", description: "Dating, marriage, parenting, communication, social skills", icon: Users },
+  ];
+  const [selectedNiche, setSelectedNiche] = useState<typeof NICHES[number]["key"] | null>(null);
+  const [selectedSubNiche, setSelectedSubNiche] = useState<NicheSuggestionsResponseSubNichesItem | null>(null);
+  const generateNicheSuggestions = useGenerateNicheSuggestions();
+
+  const handlePickNiche = (nicheKey: typeof NICHES[number]["key"]) => {
+    setSelectedNiche(nicheKey);
+    setSelectedSubNiche(null);
+    generateNicheSuggestions.mutate({ data: { niche: nicheKey } });
+  };
+
+  const handlePickSubNiche = (subNiche: NicheSuggestionsResponseSubNichesItem) => {
+    setSelectedSubNiche(subNiche);
+    setBrief((f) => ({
+      ...f,
+      title: f.title || subNiche.suggestedTopic,
+      topic: subNiche.suggestedTopic,
+      audience: subNiche.suggestedAudience,
+    }));
+    setStep(2);
+  };
+
+  // ==========================================
+  // STEP 2: Brief State
   // ==========================================
   const [brief, setBrief] = useState({
     title: "", topic: "", audience: "", tone: "professional", chapterCount: 10, depth: "standard", language: "English"
@@ -74,7 +108,7 @@ export default function CreateEbook() {
         generateOutline.mutate({ data: { productId: product.id } }, {
           onSuccess: (job) => {
             setLocation(`/create/ebook?productId=${product.id}&jobId=${job.id}`);
-            setStep(2);
+            setStep(3);
           }
         });
       }
@@ -82,11 +116,11 @@ export default function CreateEbook() {
   };
 
   // ==========================================
-  // STEP 2 & 3: Polling Jobs & Product Data
+  // STEP 3 & 4: Polling Jobs & Product Data
   // ==========================================
   const { data: job } = useGetJob(urlJobId || '', {
     query: {
-      enabled: !!urlJobId && (step === 2 || step === 3),
+      enabled: !!urlJobId && (step === 3 || step === 4),
       refetchInterval: (data) => (data?.state?.data?.status === 'queued' || data?.state?.data?.status === 'running') ? 2000 : false,
       queryKey: getGetJobQueryKey(urlJobId || '')
     }
@@ -100,35 +134,35 @@ export default function CreateEbook() {
     if (!job) return;
     
     // Outline Job Finished -> Load Outline Step
-    if (step === 2 && job.type === 'outline' && job.status === 'succeeded') {
+    if (step === 3 && job.type === 'outline' && job.status === 'succeeded') {
       refetchProduct().then(() => {
         // Clear jobId from URL to stay on outline view
         setLocation(`/create/ebook?productId=${urlProductId}`);
-        setStep(2.5); // Custom internal step for "Outline Review"
+        setStep(3.5); // Custom internal step for "Outline Review"
       });
     }
 
     // Chapters Job Finished -> Go to Editor Step
-    if (step === 3 && job.type === 'chapters' && job.status === 'succeeded') {
+    if (step === 4 && job.type === 'chapters' && job.status === 'succeeded') {
       refetchProduct().then(() => {
         setLocation(`/create/ebook?productId=${urlProductId}`);
-        setStep(4);
+        setStep(5);
       });
     }
 
     if (job.status === 'failed') {
       toast({ title: "Job failed", description: job.errorMessage, variant: "destructive" });
-      if (step === 3) setStep(4); // Go to editor to retry failed chapters
+      if (step === 4) setStep(5); // Go to editor to retry failed chapters
     }
   }, [job?.status, step]);
 
   // ==========================================
-  // STEP 2.5: Outline Review Actions
+  // STEP 3.5: Outline Review Actions
   // ==========================================
   const generateChapters = useGenerateChapters();
   const handleStartGeneration = () => {
     if (!urlProductId) return;
-    setStep(3);
+    setStep(4);
     generateChapters.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => {
         setLocation(`/create/ebook?productId=${urlProductId}&jobId=${job.id}`);
@@ -137,14 +171,14 @@ export default function CreateEbook() {
   };
 
   // ==========================================
-  // STEP 4: Editor State
+  // STEP 5: Editor State
   // ==========================================
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const selectedChapter = detail?.chapters.find(c => c.id === selectedChapterId);
   const updateChapter = useUpdateChapter();
 
   useEffect(() => {
-    if (step === 4 && detail?.chapters && detail.chapters.length > 0 && !selectedChapterId) {
+    if (step === 5 && detail?.chapters && detail.chapters.length > 0 && !selectedChapterId) {
       setSelectedChapterId(detail.chapters[0].id);
     }
   }, [step, detail?.chapters, selectedChapterId]);
@@ -155,7 +189,7 @@ export default function CreateEbook() {
   };
 
   // ==========================================
-  // STEP 5 & 6: Export
+  // STEP 6 & 7: Export
   // ==========================================
   const exportProduct = useExportProduct();
   const [exportTheme, setExportTheme] = useState("minimal");
@@ -184,7 +218,7 @@ export default function CreateEbook() {
                 <div key={s.num} className="flex items-center">
                   <div className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
-                    (step === s.num || (step === 2.5 && s.num === 2)) ? "bg-brand-100 text-brand-700" :
+                    (step === s.num || (step === 3.5 && s.num === 3)) ? "bg-brand-100 text-brand-700" :
                     step > s.num ? "text-brand-500 hover:bg-brand-50" : "text-ink-400"
                   )}
                   onClick={() => {
@@ -203,10 +237,102 @@ export default function CreateEbook() {
 
         {/* Wizard Content */}
         <div className="flex-1 overflow-auto p-8">
-          <div className={cn("mx-auto w-full", step === 4 ? "max-w-7xl" : "max-w-4xl")}>
-            
-            {/* STEP 1: BRIEF */}
+          <div className={cn("mx-auto w-full", step === 5 ? "max-w-7xl" : "max-w-4xl")}>
+
+            {/* STEP 1: NICHE PICKING */}
             {step === 1 && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
+                <div className="mb-6">
+                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Choose Your Niche</h2>
+                  <p className="text-ink-500">Pick a niche and the AI will surface the sub-niches getting the most attention right now.</p>
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-5">
+                  {NICHES.map((niche) => (
+                    <Card
+                      key={niche.key}
+                      className={cn(
+                        "cursor-pointer border-2 rounded-2xl shadow-sm transition-all hover:shadow-md",
+                        selectedNiche === niche.key ? "border-brand-500 bg-brand-50/40" : "border-ink-200"
+                      )}
+                      onClick={() => handlePickNiche(niche.key)}
+                    >
+                      <CardContent className="p-6">
+                        <div className={cn(
+                          "w-11 h-11 rounded-xl flex items-center justify-center mb-4",
+                          selectedNiche === niche.key ? "bg-brand-500 text-white" : "bg-ink-50 text-ink-500"
+                        )}>
+                          <niche.icon className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-display font-bold text-lg text-ink-900 mb-1">{niche.label}</h3>
+                        <p className="text-sm text-ink-500 leading-snug">{niche.description}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {selectedNiche && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-display font-bold text-ink-900">Pick a Sub-Niche</h3>
+                        <p className="text-sm text-ink-500">AI-ranked by what's trending and most searched-for right now.</p>
+                      </div>
+                      {generateNicheSuggestions.isPending && (
+                        <div className="flex items-center gap-2 text-sm text-brand-600 font-medium">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Searching trends...
+                        </div>
+                      )}
+                    </div>
+
+                    {generateNicheSuggestions.isPending && (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="h-24 rounded-2xl bg-ink-100 animate-pulse" />
+                        ))}
+                      </div>
+                    )}
+
+                    {generateNicheSuggestions.isError && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4" /> Couldn't fetch sub-niche suggestions.
+                        <Button variant="link" className="h-auto p-0" onClick={() => handlePickNiche(selectedNiche)}>Try again</Button>
+                      </div>
+                    )}
+
+                    {generateNicheSuggestions.data && (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {generateNicheSuggestions.data.subNiches.map((sub, i) => (
+                          <Card
+                            key={i}
+                            className={cn(
+                              "cursor-pointer border-ink-200 shadow-sm hover:shadow-md transition-all rounded-2xl",
+                              selectedSubNiche?.title === sub.title && "border-brand-500 bg-brand-50/40"
+                            )}
+                            onClick={() => handlePickSubNiche(sub)}
+                          >
+                            <CardContent className="p-5">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <h4 className="font-semibold text-ink-900">{sub.title}</h4>
+                                {sub.trending && (
+                                  <Badge className="bg-gold-50 text-gold-700 border-gold-200 shrink-0 gap-1">
+                                    <Flame className="w-3 h-3" /> Trending
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-ink-500 leading-snug">{sub.hook}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 2: BRIEF */}
+            {step === 2 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="mb-6">
                   <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Project Brief</h2>
@@ -316,8 +442,8 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 2: GENERATING OUTLINE */}
-            {step === 2 && (
+            {/* STEP 3: GENERATING OUTLINE */}
+            {step === 3 && (
               <div className="py-32 max-w-md mx-auto text-center animate-in fade-in zoom-in-95">
                 <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Layout className="w-10 h-10 text-brand-500 animate-pulse" />
@@ -328,8 +454,8 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 2.5: REVIEW OUTLINE */}
-            {step === 2.5 && detail && (
+            {/* STEP 3.5: REVIEW OUTLINE */}
+            {step === 3.5 && detail && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="mb-6 flex justify-between items-end">
                   <div>
@@ -380,8 +506,8 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 3: WRITING CHAPTERS */}
-            {step === 3 && (
+            {/* STEP 4: WRITING CHAPTERS */}
+            {step === 4 && (
               <div className="py-20 max-w-md mx-auto text-center animate-in fade-in zoom-in-95">
                 <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <PenTool className="w-10 h-10 text-brand-500 animate-pulse" />
@@ -411,8 +537,8 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 4: EDITOR */}
-            {step === 4 && detail && (
+            {/* STEP 5: EDITOR */}
+            {step === 5 && detail && (
               <div className="flex gap-6 h-[calc(100vh-140px)] animate-in fade-in">
                 {/* Sidebar */}
                 <div className="w-72 flex flex-col gap-4">
@@ -441,7 +567,7 @@ export default function CreateEbook() {
                   </div>
                   <Button 
                     className="w-full bg-ink-900 hover:bg-ink-800 text-white rounded-xl shadow-soft"
-                    onClick={() => setStep(5)}
+                    onClick={() => setStep(6)}
                   >
                     Proceed to Design <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -482,8 +608,8 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 5: COVER & STEP 6: EXPORT */}
-            {(step === 5 || step === 6) && detail && (
+            {/* STEP 6: COVER & STEP 7: EXPORT */}
+            {(step === 6 || step === 7) && detail && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-center justify-between">
                   <div>

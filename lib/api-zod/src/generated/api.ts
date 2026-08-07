@@ -786,6 +786,22 @@ export const GetReviewQueueResponseItem = zod.object({
 export const GetReviewQueueResponse = zod.array(GetReviewQueueResponseItem)
 
 
+export const GenerateNicheSuggestionsBody = zod.object({
+  "niche": zod.enum(['health_wellness', 'wealth_money', 'relationships'])
+})
+
+export const GenerateNicheSuggestionsResponse = zod.object({
+  "niche": zod.enum(['health_wellness', 'wealth_money', 'relationships']),
+  "subNiches": zod.array(zod.object({
+  "title": zod.string(),
+  "hook": zod.string(),
+  "suggestedTopic": zod.string(),
+  "suggestedAudience": zod.string(),
+  "trending": zod.boolean().optional()
+}))
+})
+
+
 export const GenerateOutlineBody = zod.object({
   "productId": zod.string()
 })

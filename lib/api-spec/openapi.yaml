@@ -656,6 +656,23 @@ paths:
                   $ref: "#/components/schemas/Product"
 
   # ---------- Generation ----------
+  /generate/niche-suggestions:
+    post:
+      operationId: generateNicheSuggestions
+      tags: [generation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NicheSuggestionsInput"
+      responses:
+        "200":
+          description: AI-suggested trending sub-niches for the chosen niche
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicheSuggestionsResponse"
   /generate/outline:
     post:
       operationId: generateOutline
@@ -1811,6 +1828,27 @@ components:
         body: { type: string, minLength: 1 }
         chapterId: { type: string }
 
+    NicheSuggestionsInput:
+      type: object
+      required: [niche]
+      properties:
+        niche: { type: string, enum: [health_wellness, wealth_money, relationships] }
+    NicheSuggestionsResponse:
+      type: object
+      required: [niche, subNiches]
+      properties:
+        niche: { type: string, enum: [health_wellness, wealth_money, relationships] }
+        subNiches:
+          type: array
+          items:
+            type: object
+            required: [title, hook, suggestedTopic, suggestedAudience]
+            properties:
+              title: { type: string }
+              hook: { type: string }
+              suggestedTopic: { type: string }
+              suggestedAudience: { type: string }
+              trending: { type: boolean }
     OutlineGenInput:
       type: object
       required: [productId]

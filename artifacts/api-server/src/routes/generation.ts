@@ -23,11 +23,14 @@ import {
   GenerateSalesCopyResponse,
   GenerateLeadMagnetBody,
   GenerateLeadMagnetResponse,
+  GenerateNicheSuggestionsBody,
+  GenerateNicheSuggestionsResponse,
   GetJobResponse,
   ExportProductBody,
   ExportProductResponse,
   GetProductExportsResponse,
 } from "@workspace/api-zod";
+import { aiJson } from "../lib/ai";
 import {
   requireAuth,
   requireOnboarding,
@@ -103,6 +106,43 @@ async function chargeOr402(
     throw err;
   }
 }
+
+const NICHE_LABELS: Record<string, string> = {
+  health_wellness: "Health & Wellness",
+  wealth_money: "Wealth & Money",
+  relationships: "Relationships",
+};
+
+router.post("/generate/niche-suggestions", async (req, res): Promise<void> => {
+  const parsed = GenerateNicheSuggestionsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const nicheLabel = NICHE_LABELS[parsed.data.niche] ?? parsed.data.niche;
+  // Exploratory / free — helps pick a starting point before any credits are spent.
+  const subNiches = await aiJson<
+    { title: string; hook: string; suggestedTopic: string; suggestedAudience: string; trending?: boolean }[]
+  >(
+    "You are a digital-product market researcher who tracks what self-published eBooks and lead magnets are currently selling well.",
+    `Give me 8 of the most trending, hot, and most-searched-for sub-niches right now inside the "${nicheLabel}" niche for a self-published eBook or PDF guide business.
+
+For each sub-niche return an object with:
+- "title": a short sub-niche name (2-5 words)
+- "hook": a punchy one-sentence pain-point or desire that this sub-niche's audience is searching for
+- "suggestedTopic": a specific eBook topic/angle inside this sub-niche, phrased as a working title
+- "suggestedAudience": a specific target audience description for that topic
+- "trending": true if this is currently especially hot/rising in search interest, otherwise false
+
+Order the list with the hottest, most in-demand sub-niches first. Respond as a JSON array of exactly 8 objects, no other text.`,
+  );
+  res.json(
+    GenerateNicheSuggestionsResponse.parse({
+      niche: parsed.data.niche,
+      subNiches,
+    }),
+  );
+});
 
 router.post("/generate/outline", async (req, res): Promise<void> => {
   const parsed = GenerateOutlineBody.safeParse(req.body);

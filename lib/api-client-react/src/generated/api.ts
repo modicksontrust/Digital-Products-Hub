@@ -67,6 +67,8 @@ import type {
   LoginInput,
   ModuleInput,
   ModuleUpdate,
+  NicheSuggestionsInput,
+  NicheSuggestionsResponse,
   OkResponse,
   OnboardingReportRow,
   OutlineGenInput,
@@ -2566,6 +2568,71 @@ export function useGetReviewQueue<TData = Awaited<ReturnType<typeof getReviewQue
 
 
 
+
+export const getGenerateNicheSuggestionsUrl = () => {
+
+
+
+
+  return `/api/generate/niche-suggestions`
+}
+
+export const generateNicheSuggestions = async (nicheSuggestionsInput: NicheSuggestionsInput, options?: Parameters<typeof customFetch>[1]): Promise<NicheSuggestionsResponse> => {
+
+  return customFetch<NicheSuggestionsResponse>(getGenerateNicheSuggestionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(nicheSuggestionsInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateNicheSuggestionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateNicheSuggestions>>, TError,{data: BodyType<NicheSuggestionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateNicheSuggestions>>, TError,{data: BodyType<NicheSuggestionsInput>}, TContext> => {
+
+const mutationKey = ['generateNicheSuggestions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateNicheSuggestions>>, {data: BodyType<NicheSuggestionsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateNicheSuggestions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateNicheSuggestionsMutationResult = NonNullable<Awaited<ReturnType<typeof generateNicheSuggestions>>>
+    export type GenerateNicheSuggestionsMutationBody = BodyType<NicheSuggestionsInput>
+    export type GenerateNicheSuggestionsMutationError = ErrorType<unknown>
+
+    export const useGenerateNicheSuggestions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateNicheSuggestions>>, TError,{data: BodyType<NicheSuggestionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateNicheSuggestions>>,
+        TError,
+        {data: BodyType<NicheSuggestionsInput>},
+        TContext
+      > => {
+      return useMutation(getGenerateNicheSuggestionsMutationOptions(options));
+    }
 
 export const getGenerateOutlineUrl = () => {
 

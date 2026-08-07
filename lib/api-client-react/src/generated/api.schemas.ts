@@ -560,6 +560,41 @@ export interface CommentInput {
   chapterId?: string;
 }
 
+export type NicheSuggestionsInputNiche = typeof NicheSuggestionsInputNiche[keyof typeof NicheSuggestionsInputNiche];
+
+
+export const NicheSuggestionsInputNiche = {
+  health_wellness: 'health_wellness',
+  wealth_money: 'wealth_money',
+  relationships: 'relationships',
+} as const;
+
+export interface NicheSuggestionsInput {
+  niche: NicheSuggestionsInputNiche;
+}
+
+export type NicheSuggestionsResponseNiche = typeof NicheSuggestionsResponseNiche[keyof typeof NicheSuggestionsResponseNiche];
+
+
+export const NicheSuggestionsResponseNiche = {
+  health_wellness: 'health_wellness',
+  wealth_money: 'wealth_money',
+  relationships: 'relationships',
+} as const;
+
+export type NicheSuggestionsResponseSubNichesItem = {
+  title: string;
+  hook: string;
+  suggestedTopic: string;
+  suggestedAudience: string;
+  trending?: boolean;
+};
+
+export interface NicheSuggestionsResponse {
+  niche: NicheSuggestionsResponseNiche;
+  subNiches: NicheSuggestionsResponseSubNichesItem[];
+}
+
 export interface OutlineGenInput {
   productId: string;
 }
