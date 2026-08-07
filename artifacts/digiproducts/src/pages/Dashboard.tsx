@@ -42,10 +42,10 @@ export default function Dashboard() {
   ];
 
   return (
-    <AppLayout>
+    <AppLayout headerVariant="transparent">
       <div className="flex-1 overflow-auto">
         {/* Hero Section */}
-        <div className="grad-hero px-8 py-12 text-white relative overflow-hidden">
+        <div className="grad-hero px-8 pt-28 pb-12 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3" />
           <div className="relative z-10 max-w-4xl">
             <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur mb-4">

@@ -142,7 +142,7 @@ export function Sidebar() {
   );
 }
 
-export function Topbar() {
+export function Topbar({ variant = "default" }: { variant?: "default" | "transparent" }) {
   const { data: user } = useGetMe();
   const logout = useLogout();
   const { toast } = useToast();
@@ -165,25 +165,38 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-30">
+    <header className={cn(
+      "h-16 flex items-center justify-between px-6 z-30 transition-colors",
+      variant === "transparent"
+        ? "absolute top-0 inset-x-0 bg-transparent"
+        : "sticky top-0 border-b bg-white"
+    )}>
       <div className="flex items-center gap-4">
         {/* Mobile menu toggle would go here */}
       </div>
       
       <div className="flex items-center gap-4">
         {/* Credits Chip */}
-        <div className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-gold-300/20 to-gold-400/20 border border-gold-300/30 px-3 py-1.5 rounded-full">
+        <div className={cn(
+          "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border",
+          variant === "transparent"
+            ? "bg-white/15 border-white/25 backdrop-blur-sm"
+            : "bg-gradient-to-r from-gold-300/20 to-gold-400/20 border-gold-300/30"
+        )}>
           <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gold-400 to-gold-500 shadow-sm flex items-center justify-center">
             <span className="text-[10px] text-white font-bold">✨</span>
           </div>
-          <span className="text-sm font-semibold text-gold-500">{user?.creditsBalance || 0}</span>
-          <span className="text-xs font-medium text-gold-500/80 uppercase tracking-wide">Credits</span>
+          <span className={cn("text-sm font-semibold", variant === "transparent" ? "text-white" : "text-gold-500")}>{user?.creditsBalance || 0}</span>
+          <span className={cn("text-xs font-medium uppercase tracking-wide", variant === "transparent" ? "text-white/80" : "text-gold-500/80")}>Credits</span>
         </div>
 
         {/* Notifications */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative text-ink-500 hover:text-ink-900 rounded-full h-10 w-10">
+            <Button variant="ghost" size="icon" className={cn(
+              "relative rounded-full h-10 w-10",
+              variant === "transparent" ? "text-white/90 hover:text-white hover:bg-white/10" : "text-ink-500 hover:text-ink-900"
+            )}>
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
                 <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-destructive border-2 border-white" />
@@ -228,12 +241,15 @@ export function Topbar() {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="pl-2 pr-4 h-10 rounded-full flex items-center gap-2 hover:bg-ink-100/50">
+            <Button variant="ghost" className={cn(
+              "pl-2 pr-4 h-10 rounded-full flex items-center gap-2",
+              variant === "transparent" ? "hover:bg-white/10" : "hover:bg-ink-100/50"
+            )}>
               <Avatar className="h-7 w-7">
                 <AvatarImage src={user?.avatarUrl || undefined} />
                 <AvatarFallback className="bg-brand-100 text-brand-700 text-xs font-bold">{user?.fullName.charAt(0)}</AvatarFallback>
               </Avatar>
-              <ChevronDown className="w-4 h-4 text-ink-500" />
+              <ChevronDown className={cn("w-4 h-4", variant === "transparent" ? "text-white/90" : "text-ink-500")} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
@@ -262,12 +278,18 @@ export function Topbar() {
   );
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({
+  children,
+  headerVariant = "default",
+}: {
+  children: React.ReactNode;
+  headerVariant?: "default" | "transparent";
+}) {
   return (
     <div className="min-h-[100dvh] bg-paper">
       <Sidebar />
-      <div className="flex flex-col min-h-[100dvh] md:pl-64">
-        <Topbar />
+      <div className="flex flex-col min-h-[100dvh] md:pl-64 relative">
+        <Topbar variant={headerVariant} />
         <main className="flex-1 flex flex-col relative z-0">
           {children}
         </main>
