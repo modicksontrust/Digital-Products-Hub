@@ -52,7 +52,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="p-8 max-w-7xl mx-auto space-y-10 -mt-8 relative z-20">
+        <div className="p-8 max-w-7xl mx-auto space-y-10 relative z-20 mt-[0px]">
           {/* Start Creating Row */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="border-0 shadow-soft overflow-hidden group">
