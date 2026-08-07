@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seed } from "./seed";
+import { ensureSessionTable } from "./lib/session";
 
 const rawPort = process.env["PORT"];
 
@@ -14,6 +16,14 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+ensureSessionTable().catch((err) => {
+  logger.error({ err }, "Session table setup failed");
+});
+
+seed().catch((err) => {
+  logger.error({ err }, "Seed failed");
+});
 
 app.listen(port, (err) => {
   if (err) {

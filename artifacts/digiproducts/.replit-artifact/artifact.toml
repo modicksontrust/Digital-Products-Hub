@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "DigiProducts"
+description = "A single-tenant internal platform where a company team creates AI-generated digital products (eBooks, PDF guides, lead magnets) from a central dashboard. Invite-only accounts with five roles, a gated video onboarding curriculum (Learn module), an AI eBook generator wizard, product library with review workflow, credit quota system, admin console, and a public marketing landing page. Green design system (deep pine → emerald → lime with gold accents) modeled on vardlinks.co."
+version = "1.0.0"
+id = "artifacts/digiproducts"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21401
+
+[services.development]
+run = "pnpm --filter @workspace/digiproducts run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/digiproducts", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/digiproducts/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21401"
+BASE_PATH = "/"

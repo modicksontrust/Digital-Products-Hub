@@ -1,0 +1,586 @@
+import { useState, useEffect } from "react";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
+import { 
+  useCreateProduct, useGenerateOutline, useGetJob, useGetProduct, 
+  useGenerateChapters, useUpdateChapter, useExportProduct,
+  getGetJobQueryKey, getGetProductQueryKey
+} from "@workspace/api-client-react";
+import { useLocation, useSearch } from "wouter";
+import { 
+  ChevronRight, Loader2, Sparkles, FileText, Settings, PenTool, Layout, Download,
+  GripVertical, Palette,
+  AlertCircle
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+
+export default function CreateEbook() {
+  const searchParams = new URLSearchParams(useSearch());
+  const urlProductId = searchParams.get("productId");
+  const urlJobId = searchParams.get("jobId");
+  
+  const [step, setStep] = useState(1);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const steps = [
+    { num: 1, title: "Brief", icon: FileText },
+    { num: 2, title: "Outline", icon: Layout },
+    { num: 3, title: "Generate", icon: Sparkles },
+    { num: 4, title: "Editor", icon: PenTool },
+    { num: 5, title: "Cover", icon: Settings },
+    { num: 6, title: "Export", icon: Download },
+  ];
+
+  // Resume state if URL params are present
+  useEffect(() => {
+    if (urlProductId) {
+      if (urlJobId && step === 1) {
+        setStep(2); // Waiting for outline job
+      } else if (!urlJobId && step === 1) {
+        setStep(4); // Default to editor if just productId is given
+      }
+    }
+  }, [urlProductId, urlJobId, step]);
+
+  // ==========================================
+  // STEP 1: Brief State
+  // ==========================================
+  const [brief, setBrief] = useState({
+    title: "", topic: "", audience: "", tone: "professional", chapterCount: 10, depth: "standard", language: "English"
+  });
+
+  const createProduct = useCreateProduct();
+  const generateOutline = useGenerateOutline();
+
+  const handleStartBrief = () => {
+    if (!brief.topic) { toast({ title: "Topic required", variant: "destructive" }); return; }
+    
+    createProduct.mutate({
+      data: { type: 'ebook', title: brief.title || 'Untitled Draft', topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language }
+    }, {
+      onSuccess: (product) => {
+        generateOutline.mutate({ data: { productId: product.id } }, {
+          onSuccess: (job) => {
+            setLocation(`/create/ebook?productId=${product.id}&jobId=${job.id}`);
+            setStep(2);
+          }
+        });
+      }
+    });
+  };
+
+  // ==========================================
+  // STEP 2 & 3: Polling Jobs & Product Data
+  // ==========================================
+  const { data: job } = useGetJob(urlJobId || '', {
+    query: {
+      enabled: !!urlJobId && (step === 2 || step === 3),
+      refetchInterval: (data) => (data?.state?.data?.status === 'queued' || data?.state?.data?.status === 'running') ? 2000 : false,
+      queryKey: getGetJobQueryKey(urlJobId || '')
+    }
+  });
+
+  const { data: detail, refetch: refetchProduct } = useGetProduct(urlProductId || '', {
+    query: { enabled: !!urlProductId, queryKey: getGetProductQueryKey(urlProductId || '') }
+  });
+
+  useEffect(() => {
+    if (!job) return;
+    
+    // Outline Job Finished -> Load Outline Step
+    if (step === 2 && job.type === 'outline' && job.status === 'succeeded') {
+      refetchProduct().then(() => {
+        // Clear jobId from URL to stay on outline view
+        setLocation(`/create/ebook?productId=${urlProductId}`);
+        setStep(2.5); // Custom internal step for "Outline Review"
+      });
+    }
+
+    // Chapters Job Finished -> Go to Editor Step
+    if (step === 3 && job.type === 'chapters' && job.status === 'succeeded') {
+      refetchProduct().then(() => {
+        setLocation(`/create/ebook?productId=${urlProductId}`);
+        setStep(4);
+      });
+    }
+
+    if (job.status === 'failed') {
+      toast({ title: "Job failed", description: job.errorMessage, variant: "destructive" });
+      if (step === 3) setStep(4); // Go to editor to retry failed chapters
+    }
+  }, [job?.status, step]);
+
+  // ==========================================
+  // STEP 2.5: Outline Review Actions
+  // ==========================================
+  const generateChapters = useGenerateChapters();
+  const handleStartGeneration = () => {
+    if (!urlProductId) return;
+    setStep(3);
+    generateChapters.mutate({ data: { productId: urlProductId } }, {
+      onSuccess: (job) => {
+        setLocation(`/create/ebook?productId=${urlProductId}&jobId=${job.id}`);
+      }
+    });
+  };
+
+  // ==========================================
+  // STEP 4: Editor State
+  // ==========================================
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const selectedChapter = detail?.chapters.find(c => c.id === selectedChapterId);
+  const updateChapter = useUpdateChapter();
+
+  useEffect(() => {
+    if (step === 4 && detail?.chapters && detail.chapters.length > 0 && !selectedChapterId) {
+      setSelectedChapterId(detail.chapters[0].id);
+    }
+  }, [step, detail?.chapters, selectedChapterId]);
+
+  const handleSaveChapterContent = (contentMd: string) => {
+    if (!selectedChapterId || !urlProductId) return;
+    updateChapter.mutate({ productId: urlProductId, chapterId: selectedChapterId, data: { contentMd } });
+  };
+
+  // ==========================================
+  // STEP 5 & 6: Export
+  // ==========================================
+  const exportProduct = useExportProduct();
+  const [exportTheme, setExportTheme] = useState("minimal");
+  
+  const handleExport = () => {
+    if (!urlProductId) return;
+    exportProduct.mutate({ productId: urlProductId, data: { format: 'pdf', pageSize: 'a4', theme: exportTheme } }, {
+      onSuccess: (record) => {
+        toast({ title: "Export ready!" });
+        const url = record.downloadUrl.startsWith('/api') ? import.meta.env.BASE_URL + record.downloadUrl.slice(1) : record.downloadUrl;
+        window.open(url, '_blank');
+      }
+    });
+  };
+
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col h-full bg-paper">
+        {/* Wizard Header */}
+        <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <h1 className="font-display font-bold text-xl text-ink-900">eBook Generator</h1>
+            <div className="flex items-center gap-2">
+              {steps.map((s, i) => (
+                <div key={s.num} className="flex items-center">
+                  <div className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
+                    (step === s.num || (step === 2.5 && s.num === 2)) ? "bg-brand-100 text-brand-700" :
+                    step > s.num ? "text-brand-500 hover:bg-brand-50" : "text-ink-400"
+                  )}
+                  onClick={() => {
+                    // Allow jumping back if product exists
+                    if (urlProductId && s.num <= step) setStep(s.num);
+                  }}>
+                    <s.icon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{s.title}</span>
+                  </div>
+                  {i < steps.length - 1 && <ChevronRight className="w-4 h-4 text-ink-300 mx-1" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Wizard Content */}
+        <div className="flex-1 overflow-auto p-8">
+          <div className={cn("mx-auto w-full", step === 4 ? "max-w-7xl" : "max-w-4xl")}>
+            
+            {/* STEP 1: BRIEF */}
+            {step === 1 && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                <div className="mb-6">
+                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Project Brief</h2>
+                  <p className="text-ink-500">Provide the core parameters to instruct the AI.</p>
+                </div>
+
+                <Card className="border-ink-200 shadow-sm rounded-2xl overflow-hidden">
+                  <div className="h-2 grad-create" />
+                  <CardContent className="p-8 space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="title" className="text-base font-semibold">Working Title (Optional)</Label>
+                      <Input 
+                        id="title" 
+                        placeholder="e.g. The Ultimate Guide to Plant Care" 
+                        className="h-12 rounded-xl bg-ink-50/50"
+                        value={brief.title}
+                        onChange={e => setBrief({...brief, title: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="topic" className="text-base font-semibold flex items-center gap-2">
+                        Core Topic <span className="text-destructive">*</span>
+                      </Label>
+                      <Textarea 
+                        id="topic" 
+                        placeholder="What is this book about? Be specific about the problem it solves." 
+                        className="min-h-[120px] rounded-xl bg-ink-50/50 resize-y"
+                        value={brief.topic}
+                        onChange={e => setBrief({...brief, topic: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold">Target Audience</Label>
+                        <Input 
+                          placeholder="e.g. Beginner houseplant owners" 
+                          className="h-12 rounded-xl bg-ink-50/50"
+                          value={brief.audience}
+                          onChange={e => setBrief({...brief, audience: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold">Voice & Tone</Label>
+                        <Select value={brief.tone} onValueChange={v => setBrief({...brief, tone: v})}>
+                          <SelectTrigger className="h-12 rounded-xl bg-ink-50/50">
+                            <SelectValue placeholder="Select tone" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="professional">Professional & Authoritative</SelectItem>
+                            <SelectItem value="conversational">Conversational & Friendly</SelectItem>
+                            <SelectItem value="academic">Academic & Analytical</SelectItem>
+                            <SelectItem value="bold">Bold & Provocative</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-6 pt-4 border-t border-ink-100">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-base font-semibold">Chapter Count</Label>
+                          <span className="font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-md">{brief.chapterCount}</span>
+                        </div>
+                        <Slider 
+                          value={[brief.chapterCount]} 
+                          onValueChange={v => setBrief({...brief, chapterCount: v[0]})} 
+                          max={20} min={3} step={1} 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold">Content Depth</Label>
+                        <Select value={brief.depth} onValueChange={v => setBrief({...brief, depth: v})}>
+                          <SelectTrigger className="h-12 rounded-xl bg-ink-50/50">
+                            <SelectValue placeholder="Select depth" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="short">Short (~500 words/chapter)</SelectItem>
+                            <SelectItem value="standard">Standard (~1000 words)</SelectItem>
+                            <SelectItem value="deep">Deep Dive (~1500 words)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gold-50 text-gold-700 rounded-xl border border-gold-200">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Est. Cost: {1 + brief.chapterCount} credits</span>
+                  </div>
+                  <Button 
+                    size="lg" 
+                    className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                    onClick={handleStartBrief}
+                    disabled={createProduct.isPending || generateOutline.isPending}
+                  >
+                    {(createProduct.isPending || generateOutline.isPending) ? (
+                      <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Generating...</>
+                    ) : (
+                      <><Sparkles className="w-5 h-5 mr-2" /> Generate Outline</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: GENERATING OUTLINE */}
+            {step === 2 && (
+              <div className="py-32 max-w-md mx-auto text-center animate-in fade-in zoom-in-95">
+                <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Layout className="w-10 h-10 text-brand-500 animate-pulse" />
+                </div>
+                <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Structuring your book</h2>
+                <p className="text-ink-500 mb-8">The AI is crafting the perfect outline based on your brief...</p>
+                <Progress value={100} className="h-2 bg-brand-100 [&>div]:bg-brand-500 animate-pulse" />
+              </div>
+            )}
+
+            {/* STEP 2.5: REVIEW OUTLINE */}
+            {step === 2.5 && detail && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                <div className="mb-6 flex justify-between items-end">
+                  <div>
+                    <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Review Outline</h2>
+                    <p className="text-ink-500">Edit, reorder, or approve the generated chapter structure.</p>
+                  </div>
+                  <Button 
+                    size="lg" 
+                    className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                    onClick={handleStartGeneration}
+                  >
+                    Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {detail.chapters.sort((a,b) => a.orderIndex - b.orderIndex).map((chapter, i) => (
+                    <Card key={chapter.id} className="border-ink-200 shadow-sm group">
+                      <CardContent className="p-4 flex gap-4">
+                        <div className="cursor-grab pt-1 text-ink-300 hover:text-ink-500">
+                          <GripVertical className="w-5 h-5" />
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 font-bold flex items-center justify-center shrink-0">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1">
+                          <Input 
+                            value={chapter.title} 
+                            className="font-semibold text-lg border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 h-8 mb-1 bg-transparent"
+                            readOnly
+                          />
+                          <Textarea 
+                            value={chapter.summary || ''} 
+                            className="text-ink-600 text-sm border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 min-h-0 h-auto resize-none bg-transparent"
+                            readOnly
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                
+                <div className="flex justify-center pt-4">
+                  <Button variant="outline" className="rounded-xl border-dashed border-ink-300 text-ink-500 hover:text-brand-600 hover:border-brand-300">
+                    + Add Chapter Manually
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: WRITING CHAPTERS */}
+            {step === 3 && (
+              <div className="py-20 max-w-md mx-auto text-center animate-in fade-in zoom-in-95">
+                <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <PenTool className="w-10 h-10 text-brand-500 animate-pulse" />
+                </div>
+                <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Writing chapters</h2>
+                <p className="text-ink-500 mb-8">{job?.progressLabel || "Generating content..."}</p>
+                
+                <Progress 
+                  value={job?.totalUnits ? ((job.completedUnits || 0) / job.totalUnits) * 100 : undefined} 
+                  className="h-2 bg-brand-100 [&>div]:bg-brand-500" 
+                />
+
+                <div className="mt-8 text-left border rounded-xl p-4 bg-white shadow-sm space-y-2 h-48 overflow-auto">
+                  {job?.chapterStatuses?.map(cs => (
+                    <div key={cs.chapterId} className="flex justify-between items-center text-sm">
+                      <span className="truncate pr-4 font-medium text-ink-700">{cs.title}</span>
+                      <Badge variant="outline" className={cn(
+                        cs.status === 'succeeded' || cs.status === 'ready' ? "bg-lime-50 text-lime-700 border-lime-200" :
+                        cs.status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
+                        "bg-brand-50 text-brand-700 border-brand-200"
+                      )}>
+                        {cs.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: EDITOR */}
+            {step === 4 && detail && (
+              <div className="flex gap-6 h-[calc(100vh-140px)] animate-in fade-in">
+                {/* Sidebar */}
+                <div className="w-72 flex flex-col gap-4">
+                  <div className="bg-white border rounded-2xl shadow-sm p-4 flex flex-col h-full overflow-hidden">
+                    <h3 className="font-semibold text-ink-900 mb-3 px-2">Chapters</h3>
+                    <div className="flex-1 overflow-auto space-y-1">
+                      {detail.chapters.sort((a,b) => a.orderIndex - b.orderIndex).map(chapter => (
+                        <button
+                          key={chapter.id}
+                          className={cn(
+                            "w-full text-left px-3 py-2 rounded-xl text-sm transition-colors",
+                            selectedChapterId === chapter.id 
+                              ? "bg-brand-50 text-brand-700 font-semibold" 
+                              : "text-ink-600 hover:bg-ink-50"
+                          )}
+                          onClick={() => setSelectedChapterId(chapter.id)}
+                        >
+                          <div className="truncate">{chapter.orderIndex + 1}. {chapter.title}</div>
+                          <div className="text-xs font-normal opacity-70 flex justify-between mt-1">
+                            <span>{chapter.wordCount} words</span>
+                            {chapter.status !== 'ready' && <span className="text-amber-600">{chapter.status}</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full bg-ink-900 hover:bg-ink-800 text-white rounded-xl shadow-soft"
+                    onClick={() => setStep(5)}
+                  >
+                    Proceed to Design <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+
+                {/* Main Editor Area */}
+                <div className="flex-1 bg-white border rounded-2xl shadow-sm flex flex-col overflow-hidden">
+                  <div className="border-b p-4 flex justify-between items-center bg-ink-50/50">
+                    <h3 className="font-bold text-lg text-ink-900 truncate pr-4">{selectedChapter?.title}</h3>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" size="sm" className="rounded-lg h-8 bg-white">
+                        <Sparkles className="w-3 h-3 mr-2 text-brand-500" /> AI Rewrite
+                      </Button>
+                      <Button variant="outline" size="sm" className="rounded-lg h-8 bg-white text-ink-500">
+                        Saved
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex-1 p-6 overflow-auto">
+                    {selectedChapter?.status === 'ready' ? (
+                      <Textarea 
+                        className="min-h-full border-0 focus-visible:ring-0 text-base leading-relaxed p-0 resize-none font-sans"
+                        defaultValue={selectedChapter?.contentMd || ''}
+                        onChange={(e) => {
+                          // Simple debounced save logic would go here
+                          // handleSaveChapterContent(e.target.value)
+                        }}
+                      />
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-ink-500">
+                        <AlertCircle className="w-10 h-10 mb-4 text-amber-500" />
+                        <p>This chapter is not ready yet.</p>
+                        <p className="text-sm">Status: {selectedChapter?.status}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: COVER & STEP 6: EXPORT */}
+            {(step === 5 || step === 6) && detail && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Design & Export</h2>
+                    <p className="text-ink-500">Choose a theme and generate the final PDF.</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* Preview pane */}
+                  <div className="bg-ink-100 rounded-2xl p-8 flex items-center justify-center border border-ink-200 shadow-inner">
+                    <div 
+                      className="w-[210px] h-[297px] bg-white shadow-xl flex flex-col transition-all duration-300 relative overflow-hidden"
+                      style={{ 
+                        fontFamily: exportTheme === 'serif' ? 'Georgia, serif' : 'Inter, sans-serif'
+                      }}
+                    >
+                      <div 
+                        className="h-1/2 w-full transition-colors duration-300"
+                        style={{ backgroundColor: ((detail.product.coverConfig as any)?.primaryColor) || '#1FA06B' }}
+                      />
+                      <div className="p-4 flex flex-col justify-center flex-1 bg-white relative z-10 -mt-8 rounded-t-xl mx-2 shadow-sm">
+                        <h3 className="font-bold text-ink-900 leading-tight mb-1 text-sm">{detail.product.title}</h3>
+                        <p className="text-[8px] text-ink-500 uppercase tracking-widest">{detail.product.ownerName}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Controls */}
+                  <div className="space-y-6">
+                    <Card className="border-ink-200 shadow-sm">
+                      <CardContent className="p-5">
+                        <h3 className="font-semibold text-ink-900 mb-4 flex items-center gap-2">
+                          <Palette className="w-4 h-4 text-ink-400" /> Theme Selection
+                        </h3>
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          <Button 
+                            variant="outline" 
+                            className={cn("justify-start h-auto py-3 px-4", exportTheme === 'minimal' && "border-brand-500 bg-brand-50")}
+                            onClick={() => setExportTheme('minimal')}
+                          >
+                            <div>
+                              <div className="font-medium text-ink-900">Modern Sans</div>
+                              <div className="text-xs text-ink-500 font-normal">Clean & geometric</div>
+                            </div>
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className={cn("justify-start h-auto py-3 px-4", exportTheme === 'serif' && "border-brand-500 bg-brand-50")}
+                            onClick={() => setExportTheme('serif')}
+                          >
+                            <div className="font-serif">
+                              <div className="font-medium text-ink-900">Classic Serif</div>
+                              <div className="text-xs text-ink-500 font-sans font-normal">Elegant & readable</div>
+                            </div>
+                          </Button>
+                        </div>
+
+                        <h3 className="font-semibold text-ink-900 mb-3 text-sm">Cover Accent Color</h3>
+                        <div className="flex gap-3">
+                          {['#1FA06B', '#2E8B9E', '#D9A02B', '#7CB518', '#06251C', '#D64545'].map(color => (
+                            <button
+                              key={color}
+                              className={cn(
+                                "w-8 h-8 rounded-full shadow-sm border-2 transition-transform hover:scale-110",
+                                ((detail.product.coverConfig as any)?.primaryColor) === color ? "border-ink-900 scale-110" : "border-transparent"
+                              )}
+                              style={{ backgroundColor: color }}
+                              onClick={() => {
+                                // optimistic update could go here, omitting for brevity
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Button 
+                      size="lg" 
+                      className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                      onClick={handleExport}
+                      disabled={exportProduct.isPending}
+                    >
+                      {exportProduct.isPending ? (
+                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Compiling PDF...</>
+                      ) : (
+                        <><Download className="w-5 h-5 mr-2" /> Download PDF Book</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}

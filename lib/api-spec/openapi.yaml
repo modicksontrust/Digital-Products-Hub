@@ -3,20 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: DigiProducts API — single-tenant AI digital product creation platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: learn
+  - name: dashboard
+  - name: products
+  - name: generation
+  - name: exportsTag
+  - name: reviews
+  - name: notifications
+  - name: assets
+  - name: credits
+  - name: admin
+  - name: public
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +34,1863 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ---------- Auth ----------
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      responses:
+        "200":
+          description: Current session user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+  /auth/invites/{token}:
+    get:
+      operationId: getInvite
+      tags: [auth]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Invite details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteInfo"
+  /auth/invites/{token}/accept:
+    post:
+      operationId: acceptInvite
+      tags: [auth]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteAccept"
+      responses:
+        "200":
+          description: Account created and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Reset link issued (always ok)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetIssued"
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /auth/account:
+    patch:
+      operationId: updateAccount
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+
+  # ---------- Public ----------
+  /access-requests:
+    post:
+      operationId: createAccessRequest
+      tags: [public]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessRequestInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ---------- Learn ----------
+  /learn/modules:
+    get:
+      operationId: getLearnModules
+      tags: [learn]
+      responses:
+        "200":
+          description: Modules with lessons and my progress
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearnModule"
+  /learn/lessons/{lessonId}:
+    get:
+      operationId: getLesson
+      tags: [learn]
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Lesson detail with progress and next lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonDetail"
+  /learn/lessons/{lessonId}/progress:
+    post:
+      operationId: postLessonProgress
+      tags: [learn]
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonProgressInput"
+      responses:
+        "200":
+          description: Progress saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonProgress"
+  /learn/lessons/{lessonId}/complete:
+    post:
+      operationId: completeLesson
+      tags: [learn]
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Lesson completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnStatus"
+  /learn/status:
+    get:
+      operationId: getLearnStatus
+      tags: [learn]
+      responses:
+        "200":
+          description: Onboarding status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnStatus"
+
+  # ---------- Dashboard ----------
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      responses:
+        "200":
+          description: Role-scoped stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      responses:
+        "200":
+          description: Recent activity events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  # ---------- Credits ----------
+  /credits/transactions:
+    get:
+      operationId: getCreditTransactions
+      tags: [credits]
+      responses:
+        "200":
+          description: My credit ledger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CreditTransaction"
+  /credits/request:
+    post:
+      operationId: requestCredits
+      tags: [credits]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditRequestInput"
+      responses:
+        "200":
+          description: Request sent to admins
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ---------- Products ----------
+  /products:
+    get:
+      operationId: getProducts
+      tags: [products]
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: ownerId
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: sort
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Product list (role scoped)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Product detail with chapters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}/duplicate:
+    post:
+      operationId: duplicateProduct
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: New draft clone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}/archive:
+    post:
+      operationId: archiveProduct
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}/submit-review:
+    post:
+      operationId: submitForReview
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}/review:
+    post:
+      operationId: reviewProduct
+      tags: [reviews]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewDecision"
+      responses:
+        "200":
+          description: Review recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}/chapters:
+    post:
+      operationId: addChapter
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterInput"
+      responses:
+        "201":
+          description: Chapter added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+  /products/{productId}/chapters/{chapterId}:
+    patch:
+      operationId: updateChapter
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: chapterId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chapter"
+    delete:
+      operationId: deleteChapter
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: chapterId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /products/{productId}/chapters-reorder:
+    post:
+      operationId: reorderChapters
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterReorder"
+      responses:
+        "200":
+          description: Reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /products/{productId}/comments:
+    get:
+      operationId: getComments
+      tags: [reviews]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: addComment
+      tags: [reviews]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Comment added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+  /products/{productId}/sales-copy:
+    get:
+      operationId: getSalesCopy
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sales copy draft (may be empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesCopy"
+    patch:
+      operationId: updateSalesCopy
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesCopyUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesCopy"
+  /reviews/queue:
+    get:
+      operationId: getReviewQueue
+      tags: [reviews]
+      responses:
+        "200":
+          description: Products awaiting review
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  # ---------- Generation ----------
+  /generate/outline:
+    post:
+      operationId: generateOutline
+      tags: [generation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutlineGenInput"
+      responses:
+        "202":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationJob"
+  /generate/chapters:
+    post:
+      operationId: generateChapters
+      tags: [generation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChaptersGenInput"
+      responses:
+        "202":
+          description: Batch queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationJob"
+  /generate/chapters/{chapterId}/rewrite:
+    post:
+      operationId: rewriteChapter
+      tags: [generation]
+      parameters:
+        - name: chapterId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RewriteInput"
+      responses:
+        "202":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationJob"
+  /generate/sales-copy:
+    post:
+      operationId: generateSalesCopy
+      tags: [generation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesCopyGenInput"
+      responses:
+        "202":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationJob"
+  /generate/lead-magnet:
+    post:
+      operationId: generateLeadMagnet
+      tags: [generation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadMagnetGenInput"
+      responses:
+        "202":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationJob"
+  /jobs/{jobId}:
+    get:
+      operationId: getJob
+      tags: [generation]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Job status with per-chapter progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationJob"
+
+  # ---------- Exports ----------
+  /products/{productId}/export:
+    post:
+      operationId: exportProduct
+      tags: [exportsTag]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportInput"
+      responses:
+        "201":
+          description: Export created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportRecord"
+  /products/{productId}/exports:
+    get:
+      operationId: getProductExports
+      tags: [exportsTag]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Export versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExportRecord"
+
+  # ---------- Notifications ----------
+  /notifications:
+    get:
+      operationId: getNotifications
+      tags: [notifications]
+      responses:
+        "200":
+          description: My notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppNotification"
+  /notifications/{notificationId}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ---------- Brand kit ----------
+  /brand-kit:
+    get:
+      operationId: getBrandKit
+      tags: [admin]
+      responses:
+        "200":
+          description: Org brand kit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandKit"
+
+  # ---------- Admin ----------
+  /admin/users:
+    get:
+      operationId: getUsers
+      tags: [admin]
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /admin/users/{userId}:
+    patch:
+      operationId: updateUser
+      tags: [admin]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /admin/users/{userId}/credits:
+    post:
+      operationId: grantCredits
+      tags: [admin]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditGrant"
+      responses:
+        "200":
+          description: Granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /admin/invitations:
+    get:
+      operationId: getInvitations
+      tags: [admin]
+      responses:
+        "200":
+          description: All invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invitation"
+    post:
+      operationId: createInvitation
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationInput"
+      responses:
+        "201":
+          description: Invitation created (includes accept URL)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invitation"
+  /admin/invitations/{invitationId}/revoke:
+    post:
+      operationId: revokeInvitation
+      tags: [admin]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /admin/access-requests:
+    get:
+      operationId: getAccessRequests
+      tags: [admin]
+      responses:
+        "200":
+          description: Access requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccessRequest"
+  /admin/access-requests/{requestId}:
+    patch:
+      operationId: updateAccessRequest
+      tags: [admin]
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessRequestUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+  /admin/modules:
+    post:
+      operationId: createModule
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModuleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnModule"
+  /admin/modules/{moduleId}:
+    patch:
+      operationId: updateModule
+      tags: [admin]
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModuleUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnModule"
+    delete:
+      operationId: deleteModule
+      tags: [admin]
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /admin/lessons:
+    post:
+      operationId: createLesson
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+  /admin/lessons/{lessonId}:
+    patch:
+      operationId: updateLesson
+      tags: [admin]
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+    delete:
+      operationId: deleteLesson
+      tags: [admin]
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /admin/onboarding-report:
+    get:
+      operationId: getOnboardingReport
+      tags: [admin]
+      responses:
+        "200":
+          description: Users x lessons completion matrix
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OnboardingReportRow"
+  /admin/credit-costs:
+    get:
+      operationId: getCreditCosts
+      tags: [admin]
+      responses:
+        "200":
+          description: Cost per operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CreditCost"
+    patch:
+      operationId: updateCreditCosts
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditCostUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CreditCost"
+  /admin/credit-report:
+    get:
+      operationId: getCreditReport
+      tags: [admin]
+      responses:
+        "200":
+          description: Spend by user and operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditReport"
+  /admin/brand-kit:
+    patch:
+      operationId: updateBrandKit
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandKitUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandKit"
+  /admin/settings:
+    get:
+      operationId: getSettings
+      tags: [admin]
+      responses:
+        "200":
+          description: Platform settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformSettings"
+    patch:
+      operationId: updateSettings
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformSettingsUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformSettings"
+  /admin/audit-logs:
+    get:
+      operationId: getAuditLogs
+      tags: [admin]
+      parameters:
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: actorId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
+      required: [status]
+    OkResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+      required: [ok]
+    ResetIssued:
+      type: object
+      properties:
+        ok: { type: boolean }
+        resetUrl: { type: ["string", "null"] }
+      required: [ok]
 
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+    SessionUser:
+      type: object
+      required: [id, email, fullName, role, status, creditsBalance, onboardingComplete, onboardingExempt, permissions]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        fullName: { type: string }
+        role: { type: string, enum: [admin, manager, creator, uploader, marketer] }
+        status: { type: string }
+        creditsBalance: { type: integer }
+        onboardingComplete: { type: boolean }
+        onboardingExempt: { type: boolean }
+        avatarUrl: { type: ["string", "null"] }
+        lastLoginAt: { type: ["string", "null"] }
+        permissions:
+          type: object
+          additionalProperties: { type: boolean }
+    InviteInfo:
+      type: object
+      required: [email, role, valid]
+      properties:
+        email: { type: string }
+        role: { type: string }
+        valid: { type: boolean }
+        invalidReason: { type: ["string", "null"] }
+    InviteAccept:
+      type: object
+      required: [fullName, password]
+      properties:
+        fullName: { type: string, minLength: 1 }
+        password: { type: string, minLength: 8 }
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string }
+    ResetPasswordInput:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string }
+        password: { type: string, minLength: 8 }
+    AccountUpdate:
+      type: object
+      properties:
+        fullName: { type: string }
+        currentPassword: { type: string }
+        newPassword: { type: string }
+
+    AccessRequestInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string }
+        requestedRole: { type: ["string", "null"] }
+        message: { type: ["string", "null"] }
+    AccessRequest:
+      type: object
+      required: [id, name, email, status, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        requestedRole: { type: ["string", "null"] }
+        message: { type: ["string", "null"] }
+        status: { type: string, enum: [new, invited, dismissed] }
+        createdAt: { type: string }
+    AccessRequestUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [invited, dismissed] }
+
+    LearnModule:
+      type: object
+      required: [id, title, orderIndex, isPublished, lessons]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        orderIndex: { type: integer }
+        isPublished: { type: boolean }
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+    Lesson:
+      type: object
+      required: [id, moduleId, title, orderIndex, durationSeconds, isRequiredForOnboarding, isPublished, allowManualComplete, resources]
+      properties:
+        id: { type: string }
+        moduleId: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        bodyMd: { type: ["string", "null"] }
+        videoProvider: { type: ["string", "null"] }
+        videoUrl: { type: ["string", "null"] }
+        durationSeconds: { type: integer }
+        orderIndex: { type: integer }
+        isRequiredForOnboarding: { type: boolean }
+        allowManualComplete: { type: boolean }
+        isPublished: { type: boolean }
+        locked: { type: boolean }
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonResource"
+        progress:
+          $ref: "#/components/schemas/LessonProgress"
+    LessonResource:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        externalUrl: { type: ["string", "null"] }
+    LessonDetail:
+      type: object
+      required: [lesson]
+      properties:
+        lesson:
+          $ref: "#/components/schemas/Lesson"
+        nextLesson:
+          $ref: "#/components/schemas/Lesson"
+    LessonProgress:
+      type: object
+      required: [lessonId, status, watchedSeconds, furthestPosition]
+      properties:
+        lessonId: { type: string }
+        status: { type: string, enum: [not_started, in_progress, completed] }
+        watchedSeconds: { type: integer }
+        furthestPosition: { type: integer }
+        completedAt: { type: ["string", "null"] }
+    LessonProgressInput:
+      type: object
+      required: [watchedSeconds, furthestPosition]
+      properties:
+        watchedSeconds: { type: integer }
+        furthestPosition: { type: integer }
+    LearnStatus:
+      type: object
+      required: [requiredCount, completedCount, percentComplete, onboardingComplete]
+      properties:
+        requiredCount: { type: integer }
+        completedCount: { type: integer }
+        percentComplete: { type: integer }
+        onboardingComplete: { type: boolean }
+        justCompleted: { type: boolean }
+        nextLessonId: { type: ["string", "null"] }
+
+    ModuleInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        orderIndex: { type: integer }
+        isPublished: { type: boolean }
+    ModuleUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        orderIndex: { type: integer }
+        isPublished: { type: boolean }
+    LessonInput:
+      type: object
+      required: [moduleId, title]
+      properties:
+        moduleId: { type: string }
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        bodyMd: { type: string }
+        videoProvider: { type: string }
+        videoUrl: { type: string }
+        durationSeconds: { type: integer }
+        orderIndex: { type: integer }
+        isRequiredForOnboarding: { type: boolean }
+        allowManualComplete: { type: boolean }
+        isPublished: { type: boolean }
+    LessonUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        bodyMd: { type: string }
+        videoProvider: { type: string }
+        videoUrl: { type: string }
+        durationSeconds: { type: integer }
+        orderIndex: { type: integer }
+        isRequiredForOnboarding: { type: boolean }
+        allowManualComplete: { type: boolean }
+        isPublished: { type: boolean }
+
+    DashboardStats:
+      type: object
+      required: [productsCreated, draftsInProgress, awaitingReview, approved, totalExports, creditsRemaining]
+      properties:
+        productsCreated: { type: integer }
+        draftsInProgress: { type: integer }
+        awaitingReview: { type: integer }
+        approved: { type: integer }
+        totalExports: { type: integer }
+        creditsRemaining: { type: integer }
+    ActivityEvent:
+      type: object
+      required: [id, action, createdAt]
+      properties:
+        id: { type: string }
+        actorName: { type: ["string", "null"] }
+        action: { type: string }
+        entityType: { type: ["string", "null"] }
+        entityId: { type: ["string", "null"] }
+        summary: { type: ["string", "null"] }
+        createdAt: { type: string }
+
+    CreditTransaction:
+      type: object
+      required: [id, delta, reason, balanceAfter, createdAt]
+      properties:
+        id: { type: string }
+        delta: { type: integer }
+        reason: { type: string }
+        balanceAfter: { type: integer }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string }
+    CreditRequestInput:
+      type: object
+      properties:
+        note: { type: string }
+    CreditGrant:
+      type: object
+      required: [amount]
+      properties:
+        amount: { type: integer }
+        note: { type: string }
+    CreditCost:
+      type: object
+      required: [operation, cost]
+      properties:
+        operation: { type: string }
+        cost: { type: integer }
+        label: { type: ["string", "null"] }
+    CreditCostUpdate:
+      type: object
+      required: [costs]
+      properties:
+        costs:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditCost"
+    CreditReport:
+      type: object
+      required: [byUser, byOperation]
+      properties:
+        byUser:
+          type: array
+          items:
+            type: object
+            required: [userId, userName, spent]
+            properties:
+              userId: { type: string }
+              userName: { type: string }
+              spent: { type: integer }
+        byOperation:
+          type: array
+          items:
+            type: object
+            required: [operation, spent]
+            properties:
+              operation: { type: string }
+              spent: { type: integer }
+
+    Product:
+      type: object
+      required: [id, ownerId, ownerName, type, title, status, chapterCount, wordCount, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        ownerId: { type: string }
+        ownerName: { type: string }
+        type: { type: string, enum: [ebook, lead_magnet, uploaded] }
+        title: { type: string }
+        subtitle: { type: ["string", "null"] }
+        topic: { type: ["string", "null"] }
+        audience: { type: ["string", "null"] }
+        tone: { type: ["string", "null"] }
+        language: { type: ["string", "null"] }
+        depth: { type: ["string", "null"] }
+        status: { type: string, enum: [draft, generating, ready, in_review, changes_requested, approved, archived] }
+        coverConfig:
+          type: ["object", "null"]
+          additionalProperties: true
+        chapterCount: { type: integer }
+        wordCount: { type: integer }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    ProductDetail:
+      type: object
+      required: [product, chapters]
+      properties:
+        product:
+          $ref: "#/components/schemas/Product"
+        chapters:
+          type: array
+          items:
+            $ref: "#/components/schemas/Chapter"
+        latestReview:
+          $ref: "#/components/schemas/Review"
+    ProductInput:
+      type: object
+      required: [type, title, topic]
+      properties:
+        type: { type: string, enum: [ebook, lead_magnet, uploaded] }
+        title: { type: string, minLength: 1 }
+        subtitle: { type: string }
+        topic: { type: string, minLength: 1 }
+        audience: { type: string }
+        tone: { type: string }
+        language: { type: string }
+        depth: { type: string }
+        chapterCount: { type: integer }
+        keyPoints: { type: string }
+        cta: { type: string }
+        leadMagnetFormat: { type: string }
+    ProductUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        subtitle: { type: string }
+        topic: { type: string }
+        audience: { type: string }
+        tone: { type: string }
+        language: { type: string }
+        depth: { type: string }
+        coverConfig:
+          type: object
+          additionalProperties: true
+    Chapter:
+      type: object
+      required: [id, productId, orderIndex, title, status, wordCount]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        orderIndex: { type: integer }
+        title: { type: string }
+        summary: { type: ["string", "null"] }
+        contentMd: { type: ["string", "null"] }
+        status: { type: string, enum: [pending, generating, ready, failed] }
+        wordCount: { type: integer }
+        errorMessage: { type: ["string", "null"] }
+    ChapterInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        summary: { type: string }
+        contentMd: { type: string }
+    ChapterUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        summary: { type: string }
+        contentMd: { type: string }
+    ChapterReorder:
+      type: object
+      required: [chapterIds]
+      properties:
+        chapterIds:
+          type: array
+          items: { type: string }
+
+    ReviewDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, changes_requested] }
+        comment: { type: string }
+    Review:
+      type: object
+      required: [id, productId, decision, createdAt]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        reviewerName: { type: ["string", "null"] }
+        decision: { type: string }
+        comment: { type: ["string", "null"] }
+        decidedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+    Comment:
+      type: object
+      required: [id, productId, authorId, authorName, body, createdAt]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        chapterId: { type: ["string", "null"] }
+        authorId: { type: string }
+        authorName: { type: string }
+        body: { type: string }
+        createdAt: { type: string }
+    CommentInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1 }
+        chapterId: { type: string }
+
+    OutlineGenInput:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: string }
+    ChaptersGenInput:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: string }
+        chapterIds:
+          type: array
+          items: { type: string }
+    RewriteInput:
+      type: object
+      required: [productId, instruction]
+      properties:
+        productId: { type: string }
+        instruction: { type: string, enum: [regenerate, expand, shorten, change_tone, add_examples] }
+        tone: { type: string }
+    SalesCopyGenInput:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: string }
+    LeadMagnetGenInput:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: string }
+    GenerationJob:
+      type: object
+      required: [id, type, status, createdAt]
+      properties:
+        id: { type: string }
+        productId: { type: ["string", "null"] }
+        type: { type: string }
+        status: { type: string, enum: [queued, running, succeeded, failed, cancelled] }
+        progressLabel: { type: ["string", "null"] }
+        completedUnits: { type: integer }
+        totalUnits: { type: integer }
+        creditsCharged: { type: integer }
+        errorMessage: { type: ["string", "null"] }
+        chapterStatuses:
+          type: array
+          items:
+            type: object
+            required: [chapterId, status]
+            properties:
+              chapterId: { type: string }
+              title: { type: ["string", "null"] }
+              status: { type: string }
+        createdAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+
+    SalesCopy:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: string }
+        headline: { type: ["string", "null"] }
+        subheadline: { type: ["string", "null"] }
+        bullets:
+          type: array
+          items: { type: string }
+        whoItsFor: { type: ["string", "null"] }
+        faq:
+          type: array
+          items:
+            type: object
+            required: [question, answer]
+            properties:
+              question: { type: string }
+              answer: { type: string }
+        ctaText: { type: ["string", "null"] }
+        suggestedPriceBand: { type: ["string", "null"] }
+        updatedAt: { type: ["string", "null"] }
+    SalesCopyUpdate:
+      type: object
+      properties:
+        headline: { type: string }
+        subheadline: { type: string }
+        bullets:
+          type: array
+          items: { type: string }
+        whoItsFor: { type: string }
+        faq:
+          type: array
+          items:
+            type: object
+            required: [question, answer]
+            properties:
+              question: { type: string }
+              answer: { type: string }
+        ctaText: { type: string }
+        suggestedPriceBand: { type: string }
+
+    ExportInput:
+      type: object
+      properties:
+        format: { type: string, enum: [pdf, md] }
+        pageSize: { type: string, enum: [a4, letter] }
+        theme: { type: string }
+    ExportRecord:
+      type: object
+      required: [id, productId, format, versionLabel, createdAt, downloadUrl]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        format: { type: string }
+        versionLabel: { type: string }
+        pageCount: { type: ["integer", "null"] }
+        fileSizeBytes: { type: ["integer", "null"] }
+        downloadUrl: { type: string }
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string }
+
+    AppNotification:
+      type: object
+      required: [id, type, title, isRead, createdAt]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        body: { type: ["string", "null"] }
+        linkPath: { type: ["string", "null"] }
+        isRead: { type: boolean }
+        createdAt: { type: string }
+
+    User:
+      type: object
+      required: [id, email, fullName, role, status, creditsBalance, onboardingComplete, onboardingExempt, createdAt]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        fullName: { type: string }
+        role: { type: string }
+        status: { type: string, enum: [invited, active, suspended, deactivated] }
+        creditsBalance: { type: integer }
+        onboardingComplete: { type: boolean }
+        onboardingExempt: { type: boolean }
+        lastLoginAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+    UserUpdate:
+      type: object
+      properties:
+        role: { type: string, enum: [admin, manager, creator, uploader, marketer] }
+        status: { type: string, enum: [active, deactivated] }
+        onboardingExempt: { type: boolean }
+        resetOnboarding: { type: boolean }
+    Invitation:
+      type: object
+      required: [id, email, role, status, createdAt]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string }
+        status: { type: string, enum: [pending, accepted, revoked, expired] }
+        acceptUrl: { type: ["string", "null"] }
+        expiresAt: { type: ["string", "null"] }
+        invitedByName: { type: ["string", "null"] }
+        createdAt: { type: string }
+    InvitationInput:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string }
+        role: { type: string, enum: [admin, manager, creator, uploader, marketer] }
+
+    OnboardingReportRow:
+      type: object
+      required: [userId, userName, role, completedRequired, totalRequired, onboardingComplete]
+      properties:
+        userId: { type: string }
+        userName: { type: string }
+        role: { type: string }
+        completedRequired: { type: integer }
+        totalRequired: { type: integer }
+        onboardingComplete: { type: boolean }
+        completedAt: { type: ["string", "null"] }
+
+    BrandKit:
+      type: object
+      required: [primaryColor, secondaryColor, accentColor, headingFont, bodyFont]
+      properties:
+        logoUrl: { type: ["string", "null"] }
+        primaryColor: { type: string }
+        secondaryColor: { type: string }
+        accentColor: { type: string }
+        headingFont: { type: string }
+        bodyFont: { type: string }
+        defaultAuthor: { type: ["string", "null"] }
+        footerText: { type: ["string", "null"] }
+        defaultDisclaimer: { type: ["string", "null"] }
+    BrandKitUpdate:
+      type: object
+      properties:
+        logoUrl: { type: string }
+        primaryColor: { type: string }
+        secondaryColor: { type: string }
+        accentColor: { type: string }
+        headingFont: { type: string }
+        bodyFont: { type: string }
+        defaultAuthor: { type: string }
+        footerText: { type: string }
+        defaultDisclaimer: { type: string }
+
+    PlatformSettings:
+      type: object
+      required: [sequentialUnlock, allowManualComplete, approvalWorkflowEnabled, uploaderCanGenerate]
+      properties:
+        sequentialUnlock: { type: boolean }
+        allowManualComplete: { type: boolean }
+        approvalWorkflowEnabled: { type: boolean }
+        uploaderCanGenerate: { type: boolean }
+        managerWeeklyGrantCap: { type: integer }
+    PlatformSettingsUpdate:
+      type: object
+      properties:
+        sequentialUnlock: { type: boolean }
+        allowManualComplete: { type: boolean }
+        approvalWorkflowEnabled: { type: boolean }
+        uploaderCanGenerate: { type: boolean }
+        managerWeeklyGrantCap: { type: integer }
+
+    AuditLog:
+      type: object
+      required: [id, action, createdAt]
+      properties:
+        id: { type: string }
+        actorName: { type: ["string", "null"] }
+        action: { type: string }
+        entityType: { type: ["string", "null"] }
+        entityId: { type: ["string", "null"] }
+        summary: { type: ["string", "null"] }
+        ip: { type: ["string", "null"] }
+        createdAt: { type: string }
