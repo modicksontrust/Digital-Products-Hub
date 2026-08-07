@@ -166,10 +166,8 @@ export function Topbar({ variant = "default" }: { variant?: "default" | "transpa
 
   return (
     <header className={cn(
-      "h-16 flex items-center justify-between px-6 z-30 transition-colors",
-      variant === "transparent"
-        ? "absolute top-0 inset-x-0 bg-transparent"
-        : "sticky top-0 border-b bg-white"
+      "h-16 flex items-center justify-between px-6 z-30 fixed top-0 inset-x-0 md:left-64 transition-colors",
+      variant === "transparent" ? "bg-transparent" : "border-b bg-white"
     )}>
       <div className="flex items-center gap-4">
         {/* Mobile menu toggle would go here */}
@@ -290,7 +288,7 @@ export function AppLayout({
       <Sidebar />
       <div className="flex flex-col min-h-[100dvh] md:pl-64 relative">
         <Topbar variant={headerVariant} />
-        <main className="flex-1 flex flex-col relative z-0">
+        <main className={cn("flex-1 flex flex-col relative z-0", headerVariant === "default" && "pt-16")}>
           {children}
         </main>
       </div>
