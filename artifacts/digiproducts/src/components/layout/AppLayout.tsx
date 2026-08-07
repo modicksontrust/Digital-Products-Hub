@@ -165,7 +165,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-30 ml-0 md:ml-64">
+    <header className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-30">
       <div className="flex items-center gap-4">
         {/* Mobile menu toggle would go here */}
       </div>
