@@ -27,6 +27,10 @@ export interface Product {
   language?: string | null;
   /** @nullable */
   depth?: string | null;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  lengthTier?: string | null;
   status: ProductStatus;
   /** @nullable */
   coverConfig?: ProductCoverConfig;

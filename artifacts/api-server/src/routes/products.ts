@@ -150,6 +150,8 @@ router.post(
         tone: d.tone ?? null,
         language: d.language ?? "English",
         depth: d.depth ?? "standard",
+        region: d.region ?? null,
+        lengthTier: d.lengthTier ?? null,
         keyPoints: d.keyPoints ?? null,
         ctaText: d.cta ?? null,
         leadMagnetFormat: d.leadMagnetFormat ?? null,

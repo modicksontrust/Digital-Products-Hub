@@ -421,6 +421,10 @@ export interface Product {
   language?: string | null;
   /** @nullable */
   depth?: string | null;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  lengthTier?: string | null;
   status: ProductStatus;
   /** @nullable */
   coverConfig?: ProductCoverConfig;
@@ -494,6 +498,8 @@ export interface ProductInput {
   tone?: string;
   language?: string;
   depth?: string;
+  region?: string;
+  lengthTier?: string;
   chapterCount?: number;
   keyPoints?: string;
   cta?: string;
@@ -510,6 +516,8 @@ export interface ProductUpdate {
   tone?: string;
   language?: string;
   depth?: string;
+  region?: string;
+  lengthTier?: string;
   coverConfig?: ProductUpdateCoverConfig;
 }
 

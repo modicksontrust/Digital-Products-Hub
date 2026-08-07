@@ -50,6 +50,8 @@ export async function serializeProduct(
     tone: product.tone,
     language: product.language,
     depth: product.depth,
+    region: product.region,
+    lengthTier: product.lengthTier,
     status: product.status,
     coverConfig: (product.coverConfig ?? null) as Record<
       string,

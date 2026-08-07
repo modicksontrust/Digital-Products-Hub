@@ -76,6 +76,8 @@ function productBrief(p: typeof productsTable.$inferSelect): string {
     p.tone ? `Tone: ${p.tone}` : "",
     `Language: ${p.language}`,
     `Depth: ${p.depth}`,
+    p.region ? `Target region: ${p.region} (adapt cultural references, examples, and pricing mentions accordingly)` : "",
+    p.lengthTier ? `Length tier: ${p.lengthTier}` : "",
     p.keyPoints ? `Key points to cover: ${p.keyPoints}` : "",
     p.ctaText ? `Call to action: ${p.ctaText}` : "",
   ]

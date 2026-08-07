@@ -15,5 +15,7 @@ export interface ProductUpdate {
   tone?: string;
   language?: string;
   depth?: string;
+  region?: string;
+  lengthTier?: string;
   coverConfig?: ProductUpdateCoverConfig;
 }

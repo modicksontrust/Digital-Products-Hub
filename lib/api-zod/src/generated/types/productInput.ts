@@ -18,6 +18,8 @@ export interface ProductInput {
   tone?: string;
   language?: string;
   depth?: string;
+  region?: string;
+  lengthTier?: string;
   chapterCount?: number;
   keyPoints?: string;
   cta?: string;

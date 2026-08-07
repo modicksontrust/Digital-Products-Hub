@@ -22,6 +22,8 @@ export const productsTable = pgTable("products", {
   tone: text("tone"),
   language: text("language").notNull().default("English"),
   depth: text("depth").notNull().default("standard"),
+  region: text("region"),
+  lengthTier: text("length_tier"),
   keyPoints: text("key_points"),
   ctaText: text("cta_text"),
   status: text("status").notNull().default("draft"), // draft|generating|ready|in_review|changes_requested|approved|archived

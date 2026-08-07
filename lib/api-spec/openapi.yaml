@@ -1727,6 +1727,8 @@ components:
         tone: { type: ["string", "null"] }
         language: { type: ["string", "null"] }
         depth: { type: ["string", "null"] }
+        region: { type: ["string", "null"] }
+        lengthTier: { type: ["string", "null"] }
         status: { type: string, enum: [draft, generating, ready, in_review, changes_requested, approved, archived] }
         coverConfig:
           type: ["object", "null"]
@@ -1759,6 +1761,8 @@ components:
         tone: { type: string }
         language: { type: string }
         depth: { type: string }
+        region: { type: string }
+        lengthTier: { type: string }
         chapterCount: { type: integer }
         keyPoints: { type: string }
         cta: { type: string }
@@ -1773,6 +1777,8 @@ components:
         tone: { type: string }
         language: { type: string }
         depth: { type: string }
+        region: { type: string }
+        lengthTier: { type: string }
         coverConfig:
           type: object
           additionalProperties: true

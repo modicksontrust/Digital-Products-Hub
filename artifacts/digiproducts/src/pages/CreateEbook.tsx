@@ -130,6 +130,33 @@ export default function CreateEbook() {
       topic: subNiche.suggestedTopic,
       audience: subNiche.suggestedAudience,
     }));
+    // Stay on Step 1 — region & pricing sections reveal below the sub-niche grid.
+  };
+
+  const REGIONS: { key: string; label: string; countries: string; description: string }[] = [
+    { key: "west_africa", label: "West Africa", countries: "Nigeria, Ghana, Cameroon, Senegal", description: "Direct, urgent. Naira pricing, local references." },
+    { key: "east_africa", label: "East Africa", countries: "Kenya, Tanzania, Uganda, Rwanda", description: "Practical, step-by-step. KSh/M-Pesa references." },
+    { key: "southern_africa", label: "Southern Africa", countries: "South Africa, Botswana, Zimbabwe, Namibia", description: "Professional, polished. Rand pricing." },
+    { key: "african_diaspora", label: "African Diaspora", countries: "UK, US, Canada, Europe", description: "Identity-driven, code-switching. Dual-culture." },
+    { key: "global_english", label: "Global English", countries: "West Africa, East Africa, South Africa, Americas, Asia & more", description: "Worldwide English-speaking audience. No local assumptions." },
+  ];
+  const [selectedRegion, setSelectedRegion] = useState<string>("global_english");
+
+  const LENGTH_TIERS: { key: string; label: string; priceRange: string; wordRange: string; chapterRange: string; description: string; chapterCount: number; recommended?: boolean }[] = [
+    { key: "pdf_guide", label: "PDF Guide", priceRange: "$1 – $20", wordRange: "5,000 – 8,000 words", chapterRange: "5-7 chapters", description: "Quick, actionable painkiller guide. Easy to write and sell. Great for first-timers.", chapterCount: 6, recommended: true },
+    { key: "playbook", label: "Playbook", priceRange: "$10 – $30", wordRange: "8,000 – 15,000 words", chapterRange: "7-10 chapters", description: "The sweet spot. Deeper than a guide, lighter than a book. Detailed playbook buyers finish.", chapterCount: 9 },
+    { key: "full_ebook", label: "Full eBook", priceRange: "$10 – $100", wordRange: "15,000 – 25,000 words", chapterRange: "10-15 chapters", description: "Comprehensive full-length eBook. Deep-dive content with case studies and action plans.", chapterCount: 12 },
+  ];
+  const [selectedLengthTier, setSelectedLengthTier] = useState<string>("pdf_guide");
+
+  const handleContinueFromNiche = () => {
+    const tier = LENGTH_TIERS.find((t) => t.key === selectedLengthTier);
+    setBrief((f) => ({
+      ...f,
+      chapterCount: tier?.chapterCount ?? f.chapterCount,
+      region: selectedRegion,
+      lengthTier: selectedLengthTier,
+    }));
     setStep(2);
   };
 
@@ -137,7 +164,8 @@ export default function CreateEbook() {
   // STEP 2: Brief State
   // ==========================================
   const [brief, setBrief] = useState({
-    title: "", topic: "", audience: "", tone: "professional", chapterCount: 10, depth: "standard", language: "English"
+    title: "", topic: "", audience: "", tone: "professional", chapterCount: 10, depth: "standard", language: "English",
+    region: "global_english", lengthTier: "pdf_guide"
   });
 
   const createProduct = useCreateProduct();
@@ -147,7 +175,7 @@ export default function CreateEbook() {
     if (!brief.topic) { toast({ title: "Topic required", variant: "destructive" }); return; }
     
     createProduct.mutate({
-      data: { type: 'ebook', title: brief.title || 'Untitled Draft', topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language }
+      data: { type: 'ebook', title: brief.title || 'Untitled Draft', topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language, region: brief.region, lengthTier: brief.lengthTier }
     }, {
       onSuccess: (product) => {
         generateOutline.mutate({ data: { productId: product.id } }, {
@@ -522,6 +550,82 @@ export default function CreateEbook() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {selectedSubNiche && (
+                  <div className="space-y-4 pt-2">
+                    <div>
+                      <h3 className="text-xl font-display font-bold text-ink-900">Target Region</h3>
+                      <p className="text-sm text-ink-500">This controls language style, pricing references, and cultural tone throughout your eBook.</p>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {REGIONS.map((region) => (
+                        <Card
+                          key={region.key}
+                          className={cn(
+                            "cursor-pointer border-ink-200 shadow-sm hover:shadow-md transition-all rounded-2xl",
+                            selectedRegion === region.key && "border-brand-500 bg-brand-50/40"
+                          )}
+                          onClick={() => setSelectedRegion(region.key)}
+                        >
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <h4 className="font-semibold text-ink-900">{region.label}</h4>
+                              {selectedRegion === region.key && (
+                                <Badge className="bg-brand-500 text-white border-0 shrink-0">Selected</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-ink-400 mb-1">{region.countries}</p>
+                            <p className="text-sm text-ink-500 leading-snug">{region.description}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedSubNiche && (
+                  <div className="space-y-4 pt-2">
+                    <div>
+                      <h3 className="text-xl font-display font-bold text-ink-900">Book Length &amp; Price</h3>
+                      <p className="text-sm text-ink-500">Choose a content tier for book length, then set your pricing.</p>
+                    </div>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      {LENGTH_TIERS.map((tier) => (
+                        <Card
+                          key={tier.key}
+                          className={cn(
+                            "cursor-pointer border-2 rounded-2xl shadow-sm hover:shadow-md transition-all relative",
+                            selectedLengthTier === tier.key ? "border-brand-500 bg-brand-50/40" : "border-ink-200"
+                          )}
+                          onClick={() => setSelectedLengthTier(tier.key)}
+                        >
+                          {tier.recommended && (
+                            <Badge className="absolute -top-2.5 left-4 bg-gold-500 text-white border-0">Recommended</Badge>
+                          )}
+                          <CardContent className="p-5 pt-6">
+                            <h4 className="font-display font-bold text-ink-900 mb-1">{tier.label}</h4>
+                            <p className="text-sm font-semibold text-brand-600 mb-2">{tier.priceRange}</p>
+                            <ul className="text-xs text-ink-500 space-y-0.5 mb-3">
+                              <li>{tier.wordRange}</li>
+                              <li>{tier.chapterRange}</li>
+                            </ul>
+                            <p className="text-xs text-ink-500 leading-snug">{tier.description}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        size="lg"
+                        className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                        onClick={handleContinueFromNiche}
+                      >
+                        Continue <ChevronRight className="w-5 h-5 ml-1" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
