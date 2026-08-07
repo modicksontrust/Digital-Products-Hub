@@ -12,11 +12,12 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useGetInvite, useAcceptInvite, getGetInviteQueryKey } from "@workspace/api-client-react";
+import { useGetInvite, useAcceptInvite, getGetInviteQueryKey, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useParams } from "wouter";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -27,6 +28,7 @@ export default function AcceptInvite() {
   const { token } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: invite, isLoading, isError } = useGetInvite(token || '', {
     query: { enabled: !!token, retry: false, queryKey: getGetInviteQueryKey(token || '') }
@@ -72,8 +74,9 @@ export default function AcceptInvite() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (!token) return;
     acceptInvite.mutate({ token, data: values }, {
-      onSuccess: () => {
+      onSuccess: async () => {
         toast({ title: "Account created", description: "Welcome to DigiProducts!" });
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         setLocation("/learn");
       },
       onError: (error) => {

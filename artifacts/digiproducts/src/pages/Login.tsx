@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useLogin } from "@workspace/api-client-react";
+import { useLogin, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -25,6 +26,7 @@ const formSchema = z.object({
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const login = useLogin();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -37,11 +39,12 @@ export default function Login() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     login.mutate({ data: values }, {
-      onSuccess: () => {
+      onSuccess: async () => {
         toast({
           title: "Welcome back",
           description: "Successfully logged in.",
         });
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         setLocation("/dashboard");
       },
       onError: (error) => {
