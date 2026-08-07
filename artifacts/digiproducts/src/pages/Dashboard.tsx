@@ -43,7 +43,7 @@ export default function Dashboard() {
             <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur mb-4">
               Welcome back
             </Badge>
-            <h1 className="text-4xl font-display font-bold tracking-tight mb-2">
+            <h1 className="text-4xl font-display font-bold tracking-tight mb-2 text-background">
               What are we building today?
             </h1>
             <p className="text-brand-100 text-lg opacity-90 max-w-xl">
