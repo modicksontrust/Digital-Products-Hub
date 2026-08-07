@@ -350,6 +350,7 @@ async function serializeModule(
     id: m.id,
     title: m.title,
     description: m.description,
+    stage: m.stage,
     orderIndex: m.orderIndex,
     isPublished: m.isPublished,
     lessons: out,
@@ -370,6 +371,7 @@ router.post(
       .values({
         title: parsed.data.title,
         description: parsed.data.description ?? null,
+        stage: parsed.data.stage ?? "create",
         orderIndex: parsed.data.orderIndex ?? 0,
         isPublished: parsed.data.isPublished ?? true,
       })

@@ -5,6 +5,7 @@
  * DigiProducts API — single-tenant AI digital product creation platform
  * OpenAPI spec version: 0.1.0
  */
+import type { LearnModuleStage } from './learnModuleStage';
 import type { Lesson } from './lesson';
 
 export interface LearnModule {
@@ -12,6 +13,7 @@ export interface LearnModule {
   title: string;
   /** @nullable */
   description?: string | null;
+  stage: LearnModuleStage;
   orderIndex: number;
   isPublished: boolean;
   lessons: Lesson[];

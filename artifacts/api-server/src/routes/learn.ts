@@ -116,6 +116,7 @@ router.get("/learn/modules", async (req, res): Promise<void> => {
       id: m.id,
       title: m.title,
       description: m.description,
+      stage: m.stage,
       orderIndex: m.orderIndex,
       isPublished: m.isPublished,
       lessons: ls,

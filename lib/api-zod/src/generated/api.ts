@@ -161,6 +161,7 @@ export const GetLearnModulesResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "stage": zod.enum(['create', 'validate', 'sell_scale']),
   "orderIndex": zod.int(),
   "isPublished": zod.boolean(),
   "lessons": zod.array(zod.object({
@@ -1155,6 +1156,7 @@ export const UpdateAccessRequestResponse = zod.object({
 export const CreateModuleBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
+  "stage": zod.enum(['create', 'validate', 'sell_scale']).optional(),
   "orderIndex": zod.int().optional(),
   "isPublished": zod.boolean().optional()
 })
@@ -1163,6 +1165,7 @@ export const CreateModuleResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "stage": zod.enum(['create', 'validate', 'sell_scale']),
   "orderIndex": zod.int(),
   "isPublished": zod.boolean(),
   "lessons": zod.array(zod.object({
@@ -1202,6 +1205,7 @@ export const UpdateModuleParams = zod.object({
 export const UpdateModuleBody = zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
+  "stage": zod.enum(['create', 'validate', 'sell_scale']).optional(),
   "orderIndex": zod.int().optional(),
   "isPublished": zod.boolean().optional()
 })
@@ -1210,6 +1214,7 @@ export const UpdateModuleResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "stage": zod.enum(['create', 'validate', 'sell_scale']),
   "orderIndex": zod.int(),
   "isPublished": zod.boolean(),
   "lessons": zod.array(zod.object({

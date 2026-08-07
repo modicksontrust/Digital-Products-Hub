@@ -9,10 +9,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
+// The onboarding curriculum is organized into a fixed 3-stage journey:
+// create (Day 1), validate (Day 2-8), sell_scale (Day 9-30).
 export const learnModulesTable = pgTable("learn_modules", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   description: text("description"),
+  stage: text("stage").notNull().default("create"), // create|validate|sell_scale
   orderIndex: integer("order_index").notNull().default(0),
   isPublished: boolean("is_published").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })

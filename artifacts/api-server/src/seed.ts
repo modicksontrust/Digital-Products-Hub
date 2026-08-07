@@ -63,6 +63,7 @@ export async function seed(): Promise<void> {
     .values({
       title: "Welcome to DigiProducts",
       description: "How the studio works and what great products look like.",
+      stage: "create",
       orderIndex: 0,
     })
     .returning();
@@ -71,7 +72,26 @@ export async function seed(): Promise<void> {
     .values({
       title: "Creating Products That Sell",
       description: "The full workflow: brief, outline, generate, polish, export.",
+      stage: "create",
       orderIndex: 1,
+    })
+    .returning();
+  const [m3] = await db
+    .insert(learnModulesTable)
+    .values({
+      title: "Getting Your First Sale",
+      description: "Validating demand and landing the first organic, paid sale.",
+      stage: "validate",
+      orderIndex: 2,
+    })
+    .returning();
+  const [m4] = await db
+    .insert(learnModulesTable)
+    .values({
+      title: "Scaling With Paid Traffic",
+      description: "Turning a proven offer into a repeatable, profitable ad funnel.",
+      stage: "sell_scale",
+      orderIndex: 3,
     })
     .returning();
 
@@ -119,6 +139,28 @@ export async function seed(): Promise<void> {
       orderIndex: 1,
       bodyMd:
         "Review every generated chapter before export. Use the AI actions (expand, shorten, add examples) to polish, then design your cover and export.",
+    },
+    {
+      moduleId: m3.id,
+      title: "Validating Before You Scale",
+      description: "How to land your first paid sale organically before spending on ads.",
+      videoProvider: "youtube",
+      videoUrl: "https://www.youtube.com/embed/9bZkp7q19f0",
+      durationSeconds: 300,
+      orderIndex: 0,
+      bodyMd:
+        "Share your product with a warm audience first. Look for a genuine paid conversion before spending a dollar on ads — that's your signal to move on to scaling.",
+    },
+    {
+      moduleId: m4.id,
+      title: "Building a Repeatable Ad Funnel",
+      description: "Turning a validated offer into predictable, profitable sales.",
+      videoProvider: "youtube",
+      videoUrl: "https://www.youtube.com/embed/kXYiU_JCYtU",
+      durationSeconds: 360,
+      orderIndex: 0,
+      bodyMd:
+        "Once you have a proven offer, invest in a small, measured ad budget. Track ROAS closely and aim to double your return before scaling spend further.",
     },
   ];
   for (const l of lessons) {

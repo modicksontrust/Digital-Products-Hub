@@ -1326,11 +1326,12 @@ components:
 
     LearnModule:
       type: object
-      required: [id, title, orderIndex, isPublished, lessons]
+      required: [id, title, stage, orderIndex, isPublished, lessons]
       properties:
         id: { type: string }
         title: { type: string }
         description: { type: ["string", "null"] }
+        stage: { type: string, enum: [create, validate, sell_scale] }
         orderIndex: { type: integer }
         isPublished: { type: boolean }
         lessons:
@@ -1407,6 +1408,7 @@ components:
       properties:
         title: { type: string, minLength: 1 }
         description: { type: string }
+        stage: { type: string, enum: [create, validate, sell_scale] }
         orderIndex: { type: integer }
         isPublished: { type: boolean }
     ModuleUpdate:
@@ -1414,6 +1416,7 @@ components:
       properties:
         title: { type: string }
         description: { type: string }
+        stage: { type: string, enum: [create, validate, sell_scale] }
         orderIndex: { type: integer }
         isPublished: { type: boolean }
     LessonInput:

@@ -5,10 +5,12 @@
  * DigiProducts API — single-tenant AI digital product creation platform
  * OpenAPI spec version: 0.1.0
  */
+import type { ModuleUpdateStage } from './moduleUpdateStage';
 
 export interface ModuleUpdate {
   title?: string;
   description?: string;
+  stage?: ModuleUpdateStage;
   orderIndex?: number;
   isPublished?: boolean;
 }

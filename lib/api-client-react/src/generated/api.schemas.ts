@@ -127,6 +127,15 @@ export interface AccessRequestUpdate {
   status: AccessRequestUpdateStatus;
 }
 
+export type LearnModuleStage = typeof LearnModuleStage[keyof typeof LearnModuleStage];
+
+
+export const LearnModuleStage = {
+  create: 'create',
+  validate: 'validate',
+  sell_scale: 'sell_scale',
+} as const;
+
 export interface LessonResource {
   id: string;
   label: string;
@@ -179,6 +188,7 @@ export interface LearnModule {
   title: string;
   /** @nullable */
   description?: string | null;
+  stage: LearnModuleStage;
   orderIndex: number;
   isPublished: boolean;
   lessons: Lesson[];
@@ -204,17 +214,37 @@ export interface LearnStatus {
   nextLessonId?: string | null;
 }
 
+export type ModuleInputStage = typeof ModuleInputStage[keyof typeof ModuleInputStage];
+
+
+export const ModuleInputStage = {
+  create: 'create',
+  validate: 'validate',
+  sell_scale: 'sell_scale',
+} as const;
+
 export interface ModuleInput {
   /** @minLength 1 */
   title: string;
   description?: string;
+  stage?: ModuleInputStage;
   orderIndex?: number;
   isPublished?: boolean;
 }
 
+export type ModuleUpdateStage = typeof ModuleUpdateStage[keyof typeof ModuleUpdateStage];
+
+
+export const ModuleUpdateStage = {
+  create: 'create',
+  validate: 'validate',
+  sell_scale: 'sell_scale',
+} as const;
+
 export interface ModuleUpdate {
   title?: string;
   description?: string;
+  stage?: ModuleUpdateStage;
   orderIndex?: number;
   isPublished?: boolean;
 }
