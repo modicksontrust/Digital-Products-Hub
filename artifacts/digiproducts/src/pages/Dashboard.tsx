@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { 
-  useGetDashboardStats, useGetProducts, useGetRecentActivity, useGetCreditTransactions,
+  useGetDashboardStats, useGetProducts, useGetRecentActivity, useGetCreditTransactions, useGetMe, useGetLearnModules,
   getGetDashboardStatsQueryKey, getGetProductsQueryKey, getGetRecentActivityQueryKey, getGetCreditTransactionsQueryKey
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
@@ -10,7 +10,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { 
   FileText, PenTool, LayoutTemplate, Clock, 
   CheckCircle, Download, FileUp, Sparkles, AlertCircle, ChevronRight,
-  CreditCard, History
+  CreditCard, History, GraduationCap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,15 @@ export default function Dashboard() {
   const { data: products } = useGetProducts({ sort: '-createdAt' }, { query: { queryKey: getGetProductsQueryKey({ sort: '-createdAt' }) } });
   const { data: activity } = useGetRecentActivity({ query: { queryKey: getGetRecentActivityQueryKey() } });
   const { data: creditTransactions } = useGetCreditTransactions({ query: { queryKey: getGetCreditTransactionsQueryKey() } });
+  const { data: user } = useGetMe();
+  const { data: learnModules } = useGetLearnModules();
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  const allLessons = learnModules?.flatMap(m => m.lessons) ?? [];
+  const totalLessons = allLessons.length;
+  const completedLessons = allLessons.filter(l => l.progress?.status === 'completed').length;
+  const academyComplete = user?.onboardingComplete ?? (totalLessons > 0 && completedLessons >= totalLessons);
+  const academyProgressPct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
   const statTiles = [
     { label: "Products Created", value: stats?.productsCreated || 0, icon: FileText, bg: "grad-tile-emerald" },
@@ -54,7 +62,7 @@ export default function Dashboard() {
 
         <div className="p-8 max-w-7xl mx-auto space-y-10 relative z-20 mt-[0px]">
           {/* Start Creating Row */}
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             <Card className="border-0 shadow-soft overflow-hidden group">
               <div className="grad-create h-2" />
               <CardContent className="p-6">
@@ -92,6 +100,46 @@ export default function Dashboard() {
                 <Link href="/create/lead-magnet">
                   <Button variant="outline" className="w-full border-ink-200 hover:bg-ink-50 rounded-xl h-11 text-base font-semibold text-ink-700">
                     Create Lead Magnet
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-soft overflow-hidden group">
+              <div className="grad-tile-gold h-2" />
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-gold-500 flex items-center justify-center">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <Badge variant="outline" className={cn(
+                    academyComplete ? "text-lime-700 border-lime-200" : "text-gold-500 border-amber-200"
+                  )}>
+                    {academyComplete ? "Completed" : "Onboarding"}
+                  </Badge>
+                </div>
+                <h3 className="text-xl font-display font-bold text-ink-900 mb-2 group-hover:text-brand-600 transition-colors">Academy</h3>
+                <p className="text-ink-500 mb-4 text-sm">
+                  {academyComplete
+                    ? "You've completed the onboarding curriculum. Revisit any lesson anytime."
+                    : "Complete the onboarding curriculum to unlock the full production studio."}
+                </p>
+                {!academyComplete && totalLessons > 0 && (
+                  <div className="mb-4">
+                    <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
+                      <div
+                        className="h-full bg-gold-500 rounded-full transition-all"
+                        style={{ width: `${academyProgressPct}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-ink-500 mt-1.5">
+                      {completedLessons} of {totalLessons} lessons complete
+                    </p>
+                  </div>
+                )}
+                <Link href="/learn">
+                  <Button variant="outline" className="w-full border-ink-200 hover:bg-ink-50 rounded-xl h-11 text-base font-semibold text-ink-700">
+                    {academyComplete ? "View Curriculum" : "Continue Learning"}
                   </Button>
                 </Link>
               </CardContent>
