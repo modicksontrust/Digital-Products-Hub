@@ -47,7 +47,7 @@ export function Sidebar() {
       name: "LEARN",
       items: [
         ...(user?.onboardingComplete || user?.role === 'admin' ? [] : [{ name: "Onboarding", href: "/learn", icon: GraduationCap, locked: false }]),
-        { name: "Academy", href: "/academy", icon: BookOpen, locked: isLocked },
+        { name: "Academy", href: "/learn", icon: BookOpen, locked: false },
       ]
     },
     ...(user?.role === 'manager' || user?.role === 'admin' ? [{
