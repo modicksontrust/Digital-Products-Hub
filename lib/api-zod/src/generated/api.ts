@@ -1150,6 +1150,44 @@ export const UpdateAccessRequestResponse = zod.object({
 })
 
 
+export const GetAdminModulesResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "stage": zod.enum(['create', 'validate', 'sell_scale']),
+  "orderIndex": zod.int(),
+  "isPublished": zod.boolean(),
+  "lessons": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "bodyMd": zod.string().nullish(),
+  "videoProvider": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
+  "durationSeconds": zod.int(),
+  "orderIndex": zod.int(),
+  "isRequiredForOnboarding": zod.boolean(),
+  "allowManualComplete": zod.boolean(),
+  "isPublished": zod.boolean(),
+  "locked": zod.boolean().optional(),
+  "resources": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "externalUrl": zod.string().nullish()
+})),
+  "progress": zod.object({
+  "lessonId": zod.string(),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "watchedSeconds": zod.int(),
+  "furthestPosition": zod.int(),
+  "completedAt": zod.string().nullish()
+}).optional()
+}))
+})
+export const GetAdminModulesResponse = zod.array(GetAdminModulesResponseItem)
+
+
 
 
 

@@ -3911,6 +3911,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUpdateAccessRequestMutationOptions(options));
     }
 
+export const getGetAdminModulesUrl = () => {
+
+
+
+
+  return `/api/admin/modules`
+}
+
+export const getAdminModules = async ( options?: Parameters<typeof customFetch>[1]): Promise<LearnModule[]> => {
+
+  return customFetch<LearnModule[]>(getGetAdminModulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminModulesQueryKey = () => {
+    return [
+    `/api/admin/modules`
+    ] as const;
+    }
+
+
+export const getGetAdminModulesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminModules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminModules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminModulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminModules>>> = ({ signal }) => getAdminModules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminModules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminModulesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminModules>>>
+export type GetAdminModulesQueryError = ErrorType<unknown>
+
+
+
+export function useGetAdminModules<TData = Awaited<ReturnType<typeof getAdminModules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminModules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminModulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreateModuleUrl = () => {
 
 

@@ -357,8 +357,22 @@ async function serializeModule(
   };
 }
 
+router.get(
+  "/admin/modules",
+  requirePermission("canManageLearn"),
+  async (req, res): Promise<void> => {
+    const modules = await db
+      .select()
+      .from(learnModulesTable)
+      .orderBy(asc(learnModulesTable.orderIndex));
+    const out = [];
+    for (const m of modules) out.push(await serializeModule(m, req.user!.id));
+    res.json(out);
+  },
+);
+
 router.post(
-  "/admin/learn/modules",
+  "/admin/modules",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
     const parsed = CreateModuleBody.safeParse(req.body);
@@ -383,7 +397,7 @@ router.post(
 );
 
 router.patch(
-  "/admin/learn/modules/:moduleId",
+  "/admin/modules/:moduleId",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
     const parsed = UpdateModuleBody.safeParse(req.body);
@@ -405,7 +419,7 @@ router.patch(
 );
 
 router.delete(
-  "/admin/learn/modules/:moduleId",
+  "/admin/modules/:moduleId",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
     const [deleted] = await db
@@ -421,7 +435,7 @@ router.delete(
 );
 
 router.post(
-  "/admin/learn/lessons",
+  "/admin/lessons",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
     const parsed = CreateLessonBody.safeParse(req.body);
@@ -457,7 +471,7 @@ router.post(
 );
 
 router.patch(
-  "/admin/learn/lessons/:lessonId",
+  "/admin/lessons/:lessonId",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
     const parsed = UpdateLessonBody.safeParse(req.body);
@@ -481,7 +495,7 @@ router.patch(
 );
 
 router.delete(
-  "/admin/learn/lessons/:lessonId",
+  "/admin/lessons/:lessonId",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
     const [deleted] = await db

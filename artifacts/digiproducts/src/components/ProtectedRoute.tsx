@@ -6,7 +6,15 @@ import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 // as described in F4. If a user is logged in, not admin, not exempt, and hasn't
 // completed onboarding, they can ONLY access /learn routes.
 
-export function ProtectedRoute({ children, requireAuth = true }: { children: React.ReactNode, requireAuth?: boolean }) {
+export function ProtectedRoute({
+  children,
+  requireAuth = true,
+  adminOnly = false,
+}: {
+  children: React.ReactNode;
+  requireAuth?: boolean;
+  adminOnly?: boolean;
+}) {
   const [location, setLocation] = useLocation();
   const { data: user, isLoading, isError } = useGetMe({ query: { retry: false, queryKey: getGetMeQueryKey() } });
   
@@ -25,6 +33,12 @@ export function ProtectedRoute({ children, requireAuth = true }: { children: Rea
       return;
     }
     
+    // Admin-only guard: redirect non-admins to dashboard
+    if (user && requireAuth && adminOnly && user.role !== 'admin') {
+      setLocation("/dashboard");
+      return;
+    }
+
     // Onboarding Gate check
     if (user && requireAuth) {
       const isLearnRoute = location.startsWith("/learn") || location.startsWith("/account");
@@ -34,7 +48,7 @@ export function ProtectedRoute({ children, requireAuth = true }: { children: Rea
         setLocation("/learn");
       }
     }
-  }, [user, isLoading, isError, location, requireAuth, setLocation]);
+  }, [user, isLoading, isError, location, requireAuth, adminOnly, setLocation]);
 
   if (isLoading) {
     return (
@@ -46,6 +60,9 @@ export function ProtectedRoute({ children, requireAuth = true }: { children: Rea
 
   // If requires auth but no user, return null (useEffect will redirect)
   if (requireAuth && !user) return null;
+
+  // If admin-only and user is not admin, return null (useEffect will redirect)
+  if (adminOnly && user?.role !== 'admin') return null;
 
   return <>{children}</>;
 }

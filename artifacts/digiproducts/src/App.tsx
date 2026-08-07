@@ -14,6 +14,7 @@ import Products from "@/pages/Products";
 // Placeholders for others
 import CreateEbook from "@/pages/CreateEbook"; 
 import AdminUsers from "@/pages/AdminUsers"; 
+import AdminCurriculum from "@/pages/AdminCurriculum";
 import ProductDetail from "@/pages/ProductDetail";
 import Account from "@/pages/Account";
 import AcceptInvite from "@/pages/AcceptInvite";
@@ -100,6 +101,11 @@ export default function App() {
         <Route path="/admin/users">
           <ProtectedRoute>
             <AdminUsers />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/curriculum">
+          <ProtectedRoute adminOnly>
+            <AdminCurriculum />
           </ProtectedRoute>
         </Route>
 
