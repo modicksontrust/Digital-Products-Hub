@@ -48,6 +48,7 @@ export function Sidebar() {
       items: [
         ...(user?.onboardingComplete || user?.role === 'admin' ? [] : [{ name: "Onboarding", href: "/learn", icon: GraduationCap, locked: false }]),
         { name: "Academy", href: "/learn", icon: BookOpen, locked: false },
+        ...(user?.role === 'admin' ? [{ name: "Learn Curriculum", href: "/admin/curriculum", icon: GraduationCap, locked: false }] : []),
       ]
     },
     ...(user?.role === 'manager' || user?.role === 'admin' ? [{
@@ -61,7 +62,6 @@ export function Sidebar() {
       name: "ADMIN",
       items: [
         { name: "Users", href: "/admin/users", icon: Users, locked: false },
-        { name: "Learn Curriculum", href: "/admin/curriculum", icon: GraduationCap, locked: false },
         { name: "Credits", href: "/admin/credits", icon: CreditCard, locked: false },
         { name: "Brand Kit", href: "/admin/brand", icon: PenTool, locked: false },
         { name: "Settings", href: "/admin/settings", icon: Settings, locked: false },

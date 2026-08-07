@@ -422,9 +422,32 @@ router.delete(
   "/admin/modules/:moduleId",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
+    const moduleId = String(req.params["moduleId"]);
+    const moduleLessons = await db
+      .select({ id: lessonsTable.id })
+      .from(lessonsTable)
+      .where(eq(lessonsTable.moduleId, moduleId));
+    if (moduleLessons.length > 0) {
+      const [progress] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(lessonProgressTable)
+        .where(
+          sql`${lessonProgressTable.lessonId} IN (${sql.join(
+            moduleLessons.map((l) => sql`${l.id}`),
+            sql`, `,
+          )})`,
+        );
+      if (Number(progress?.count ?? 0) > 0) {
+        res.status(409).json({
+          error:
+            "This module has learner progress and can't be deleted. Unpublish it instead.",
+        });
+        return;
+      }
+    }
     const [deleted] = await db
       .delete(learnModulesTable)
-      .where(eq(learnModulesTable.id, String(req.params["moduleId"])))
+      .where(eq(learnModulesTable.id, moduleId))
       .returning();
     if (!deleted) {
       res.status(404).json({ error: "Module not found" });
@@ -498,9 +521,21 @@ router.delete(
   "/admin/lessons/:lessonId",
   requirePermission("canManageLearn"),
   async (req, res): Promise<void> => {
+    const lessonId = String(req.params["lessonId"]);
+    const [progress] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(lessonProgressTable)
+      .where(eq(lessonProgressTable.lessonId, lessonId));
+    if (Number(progress?.count ?? 0) > 0) {
+      res.status(409).json({
+        error:
+          "This lesson has learner progress and can't be deleted. Unpublish it instead.",
+      });
+      return;
+    }
     const [deleted] = await db
       .delete(lessonsTable)
-      .where(eq(lessonsTable.id, String(req.params["lessonId"])))
+      .where(eq(lessonsTable.id, lessonId))
       .returning();
     if (!deleted) {
       res.status(404).json({ error: "Lesson not found" });

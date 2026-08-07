@@ -41,6 +41,7 @@ import {
   Video,
   Eye,
   EyeOff,
+  GripVertical,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -136,25 +137,66 @@ function lessonFormFromLesson(l: Lesson): LessonFormState {
 // ── Module row ───────────────────────────────────────────────────────────────
 function ModuleRow({
   module,
+  dragHandleProps,
   onEdit,
   onDelete,
   onAddLesson,
   onEditLesson,
   onDeleteLesson,
+  onChangeStage,
+  onReorderLessons,
 }: {
   module: LearnModule;
+  dragHandleProps?: {
+    draggable: boolean;
+    onDragStart: (e: React.DragEvent) => void;
+    onDragOver: (e: React.DragEvent) => void;
+    onDrop: (e: React.DragEvent) => void;
+    onDragEnd: (e: React.DragEvent) => void;
+  };
   onEdit: (m: LearnModule) => void;
   onDelete: (id: string) => void;
   onAddLesson: (moduleId: string) => void;
   onEditLesson: (l: Lesson, moduleId: string) => void;
   onDeleteLesson: (id: string) => void;
+  onChangeStage: (moduleId: string, stage: StageKey) => void;
+  onReorderLessons: (moduleId: string, orderedLessonIds: string[]) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const [lessons, setLessons] = useState(module.lessons);
+  const draggedLessonId = useRef<string | null>(null);
+
+  useEffect(() => {
+    setLessons(module.lessons);
+  }, [module.lessons]);
+
+  const handleLessonDrop = (targetId: string) => {
+    const fromId = draggedLessonId.current;
+    draggedLessonId.current = null;
+    if (!fromId || fromId === targetId) return;
+    const fromIndex = lessons.findIndex((l) => l.id === fromId);
+    const toIndex = lessons.findIndex((l) => l.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const next = [...lessons];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setLessons(next);
+    onReorderLessons(module.id, next.map((l) => l.id));
+  };
 
   return (
     <div className="bg-white border border-ink-200 rounded-xl overflow-hidden">
       {/* Module header */}
       <div className="flex items-center gap-3 px-5 py-4">
+        {dragHandleProps && (
+          <span
+            {...dragHandleProps}
+            className="text-ink-300 hover:text-ink-500 cursor-grab active:cursor-grabbing flex-shrink-0"
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-4 h-4" />
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -179,6 +221,21 @@ function ModuleRow({
 
         <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
           <span className="text-xs text-ink-400">{module.lessons.length} lessons</span>
+          <Select
+            value={module.stage}
+            onValueChange={(v) => onChangeStage(module.id, v as StageKey)}
+          >
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STAGES.map((s) => (
+                <SelectItem key={s.key} value={s.key} className="text-xs">
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <button
             type="button"
             onClick={() => onAddLesson(module.id)}
@@ -209,7 +266,7 @@ function ModuleRow({
       {/* Lessons list */}
       {open && (
         <div className="border-t border-ink-100">
-          {module.lessons.length === 0 ? (
+          {lessons.length === 0 ? (
             <div className="px-6 py-4 text-sm text-ink-400 italic">
               No lessons yet.{" "}
               <button
@@ -222,8 +279,29 @@ function ModuleRow({
             </div>
           ) : (
             <ul className="divide-y divide-ink-50">
-              {module.lessons.map((lesson) => (
-                <li key={lesson.id} className="flex items-center gap-3 px-6 py-3 hover:bg-ink-50/60">
+              {lessons.map((lesson) => (
+                <li
+                  key={lesson.id}
+                  className="flex items-center gap-3 px-6 py-3 hover:bg-ink-50/60"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleLessonDrop(lesson.id);
+                  }}
+                >
+                  <span
+                    draggable
+                    onDragStart={() => {
+                      draggedLessonId.current = lesson.id;
+                    }}
+                    onDragEnd={() => {
+                      draggedLessonId.current = null;
+                    }}
+                    className="text-ink-300 hover:text-ink-500 cursor-grab active:cursor-grabbing flex-shrink-0"
+                    title="Drag to reorder"
+                  >
+                    <GripVertical className="w-3.5 h-3.5" />
+                  </span>
                   <div className="w-7 h-7 rounded-lg bg-ink-100 flex items-center justify-center flex-shrink-0">
                     {lesson.videoUrl ? (
                       <Video className="w-3.5 h-3.5 text-ink-500" />
@@ -279,12 +357,14 @@ function LessonDialog({
   open,
   editTarget,
   moduleId,
+  nextOrderIndex,
   onClose,
   onSaved,
 }: {
   open: boolean;
   editTarget: Lesson | null;
   moduleId: string | null;
+  nextOrderIndex?: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -299,7 +379,11 @@ function LessonDialog({
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setForm(editTarget ? lessonFormFromLesson(editTarget) : defaultLessonForm());
+    setForm(
+      editTarget
+        ? lessonFormFromLesson(editTarget)
+        : { ...defaultLessonForm(), orderIndex: String(nextOrderIndex ?? 0) },
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -415,16 +499,7 @@ function LessonDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink-700">Order</label>
-              <Input
-                type="number"
-                min={0}
-                value={form.orderIndex}
-                onChange={(e) => setForm((f) => ({ ...f, orderIndex: e.target.value }))}
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-ink-700">Visibility</label>
               <Select
@@ -456,6 +531,9 @@ function LessonDialog({
               </Select>
             </div>
           </div>
+          <p className="text-xs text-ink-400 -mt-2">
+            Order within the module is set by dragging lessons in the list — no need to set it here.
+          </p>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -507,6 +585,72 @@ function DeleteDialog({
   );
 }
 
+// ── Draggable list of modules within a stage ─────────────────────────────────
+function StageModuleList({
+  stageModules,
+  onReorder,
+  ...rowProps
+}: {
+  stageModules: LearnModule[];
+  onReorder: (orderedModuleIds: string[]) => void;
+} & Omit<Parameters<typeof ModuleRow>[0], "module" | "dragHandleProps">) {
+  const [order, setOrder] = useState(stageModules);
+  const draggedId = useRef<string | null>(null);
+
+  useEffect(() => {
+    setOrder(stageModules);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageModules.map((m) => m.id).join(",")]);
+
+  const handleDrop = (targetId: string) => {
+    const fromId = draggedId.current;
+    draggedId.current = null;
+    if (!fromId || fromId === targetId) return;
+    const fromIndex = order.findIndex((m) => m.id === fromId);
+    const toIndex = order.findIndex((m) => m.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const next = [...order];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setOrder(next);
+    onReorder(next.map((m) => m.id));
+  };
+
+  return (
+    <div className="space-y-3">
+      {order.map((mod) => (
+        <div
+          key={mod.id}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            handleDrop(mod.id);
+          }}
+        >
+          <ModuleRow
+            module={mod}
+            dragHandleProps={{
+              draggable: true,
+              onDragStart: () => {
+                draggedId.current = mod.id;
+              },
+              onDragOver: (e) => e.preventDefault(),
+              onDrop: (e) => {
+                e.preventDefault();
+                handleDrop(mod.id);
+              },
+              onDragEnd: () => {
+                draggedId.current = null;
+              },
+            }}
+            {...rowProps}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminCurriculum() {
   const queryClient = useQueryClient();
@@ -514,6 +658,8 @@ export default function AdminCurriculum() {
 
   const deleteModule = useDeleteModule();
   const deleteLesson = useDeleteLesson();
+  const updateModule = useUpdateModule();
+  const updateLesson = useUpdateLesson();
 
   // Module dialog
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
@@ -567,8 +713,52 @@ export default function AdminCurriculum() {
       }
       setDeleteTarget(null);
       refresh();
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Delete failed. Please try again.",
+      );
+    }
+  };
+
+  const handleChangeStage = async (moduleId: string, newStage: StageKey) => {
+    const targetCount = byStage(newStage).length;
+    try {
+      await updateModule.mutateAsync({
+        moduleId,
+        data: { stage: newStage, orderIndex: targetCount },
+      });
+      refresh();
     } catch {
-      setDeleteError("Delete failed. Please try again.");
+      // no-op; UI will simply not reflect the change if it fails
+    }
+  };
+
+  const handleReorderModules = async (orderedModuleIds: string[]) => {
+    try {
+      await Promise.all(
+        orderedModuleIds.map((moduleId, index) =>
+          updateModule.mutateAsync({ moduleId, data: { orderIndex: index } }),
+        ),
+      );
+      refresh();
+    } catch {
+      refresh();
+    }
+  };
+
+  const handleReorderLessons = async (moduleId: string, orderedLessonIds: string[]) => {
+    void moduleId;
+    try {
+      await Promise.all(
+        orderedLessonIds.map((lessonId, index) =>
+          updateLesson.mutateAsync({ lessonId, data: { orderIndex: index } }),
+        ),
+      );
+      refresh();
+    } catch {
+      refresh();
     }
   };
 
@@ -649,34 +839,32 @@ export default function AdminCurriculum() {
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {stageModules.map((mod) => (
-                        <ModuleRow
-                          key={mod.id}
-                          module={mod}
-                          onEdit={(m) => {
-                            setEditingModule(m);
-                            setModuleDialogOpen(true);
-                          }}
-                          onDelete={(id) =>
-                            setDeleteTarget({ type: "module", id, label: "module" })
-                          }
-                          onAddLesson={(mid) => {
-                            setEditingLesson(null);
-                            setLessonModuleId(mid);
-                            setLessonDialogOpen(true);
-                          }}
-                          onEditLesson={(l, mid) => {
-                            setEditingLesson(l);
-                            setLessonModuleId(mid);
-                            setLessonDialogOpen(true);
-                          }}
-                          onDeleteLesson={(id) =>
-                            setDeleteTarget({ type: "lesson", id, label: "lesson" })
-                          }
-                        />
-                      ))}
-                    </div>
+                    <StageModuleList
+                      stageModules={stageModules}
+                      onReorder={handleReorderModules}
+                      onEdit={(m) => {
+                        setEditingModule(m);
+                        setModuleDialogOpen(true);
+                      }}
+                      onDelete={(id) =>
+                        setDeleteTarget({ type: "module", id, label: "module" })
+                      }
+                      onAddLesson={(mid) => {
+                        setEditingLesson(null);
+                        setLessonModuleId(mid);
+                        setLessonDialogOpen(true);
+                      }}
+                      onEditLesson={(l, mid) => {
+                        setEditingLesson(l);
+                        setLessonModuleId(mid);
+                        setLessonDialogOpen(true);
+                      }}
+                      onDeleteLesson={(id) =>
+                        setDeleteTarget({ type: "lesson", id, label: "lesson" })
+                      }
+                      onChangeStage={handleChangeStage}
+                      onReorderLessons={handleReorderLessons}
+                    />
                   )}
                 </section>
               );
@@ -690,6 +878,7 @@ export default function AdminCurriculum() {
         open={moduleDialogOpen}
         editTarget={editingModule}
         pendingStage={pendingStageRef.current}
+        nextOrderIndex={byStage(pendingStageRef.current ?? "create").length}
         onClose={() => {
           setModuleDialogOpen(false);
           setEditingModule(null);
@@ -703,6 +892,9 @@ export default function AdminCurriculum() {
         open={lessonDialogOpen}
         editTarget={editingLesson}
         moduleId={lessonModuleId}
+        nextOrderIndex={
+          modules.find((m) => m.id === lessonModuleId)?.lessons.length ?? 0
+        }
         onClose={() => {
           setLessonDialogOpen(false);
           setEditingLesson(null);
@@ -733,12 +925,14 @@ function ModuleDialogWithStage({
   open,
   editTarget,
   pendingStage,
+  nextOrderIndex,
   onClose,
   onSaved,
 }: {
   open: boolean;
   editTarget: LearnModule | null;
   pendingStage?: StageKey;
+  nextOrderIndex?: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -762,7 +956,11 @@ function ModuleDialogWithStage({
         isPublished: editTarget.isPublished,
       });
     } else {
-      setForm({ ...defaultModuleForm(), stage: pendingStage ?? "create" });
+      setForm({
+        ...defaultModuleForm(),
+        stage: pendingStage ?? "create",
+        orderIndex: String(nextOrderIndex ?? 0),
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -838,39 +1036,31 @@ function ModuleDialogWithStage({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink-700">Order index</label>
-              <Input
-                type="number"
-                min={0}
-                value={form.orderIndex}
-                onChange={(e) => setForm((f) => ({ ...f, orderIndex: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink-700">Visibility</label>
-              <Select
-                value={form.isPublished ? "published" : "draft"}
-                onValueChange={(v) => setForm((f) => ({ ...f, isPublished: v === "published" }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="published">
-                    <span className="flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5" /> Published
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="draft">
-                    <span className="flex items-center gap-1.5">
-                      <EyeOff className="w-3.5 h-3.5" /> Draft
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-ink-700">Visibility</label>
+            <Select
+              value={form.isPublished ? "published" : "draft"}
+              onValueChange={(v) => setForm((f) => ({ ...f, isPublished: v === "published" }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="published">
+                  <span className="flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" /> Published
+                  </span>
+                </SelectItem>
+                <SelectItem value="draft">
+                  <span className="flex items-center gap-1.5">
+                    <EyeOff className="w-3.5 h-3.5" /> Draft
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-ink-400">
+              Order within the stage is set by dragging modules in the list — no need to set it here.
+            </p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
