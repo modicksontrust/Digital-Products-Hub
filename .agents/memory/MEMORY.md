@@ -1,2 +1,3 @@
 - [Orval/zod v4 codegen fix](orval-zod-v4.md) — orval 8 emits zod v4 syntax; codegen sed-rewrites imports to `zod/v4`, keep that step.
 - [esbuild bundling pitfalls](esbuild-bundling-pitfalls.md) — pdfkit/fontkit and connect-pg-simple createTableIfMissing break when bundled; externalize or create table manually.
+- [Composite lib stale dist](composite-lib-stale-dist.md) — after adding exports to a composite TS lib, run `tsc -b --force` in it or downstream typechecks use stale dist.

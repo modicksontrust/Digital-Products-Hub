@@ -49,6 +49,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useUpload } from "@workspace/object-storage-web";
 import { Upload, Link2, X, FileVideo } from "lucide-react";
+import { toEmbeddableVideoUrl } from "@/lib/video";
 
 type StageKey = "create" | "validate" | "sell_scale";
 
@@ -414,6 +415,12 @@ function LessonDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Uploaded files store an object path directly; pasted links get
+    // normalized so YouTube share/watch URLs become embeddable URLs.
+    const normalizedVideoUrl =
+      form.videoProvider.trim() === "upload"
+        ? form.videoUrl.trim()
+        : toEmbeddableVideoUrl(form.videoUrl.trim());
     try {
       if (isEdit && editTarget) {
         await updateLesson.mutateAsync({
@@ -423,7 +430,7 @@ function LessonDialog({
             description: form.description.trim() || undefined,
             bodyMd: form.bodyMd.trim() || undefined,
             videoProvider: form.videoProvider.trim() || undefined,
-            videoUrl: form.videoUrl.trim() || undefined,
+            videoUrl: normalizedVideoUrl || undefined,
             durationSeconds: parseInt(form.durationSeconds, 10) || 0,
             orderIndex: parseInt(form.orderIndex, 10) || 0,
             isRequiredForOnboarding: form.isRequiredForOnboarding,
@@ -439,7 +446,7 @@ function LessonDialog({
             description: form.description.trim() || undefined,
             bodyMd: form.bodyMd.trim() || undefined,
             videoProvider: form.videoProvider.trim() || undefined,
-            videoUrl: form.videoUrl.trim() || undefined,
+            videoUrl: normalizedVideoUrl || undefined,
             durationSeconds: parseInt(form.durationSeconds, 10) || 0,
             orderIndex: parseInt(form.orderIndex, 10) || 0,
             isRequiredForOnboarding: form.isRequiredForOnboarding,

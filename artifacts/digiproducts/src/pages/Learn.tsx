@@ -9,26 +9,36 @@ import { useEffect, useMemo, useState } from "react";
 
 type StageKey = "create" | "validate" | "sell_scale";
 
-const STAGES: { key: StageKey; dayRange: string; title: string; description: string }[] = [
+const STAGES: { key: StageKey; dayRange: string; title: string; fallbackDescription: string }[] = [
   {
     key: "create",
     dayRange: "DAY 1",
     title: "Create",
-    description: "Learn the studio and ship your first review-ready product.",
+    fallbackDescription: "Learn the studio and ship your first review-ready product.",
   },
   {
     key: "validate",
     dayRange: "DAY 2-8",
     title: "Validate",
-    description: "Get real feedback and land your first approval, before you scale.",
+    fallbackDescription: "Get real feedback and land your first approval, before you scale.",
   },
   {
     key: "sell_scale",
     dayRange: "DAY 9-30",
     title: "Sell & Scale",
-    description: "Turn approved products into repeatable, profitable sales.",
+    fallbackDescription: "Turn approved products into repeatable, profitable sales.",
   },
 ];
+
+/** Builds a short summary from the actual published modules in a stage, so this
+ *  page always reflects the real curriculum instead of generic static copy. */
+function describeStage(modules: LearnModule[], fallback: string): string {
+  if (modules.length === 0) return fallback;
+  const titles = modules.map((m) => m.title);
+  if (titles.length === 1) return modules[0].description || titles[0];
+  if (titles.length === 2) return `${titles[0]} and ${titles[1]}.`;
+  return `${titles.slice(0, -1).join(", ")}, and ${titles[titles.length - 1]}.`;
+}
 
 function stageOf(mod: LearnModule): StageKey {
   return (mod.stage as StageKey) ?? "create";
@@ -133,7 +143,9 @@ export default function Learn() {
                 </div>
 
                 <h3 className="text-xl font-display font-bold text-ink-900 mb-2">{stage.title}</h3>
-                <p className="text-sm text-ink-500 mb-4 leading-snug">{stage.description}</p>
+                <p className="text-sm text-ink-500 mb-4 leading-snug">
+                  {describeStage(stats.modules, stage.fallbackDescription)}
+                </p>
 
                 <p className="text-xs font-semibold tracking-wide uppercase">
                   {stats.total === 0 ? (

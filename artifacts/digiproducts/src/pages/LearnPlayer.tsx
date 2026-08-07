@@ -7,6 +7,7 @@ import { ArrowLeft, FileText, CheckCircle2, ChevronRight, Download, PlayCircle }
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { toEmbeddableVideoUrl } from "@/lib/video";
 
 export default function LessonPlayer() {
   const { lessonId } = useParams();
@@ -130,7 +131,7 @@ export default function LessonPlayer() {
               />
             ) : lesson.videoUrl ? (
               <iframe 
-                src={lesson.videoUrl} 
+                src={toEmbeddableVideoUrl(lesson.videoUrl)} 
                 className="w-full h-full border-0"
                 allow="autoplay; fullscreen"
                 allowFullScreen
