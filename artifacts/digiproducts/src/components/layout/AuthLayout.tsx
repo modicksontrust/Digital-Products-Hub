@@ -24,7 +24,6 @@ export function AuthLayout({ children, title, subtitle }: { children: React.Reac
           </div>
         </div>
       </div>
-      
       {/* Right side - decorative */}
       <div className="hidden lg:flex w-1/2 grad-sidebar p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-lime-500/10 rounded-full blur-[100px] translate-x-1/3 -translate-y-1/3" />
@@ -35,7 +34,7 @@ export function AuthLayout({ children, title, subtitle }: { children: React.Reac
             <span className="text-lime-400">✨</span>
             <span className="text-sm font-medium">Internal Production Studio</span>
           </div>
-          <h2 className="text-5xl font-display font-bold leading-tight mb-6">
+          <h2 className="text-5xl font-display font-bold leading-tight mb-6 text-background">
             Craft premium digital products at volume.
           </h2>
           <p className="text-lg text-brand-100/80 leading-relaxed">
