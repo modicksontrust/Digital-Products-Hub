@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,8 +29,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+type StatusFilter = "all" | "draft" | "in_progress" | "ready";
+
 export default function Products() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const { data: products, isLoading } = useGetProducts({}, { query: { queryKey: getGetProductsQueryKey() } });
   const duplicate = useDuplicateProduct();
   const archive = useArchiveProduct();
@@ -66,6 +70,23 @@ export default function Products() {
     archived: "bg-ink-100 text-ink-500",
   };
 
+  // Groups the backend's granular statuses into the three buckets shown as
+  // filter tabs, so "in progress" covers everything actively moving
+  // (generating, in review, changes requested) between draft and ready.
+  const statusGroup = (status: string): StatusFilter => {
+    if (status === "draft") return "draft";
+    if (status === "ready" || status === "approved") return "ready";
+    return "in_progress";
+  };
+
+  const filteredProducts = products?.filter((p) => statusFilter === "all" || statusGroup(p.status) === statusFilter);
+  const counts = {
+    all: products?.length ?? 0,
+    draft: products?.filter((p) => statusGroup(p.status) === "draft").length ?? 0,
+    in_progress: products?.filter((p) => statusGroup(p.status) === "in_progress").length ?? 0,
+    ready: products?.filter((p) => statusGroup(p.status) === "ready").length ?? 0,
+  };
+
   return (
     <AppLayout>
       <div className="p-8 max-w-7xl mx-auto w-full">
@@ -96,6 +117,15 @@ export default function Products() {
           </div>
         </div>
 
+        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="mb-4">
+          <TabsList className="bg-ink-100">
+            <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+            <TabsTrigger value="draft">Draft ({counts.draft})</TabsTrigger>
+            <TabsTrigger value="in_progress">In Progress ({counts.in_progress})</TabsTrigger>
+            <TabsTrigger value="ready">Ready ({counts.ready})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden shadow-sm">
           <Table>
             <TableHeader className="bg-ink-50">
@@ -113,7 +143,7 @@ export default function Products() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-ink-500">Loading products...</TableCell>
                 </TableRow>
-              ) : products?.length === 0 ? (
+              ) : filteredProducts?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12">
                     <div className="flex flex-col items-center justify-center text-ink-500">
@@ -123,7 +153,7 @@ export default function Products() {
                   </TableCell>
                 </TableRow>
               ) : (
-                products?.map(product => (
+                filteredProducts?.map(product => (
                   <TableRow key={product.id} className="group hover:bg-ink-50/50 cursor-pointer" onClick={() => setLocation(`/products/${product.id}`)}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">

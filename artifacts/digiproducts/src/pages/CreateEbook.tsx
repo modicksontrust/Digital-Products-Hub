@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { 
-  useCreateProduct, useGenerateOutline, useGetJob, useGetProduct, 
+  useCreateProduct, useUpdateProduct, useGenerateOutline, useGetJob, useGetProduct, 
   useGenerateChapters, useUpdateChapter, useExportProduct,
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   getGetJobQueryKey, getGetProductQueryKey,
@@ -228,7 +228,45 @@ export default function CreateEbook() {
   });
 
   const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
   const generateOutline = useGenerateOutline();
+
+  // Lets the user save whatever they've picked so far (niche, subtopic, topic,
+  // or brief details) as a draft product at any point before generation starts,
+  // so it shows up in the Products library instead of being lost on navigation.
+  const handleSaveDraft = () => {
+    const tier = LENGTH_TIERS.find((t) => t.key === selectedLengthTier);
+    const topic = brief.topic || selectedSubNiche?.suggestedTopic || selectedSubtopic?.title
+      || NICHES.find((n) => n.key === selectedNiche)?.label || "Untitled draft";
+    const title = brief.title || selectedSubNiche?.title || topic;
+    const payload = {
+      title,
+      topic,
+      audience: brief.audience || selectedSubNiche?.suggestedAudience || undefined,
+      tone: brief.tone,
+      language: brief.language,
+      depth: brief.depth,
+      region: selectedRegion,
+      lengthTier: selectedLengthTier,
+      chapterCount: tier?.chapterCount ?? brief.chapterCount,
+    };
+
+    if (urlProductId) {
+      updateProduct.mutate({ productId: urlProductId, data: payload }, {
+        onSuccess: () => {
+          toast({ title: "Draft saved", description: "Find it anytime in your Products library." });
+          setLocation("/products");
+        }
+      });
+    } else {
+      createProduct.mutate({ data: { type: 'ebook', ...payload } }, {
+        onSuccess: () => {
+          toast({ title: "Draft saved", description: "Find it anytime in your Products library." });
+          setLocation("/products");
+        }
+      });
+    }
+  };
 
   const handleStartBrief = () => {
     if (!brief.topic) { toast({ title: "Topic required", variant: "destructive" }); return; }
@@ -343,7 +381,22 @@ export default function CreateEbook() {
       <div className="flex flex-col h-full bg-paper">
         {/* Wizard Header */}
         <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-end">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            {step > 0 && step < 5 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl border-ink-200 text-ink-600"
+                onClick={handleSaveDraft}
+                disabled={createProduct.isPending || updateProduct.isPending}
+              >
+                {(createProduct.isPending || updateProduct.isPending) ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  "Save Draft"
+                )}
+              </Button>
+            ) : <div />}
             {step > 0 && (
             <div className="flex items-center gap-2">
               {steps.map((s, i) => (
