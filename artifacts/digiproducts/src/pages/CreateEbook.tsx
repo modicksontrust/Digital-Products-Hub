@@ -502,7 +502,17 @@ export default function CreateEbook() {
       setSalesCopyJobId(null);
     }
     if (salesCopyJob.status === "failed") {
-      toast({ title: "Couldn't generate sales copy", description: salesCopyJob.errorMessage ?? undefined, variant: "destructive" });
+      if (preRegenerationCopy) {
+        setEditCopy(preRegenerationCopy);
+        clearPreRegenerationSnapshot();
+        toast({
+          title: "Generation failed — previous version restored",
+          description: "Your previous sales copy has been restored. You can try regenerating again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Couldn't generate sales copy", description: salesCopyJob.errorMessage ?? undefined, variant: "destructive" });
+      }
       setSalesCopyJobId(null);
     }
   }, [salesCopyJob?.status]);
