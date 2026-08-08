@@ -3,6 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -606,7 +610,9 @@ export default function CreateEbook() {
 
   const isGeneratingSalesCopy = !!salesCopyJobId && salesCopyJob?.status !== "succeeded" && salesCopyJob?.status !== "failed";
 
-  const handleGenerateSalesCopy = () => {
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+
+  const doGenerateSalesCopy = () => {
     if (!urlProductId) return;
     // Snapshot current copy before regenerating so the author can undo.
     if (editCopy) {
@@ -615,6 +621,41 @@ export default function CreateEbook() {
     generateSalesCopy.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => setSalesCopyJobId(job.id),
     });
+  };
+
+  const handleGenerateSalesCopy = () => {
+    if (!urlProductId) return;
+    if (copyDirty) {
+      // Warn the author their unsaved edits will be discarded.
+      setShowRegenerateConfirm(true);
+      return;
+    }
+    doGenerateSalesCopy();
+  };
+
+  const handleConfirmRegenerate = () => {
+    if (!urlProductId || !editCopy) {
+      setShowRegenerateConfirm(false);
+      doGenerateSalesCopy();
+      return;
+    }
+    // Auto-save first so the snapshot captured inside doGenerateSalesCopy
+    // reflects the author's latest edits (matching what handlePublish does).
+    updateSalesCopyMutation.mutate(
+      { productId: urlProductId, data: editCopy },
+      {
+        onSuccess: () => {
+          setCopyDirty(false);
+          refetchSalesCopy();
+          setShowRegenerateConfirm(false);
+          doGenerateSalesCopy();
+        },
+        onError: () => {
+          toast({ title: "Couldn't save your edits — please try again", variant: "destructive" });
+          setShowRegenerateConfirm(false);
+        },
+      },
+    );
   };
 
   const handleUndoRegeneration = () => {
@@ -2225,6 +2266,30 @@ export default function CreateEbook() {
           </div>
         </div>
       </div>
+      <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved edits?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved edits to your sales copy. Regenerating will overwrite them.
+              Your edits will be saved first so you can undo afterwards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRegenerate}
+              disabled={updateSalesCopyMutation.isPending}
+            >
+              {updateSalesCopyMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
+              ) : (
+                "Save & Regenerate"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
