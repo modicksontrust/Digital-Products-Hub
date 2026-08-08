@@ -1097,7 +1097,14 @@ export default function CreateEbook() {
                 <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <PenTool className="w-10 h-10 text-brand-500 animate-pulse" />
                 </div>
-                <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Writing chapters</h2>
+                <h2 className="text-2xl font-display font-bold text-ink-900 mb-2 flex items-center justify-center gap-2">
+                  Writing chapters
+                  {job?.totalUnits ? (
+                    <span className="text-sm font-semibold text-brand-600 bg-brand-50 rounded-full px-2.5 py-0.5">
+                      {Math.round(((job.completedUnits || 0) / job.totalUnits) * 100)}%
+                    </span>
+                  ) : null}
+                </h2>
                 <p className="text-ink-500 mb-8">{job?.progressLabel || "Generating content..."}</p>
                 
                 <Progress 
