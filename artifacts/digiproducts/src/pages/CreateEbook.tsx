@@ -527,27 +527,28 @@ export default function CreateEbook() {
   };
 
 
+  const saveDraftButton = step > 0 && step < 5 ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="rounded-xl border-ink-200 text-ink-600"
+      onClick={handleSaveDraft}
+      disabled={createProduct.isPending || updateProduct.isPending}
+    >
+      {(createProduct.isPending || updateProduct.isPending) ? (
+        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+      ) : (
+        "Save Draft"
+      )}
+    </Button>
+  ) : null;
+
   return (
-    <AppLayout>
+    <AppLayout headerActions={saveDraftButton}>
       <div className="flex flex-col h-full bg-paper">
         {/* Wizard Header */}
         <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            {step > 0 && step < 5 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl border-ink-200 text-ink-600"
-                onClick={handleSaveDraft}
-                disabled={createProduct.isPending || updateProduct.isPending}
-              >
-                {(createProduct.isPending || updateProduct.isPending) ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                ) : (
-                  "Save Draft"
-                )}
-              </Button>
-            ) : <div />}
+          <div className="max-w-5xl mx-auto flex items-center justify-center">
             {step > 0 && (
             <div className="flex items-center gap-2">
               {steps.map((s, i) => (

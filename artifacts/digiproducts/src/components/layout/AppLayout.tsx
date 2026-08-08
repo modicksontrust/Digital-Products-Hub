@@ -170,7 +170,7 @@ export function Sidebar() {
   );
 }
 
-export function Topbar({ variant = "default" }: { variant?: "default" | "transparent" }) {
+export function Topbar({ variant = "default", actions }: { variant?: "default" | "transparent"; actions?: React.ReactNode }) {
   const { data: user } = useGetMe();
   const logout = useLogout();
   const { toast } = useToast();
@@ -227,6 +227,7 @@ export function Topbar({ variant = "default" }: { variant?: "default" | "transpa
       </div>
       
       <div className="flex items-center gap-4">
+        {actions}
         {/* Credits Chip */}
         <div className={cn(
           "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border",
@@ -332,15 +333,17 @@ export function Topbar({ variant = "default" }: { variant?: "default" | "transpa
 export function AppLayout({
   children,
   headerVariant = "default",
+  headerActions,
 }: {
   children: React.ReactNode;
   headerVariant?: "default" | "transparent";
+  headerActions?: React.ReactNode;
 }) {
   return (
     <div className="min-h-[100dvh] bg-paper">
       <Sidebar />
       <div className="flex flex-col min-h-[100dvh] md:pl-64 relative">
-        <Topbar variant={headerVariant} />
+        <Topbar variant={headerVariant} actions={headerActions} />
         <main className={cn("flex-1 flex flex-col relative z-0", headerVariant === "default" && "pt-16")}>
           {children}
         </main>
