@@ -111,7 +111,7 @@ export default function SalesPage() {
           <div className="pt-4 flex flex-col sm:flex-row items-center md:items-start gap-4">
             <Button
               onClick={handleBuy}
-              className="w-full sm:w-auto h-12 px-7 text-base font-bold bg-[#B8863B] hover:bg-[#A6742D] text-white rounded-none shadow-[0_10px_30px_rgba(184,134,59,0.25)] hover:shadow-[0_10px_36px_rgba(184,134,59,0.35)] transition-all duration-300"
+              className="w-full sm:w-auto h-auto min-h-12 px-7 py-3 text-base font-bold bg-[#B8863B] hover:bg-[#A6742D] text-white rounded-none shadow-[0_10px_30px_rgba(184,134,59,0.25)] hover:shadow-[0_10px_36px_rgba(184,134,59,0.35)] transition-all duration-300 whitespace-normal text-center leading-snug"
             >
               {ctaText} — {formatPrice(data.priceCents)}
             </Button>
@@ -256,9 +256,9 @@ export default function SalesPage() {
               <div className="text-3xl md:text-4xl font-serif text-[#1A1E27] mb-1">{formatPrice(data.priceCents)}</div>
               <Button
                 onClick={handleBuy}
-                className="w-full sm:w-auto min-w-[260px] h-14 text-lg font-bold bg-[#B8863B] hover:bg-[#A6742D] text-white rounded-none shadow-[0_10px_30px_rgba(184,134,59,0.25)] hover:shadow-[0_10px_36px_rgba(184,134,59,0.35)] transition-all duration-300"
+                className="w-full sm:w-auto min-w-[260px] h-auto min-h-14 px-8 py-4 text-lg font-bold bg-[#B8863B] hover:bg-[#A6742D] text-white rounded-none shadow-[0_10px_30px_rgba(184,134,59,0.25)] hover:shadow-[0_10px_36px_rgba(184,134,59,0.35)] transition-all duration-300 whitespace-normal text-center leading-snug"
               >
-                {ctaText} <ArrowRight className="ml-3 w-5 h-5" />
+                {ctaText} <ArrowRight className="ml-3 w-5 h-5 shrink-0 inline" />
               </Button>
             </div>
           </motion.div>

@@ -2162,13 +2162,24 @@ export default function CreateEbook() {
 
                         {/* CTA Text */}
                         <div className="space-y-1">
-                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Call-to-action button text</h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Call-to-action button text</h4>
+                            <span className={cn(
+                              "text-xs tabular-nums",
+                              editCopy.ctaText.length > 40 ? "text-amber-600 font-medium" : "text-ink-300",
+                            )}>
+                              {editCopy.ctaText.length}/40
+                            </span>
+                          </div>
                           <Input
                             className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
                             placeholder="e.g. Get instant access"
                             value={editCopy.ctaText}
                             onChange={(e) => patchEditCopy({ ctaText: e.target.value })}
                           />
+                          {editCopy.ctaText.length > 40 && (
+                            <p className="text-xs text-amber-600">Keep it short so the button doesn't wrap awkwardly on the sales page.</p>
+                          )}
                         </div>
 
                         {/* Save / Regenerate row */}
