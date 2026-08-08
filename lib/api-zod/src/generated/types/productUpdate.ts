@@ -18,5 +18,6 @@ export interface ProductUpdate {
   depth?: string;
   region?: string;
   lengthTier?: string;
+  priceCents?: number;
   coverConfig?: ProductUpdateCoverConfig;
 }

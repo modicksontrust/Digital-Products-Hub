@@ -19,6 +19,7 @@ import ProductDetail from "@/pages/ProductDetail";
 import Account from "@/pages/Account";
 import AcceptInvite from "@/pages/AcceptInvite";
 import NotFound from "@/pages/not-found";
+import SalesPage from "@/pages/SalesPage";
 
 import CreateLeadMagnet from "@/pages/CreateLeadMagnet";
 
@@ -29,6 +30,9 @@ export default function App() {
         {/* Public Marketing Routes */}
         <Route path="/">
           <LandingPage />
+        </Route>
+        <Route path="/p/:slug">
+          <SalesPage />
         </Route>
 
         {/* Auth Routes */}

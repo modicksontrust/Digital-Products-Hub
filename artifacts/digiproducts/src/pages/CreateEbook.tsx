@@ -15,7 +15,8 @@ import {
   useGenerateChapters, useUpdateChapter, useExportProduct,
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   useGetProductCovers, useGenerateProductCover, useRegisterUploadedCover, useSelectProductCover,
-  getGetJobQueryKey, getGetProductQueryKey, getGetProductCoversQueryKey,
+  useGetSalesCopy, useGenerateSalesCopy, usePublishProduct, useUnpublishProduct,
+  getGetJobQueryKey, getGetProductQueryKey, getGetProductCoversQueryKey, getGetSalesCopyQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
   type SubtopicSuggestionsResponseSubtopicsItem,
 } from "@workspace/api-client-react";
@@ -26,7 +27,7 @@ import {
   GripVertical, Palette,
   AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
   Wand2, UploadCloud, FileUp, ArrowLeft, Check, RefreshCw, ImageIcon,
-  AlertTriangle, Crop, ZoomIn, ZoomOut
+  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +56,7 @@ export default function CreateEbook() {
     { num: 5, title: "Editor", icon: PenTool },
     { num: 6, title: "Cover", icon: Settings },
     { num: 7, title: "Export", icon: Download },
+    { num: 8, title: "Publish", icon: DollarSign },
   ];
 
   // Resume state if URL params are present
@@ -429,6 +431,80 @@ export default function CreateEbook() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
         setCoverStage("result");
+      },
+    });
+  };
+
+  // ==========================================
+  // STEP 8: Publish (Sales Page)
+  // ==========================================
+  const [salesCopyJobId, setSalesCopyJobId] = useState<string | null>(null);
+  const [price, setPrice] = useState("17");
+  const [priceInitialized, setPriceInitialized] = useState(false);
+
+  const { data: salesCopy, refetch: refetchSalesCopy } = useGetSalesCopy(urlProductId || "", {
+    query: { enabled: !!urlProductId && step === 8, queryKey: getGetSalesCopyQueryKey(urlProductId || "") },
+  });
+  const { data: salesCopyJob } = useGetJob(salesCopyJobId || "", {
+    query: {
+      enabled: !!salesCopyJobId,
+      refetchInterval: (data) => (data?.state?.data?.status === "queued" || data?.state?.data?.status === "running") ? 2000 : false,
+      queryKey: getGetJobQueryKey(salesCopyJobId || ""),
+    },
+  });
+  const generateSalesCopy = useGenerateSalesCopy();
+  const publishProduct = usePublishProduct();
+  const unpublishProduct = useUnpublishProduct();
+
+  useEffect(() => {
+    if (!salesCopyJob) return;
+    if (salesCopyJob.status === "succeeded") {
+      refetchSalesCopy();
+      setSalesCopyJobId(null);
+    }
+    if (salesCopyJob.status === "failed") {
+      toast({ title: "Couldn't generate sales copy", description: salesCopyJob.errorMessage ?? undefined, variant: "destructive" });
+      setSalesCopyJobId(null);
+    }
+  }, [salesCopyJob?.status]);
+
+  useEffect(() => {
+    if (priceInitialized) return;
+    if (detail?.product.priceCents) {
+      setPrice((detail.product.priceCents / 100).toString());
+      setPriceInitialized(true);
+    } else if (salesCopy?.suggestedPriceBand) {
+      const match = salesCopy.suggestedPriceBand.match(/\d+(\.\d+)?/);
+      if (match) { setPrice(match[0]); setPriceInitialized(true); }
+    }
+  }, [detail?.product.priceCents, salesCopy?.suggestedPriceBand, priceInitialized]);
+
+  const isGeneratingSalesCopy = !!salesCopyJobId && salesCopyJob?.status !== "succeeded" && salesCopyJob?.status !== "failed";
+
+  const handleGenerateSalesCopy = () => {
+    if (!urlProductId) return;
+    generateSalesCopy.mutate({ data: { productId: urlProductId } }, {
+      onSuccess: (job) => setSalesCopyJobId(job.id),
+    });
+  };
+
+  const handlePublish = () => {
+    if (!urlProductId) return;
+    const cents = Math.round(parseFloat(price || "0") * 100);
+    publishProduct.mutate({ productId: urlProductId, data: { priceCents: Number.isFinite(cents) ? cents : undefined } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
+        toast({ title: "Published!", description: "Your sales page is live." });
+      },
+    });
+  };
+
+  const handleUnpublish = () => {
+    if (!urlProductId) return;
+    unpublishProduct.mutate({ productId: urlProductId }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
+        toast({ title: "Unpublished", description: "Your sales page is no longer live." });
       },
     });
   };
@@ -1634,8 +1710,183 @@ export default function CreateEbook() {
                         <><Download className="w-5 h-5 mr-2" /> Download PDF Book</>
                       )}
                     </Button>
+
+                    <Button
+                      variant="outline"
+                      className="w-full h-12 rounded-xl border-ink-200 font-semibold"
+                      onClick={() => setStep(8)}
+                    >
+                      <DollarSign className="w-5 h-5 mr-2" /> Continue to sales page
+                    </Button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* STEP 8: PUBLISH (SALES PAGE) */}
+            {step === 8 && detail && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-3xl mx-auto">
+                <button
+                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                  onClick={() => setStep(7)}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
+                <div className="text-center">
+                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Sales Page</h2>
+                  <p className="text-ink-500">
+                    {salesCopy?.headline ? "Review your sales copy below, then publish it as a product to start selling." : "Generate compelling sales copy to sell your eBook."}
+                  </p>
+                </div>
+
+                {!salesCopy?.headline && !isGeneratingSalesCopy && (
+                  <Card className="border-ink-200 shadow-sm rounded-2xl">
+                    <CardContent className="p-10 flex flex-col items-center text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center mb-5">
+                        <DollarSign className="w-7 h-7 text-brand-500" />
+                      </div>
+                      <h3 className="text-xl font-bold text-ink-900 mb-2">Generate Sales Copy</h3>
+                      <p className="text-ink-500 max-w-sm mb-6">
+                        AI will write a full sales page with a headline, benefits, and FAQs based on your eBook content.
+                      </p>
+                      <Button
+                        className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white"
+                        onClick={handleGenerateSalesCopy}
+                        disabled={generateSalesCopy.isPending}
+                      >
+                        {generateSalesCopy.isPending ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting...</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4 mr-2" /> Generate Sales Copy</>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {isGeneratingSalesCopy && (
+                  <div className="flex flex-col items-center justify-center py-24 text-center">
+                    <Loader2 className="w-9 h-9 text-brand-500 animate-spin mb-6" />
+                    <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Writing your sales page...</h2>
+                    <p className="text-ink-500">Crafting a headline, benefits, and FAQs for "{detail.product.title}"</p>
+                  </div>
+                )}
+
+                {salesCopy?.headline && !isGeneratingSalesCopy && (
+                  <>
+                    <Card className="border-ink-200 shadow-sm rounded-2xl overflow-hidden">
+                      <CardContent className="p-8 space-y-6">
+                        <div>
+                          <h3 className="text-2xl font-display font-bold text-ink-900 mb-1">{salesCopy.headline}</h3>
+                          {salesCopy.subheadline && <p className="text-ink-500">{salesCopy.subheadline}</p>}
+                        </div>
+
+                        {(salesCopy.bullets ?? []).length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">What's inside</h4>
+                            <ul className="space-y-1.5">
+                              {(salesCopy.bullets ?? []).map((b, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-ink-700">
+                                  <Check className="w-4 h-4 text-brand-500 mt-0.5 shrink-0" /> {b}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {salesCopy.whoItsFor && (
+                          <div>
+                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">Who it's for</h4>
+                            <p className="text-sm text-ink-700">{salesCopy.whoItsFor}</p>
+                          </div>
+                        )}
+
+                        {(salesCopy.faq ?? []).length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">FAQ</h4>
+                            <div className="space-y-3">
+                              {(salesCopy.faq ?? []).map((f, i) => (
+                                <div key={i}>
+                                  <p className="text-sm font-medium text-ink-900">{f.question}</p>
+                                  <p className="text-sm text-ink-500">{f.answer}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <button
+                          className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium"
+                          onClick={handleGenerateSalesCopy}
+                          disabled={generateSalesCopy.isPending}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Regenerate sales copy
+                        </button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-ink-200 shadow-sm rounded-2xl">
+                      <CardContent className="p-8 space-y-4">
+                        <h4 className="font-semibold text-ink-900">Set your price</h4>
+                        <div className="relative w-40">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            className="h-12 rounded-xl bg-ink-50/50 pl-7"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                          />
+                        </div>
+                        {salesCopy.suggestedPriceBand && (
+                          <p className="text-xs text-ink-400">AI suggested range: {salesCopy.suggestedPriceBand}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {detail.product.published && detail.product.slug ? (
+                      <Card className="border-brand-200 bg-brand-50/50 shadow-sm rounded-2xl">
+                        <CardContent className="p-6 flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <p className="font-semibold text-ink-900 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-brand-600" /> Your sales page is live
+                            </p>
+                            <a
+                              href={`${import.meta.env.BASE_URL}p/${detail.product.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-brand-600 hover:underline break-all"
+                            >
+                              {window.location.origin}{import.meta.env.BASE_URL}p/{detail.product.slug}
+                            </a>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" className="rounded-xl border-ink-200" onClick={handlePublish} disabled={publishProduct.isPending}>
+                              Update price
+                            </Button>
+                            <Button variant="ghost" className="text-ink-500" onClick={handleUnpublish} disabled={unpublishProduct.isPending}>
+                              Unpublish
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Button
+                        size="lg"
+                        className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                        onClick={handlePublish}
+                        disabled={publishProduct.isPending}
+                      >
+                        {publishProduct.isPending ? (
+                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Publishing...</>
+                        ) : (
+                          <><Sparkles className="w-5 h-5 mr-2" /> Publish sales page</>
+                        )}
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             )}
 

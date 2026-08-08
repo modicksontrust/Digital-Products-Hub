@@ -81,6 +81,8 @@ import type {
   ProductDetail,
   ProductInput,
   ProductUpdate,
+  PublicSalesPage,
+  PublishProductBody,
   RegisterUploadedCoverBody,
   ResetIssued,
   ResetPasswordInput,
@@ -1896,6 +1898,208 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getArchiveProductMutationOptions(options));
     }
+
+export const getPublishProductUrl = (productId: string,) => {
+
+
+
+
+  return `/api/products/${productId}/publish`
+}
+
+export const publishProduct = async (productId: string,
+    publishProductBody: PublishProductBody, options?: Parameters<typeof customFetch>[1]): Promise<Product> => {
+
+  return customFetch<Product>(getPublishProductUrl(productId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(publishProductBody)
+  }
+);}
+
+
+
+
+
+export const getPublishProductMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishProduct>>, TError,{productId: string;data: BodyType<PublishProductBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishProduct>>, TError,{productId: string;data: BodyType<PublishProductBody>}, TContext> => {
+
+const mutationKey = ['publishProduct'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishProduct>>, {productId: string;data: BodyType<PublishProductBody>}> = (props) => {
+          const {productId,data} = props ?? {};
+
+          return  publishProduct(productId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishProductMutationResult = NonNullable<Awaited<ReturnType<typeof publishProduct>>>
+    export type PublishProductMutationBody = BodyType<PublishProductBody>
+    export type PublishProductMutationError = ErrorType<unknown>
+
+    export const usePublishProduct = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishProduct>>, TError,{productId: string;data: BodyType<PublishProductBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishProduct>>,
+        TError,
+        {productId: string;data: BodyType<PublishProductBody>},
+        TContext
+      > => {
+      return useMutation(getPublishProductMutationOptions(options));
+    }
+
+export const getUnpublishProductUrl = (productId: string,) => {
+
+
+
+
+  return `/api/products/${productId}/unpublish`
+}
+
+export const unpublishProduct = async (productId: string, options?: Parameters<typeof customFetch>[1]): Promise<Product> => {
+
+  return customFetch<Product>(getUnpublishProductUrl(productId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnpublishProductMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unpublishProduct>>, TError,{productId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unpublishProduct>>, TError,{productId: string}, TContext> => {
+
+const mutationKey = ['unpublishProduct'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unpublishProduct>>, {productId: string}> = (props) => {
+          const {productId} = props ?? {};
+
+          return  unpublishProduct(productId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnpublishProductMutationResult = NonNullable<Awaited<ReturnType<typeof unpublishProduct>>>
+
+    export type UnpublishProductMutationError = ErrorType<unknown>
+
+    export const useUnpublishProduct = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unpublishProduct>>, TError,{productId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unpublishProduct>>,
+        TError,
+        {productId: string},
+        TContext
+      > => {
+      return useMutation(getUnpublishProductMutationOptions(options));
+    }
+
+export const getGetPublicSalesPageUrl = (slug: string,) => {
+
+
+
+
+  return `/api/public/sales-page/${slug}`
+}
+
+export const getPublicSalesPage = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicSalesPage> => {
+
+  return customFetch<PublicSalesPage>(getGetPublicSalesPageUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicSalesPageQueryKey = (slug: string,) => {
+    return [
+    `/api/public/sales-page/${slug}`
+    ] as const;
+    }
+
+
+export const getGetPublicSalesPageQueryOptions = <TData = Awaited<ReturnType<typeof getPublicSalesPage>>, TError = ErrorType<void>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicSalesPageQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicSalesPage>>> = ({ signal }) => getPublicSalesPage(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: slug !== null && slug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicSalesPageQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicSalesPage>>>
+export type GetPublicSalesPageQueryError = ErrorType<void>
+
+
+
+export function useGetPublicSalesPage<TData = Awaited<ReturnType<typeof getPublicSalesPage>>, TError = ErrorType<void>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicSalesPageQueryOptions(slug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getSubmitForReviewUrl = (productId: string,) => {
 

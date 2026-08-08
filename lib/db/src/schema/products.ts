@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   integer,
+  boolean,
   timestamp,
   uuid,
   jsonb,
@@ -29,6 +30,9 @@ export const productsTable = pgTable("products", {
   ctaText: text("cta_text"),
   status: text("status").notNull().default("draft"), // draft|generating|ready|in_review|changes_requested|approved|archived
   coverConfig: jsonb("cover_config"),
+  priceCents: integer("price_cents"),
+  published: boolean("published").notNull().default(false),
+  slug: text("slug").unique(),
   requestedChapterCount: integer("requested_chapter_count")
     .notNull()
     .default(8),

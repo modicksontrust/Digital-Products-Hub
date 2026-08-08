@@ -456,6 +456,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Product"
+  /products/{productId}/publish:
+    post:
+      operationId: publishProduct
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishProductBody"
+      responses:
+        "200":
+          description: Published (or updated) product with its public slug
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/{productId}/unpublish:
+    post:
+      operationId: unpublishProduct
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Unpublished product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /public/sales-page/{slug}:
+    get:
+      operationId: getPublicSalesPage
+      tags: [public]
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Public sales page data for a published product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSalesPage"
+        "404":
+          description: Not found or not published
   /products/{productId}/submit-review:
     post:
       operationId: submitForReview
@@ -1840,6 +1896,9 @@ components:
         coverConfig:
           type: ["object", "null"]
           additionalProperties: true
+        priceCents: { type: ["integer", "null"] }
+        published: { type: boolean }
+        slug: { type: ["string", "null"] }
         chapterCount: { type: integer }
         wordCount: { type: integer }
         createdAt: { type: string }
@@ -1888,6 +1947,7 @@ components:
         depth: { type: string }
         region: { type: string }
         lengthTier: { type: string }
+        priceCents: { type: integer }
         coverConfig:
           type: object
           additionalProperties: true
@@ -2064,6 +2124,23 @@ components:
         createdAt: { type: string }
         finishedAt: { type: ["string", "null"] }
 
+    PublishProductBody:
+      type: object
+      properties:
+        priceCents: { type: integer }
+    PublicSalesPage:
+      type: object
+      required: [productId, title, chapterCount]
+      properties:
+        productId: { type: string }
+        title: { type: string }
+        subtitle: { type: ["string", "null"] }
+        authorName: { type: ["string", "null"] }
+        coverImageUrl: { type: ["string", "null"] }
+        priceCents: { type: ["integer", "null"] }
+        chapterCount: { type: integer }
+        salesCopy:
+          $ref: "#/components/schemas/SalesCopy"
     SalesCopy:
       type: object
       required: [productId]

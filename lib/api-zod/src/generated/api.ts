@@ -366,6 +366,9 @@ export const GetProductsResponseItem = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -413,6 +416,9 @@ export const CreateProductResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -444,6 +450,9 @@ export const ImportManuscriptResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -473,6 +482,9 @@ export const GetProductResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -516,6 +528,7 @@ export const UpdateProductBody = zod.object({
   "depth": zod.string().optional(),
   "region": zod.string().optional(),
   "lengthTier": zod.string().optional(),
+  "priceCents": zod.int().optional(),
   "coverConfig": zod.record(zod.string(), zod.unknown()).optional()
 })
 
@@ -536,6 +549,9 @@ export const UpdateProductResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -564,6 +580,9 @@ export const DuplicateProductResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -592,10 +611,108 @@ export const ArchiveProductResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
+})
+
+
+export const PublishProductParams = zod.object({
+  "productId": zod.coerce.string()
+})
+
+export const PublishProductBody = zod.object({
+  "priceCents": zod.int().optional()
+})
+
+export const PublishProductResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
+  "topic": zod.string().nullish(),
+  "audience": zod.string().nullish(),
+  "tone": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "depth": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "lengthTier": zod.string().nullish(),
+  "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
+  "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
+  "chapterCount": zod.int(),
+  "wordCount": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const UnpublishProductParams = zod.object({
+  "productId": zod.coerce.string()
+})
+
+export const UnpublishProductResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
+  "topic": zod.string().nullish(),
+  "audience": zod.string().nullish(),
+  "tone": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "depth": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "lengthTier": zod.string().nullish(),
+  "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
+  "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
+  "chapterCount": zod.int(),
+  "wordCount": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const GetPublicSalesPageParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const GetPublicSalesPageResponse = zod.object({
+  "productId": zod.string(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "priceCents": zod.int().nullish(),
+  "chapterCount": zod.int(),
+  "salesCopy": zod.object({
+  "productId": zod.string(),
+  "headline": zod.string().nullish(),
+  "subheadline": zod.string().nullish(),
+  "bullets": zod.array(zod.string()).optional(),
+  "whoItsFor": zod.string().nullish(),
+  "faq": zod.array(zod.object({
+  "question": zod.string(),
+  "answer": zod.string()
+})).optional(),
+  "ctaText": zod.string().nullish(),
+  "suggestedPriceBand": zod.string().nullish(),
+  "updatedAt": zod.string().nullish()
+}).optional()
 })
 
 
@@ -620,6 +737,9 @@ export const SubmitForReviewResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -653,6 +773,9 @@ export const ReviewProductResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -842,6 +965,9 @@ export const GetReviewQueueResponseItem = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),
@@ -1128,6 +1254,9 @@ export const SelectProductCoverResponse = zod.object({
   "lengthTier": zod.string().nullish(),
   "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
   "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "priceCents": zod.int().nullish(),
+  "published": zod.boolean().optional(),
+  "slug": zod.string().nullish(),
   "chapterCount": zod.int(),
   "wordCount": zod.int(),
   "createdAt": zod.string(),

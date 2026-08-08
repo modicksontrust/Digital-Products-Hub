@@ -8,11 +8,17 @@ import generationRouter from "./generation";
 import adminRouter from "./admin";
 import storageRouter from "./storage";
 import coversRouter from "./covers";
+import publicRouter from "./public";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+// publicRouter must be mounted before any router whose internal `router.use(requireAuth)`
+// applies unconditionally (no path prefix) -- those middlewares run for every request that
+// reaches that router (e.g. productsRouter), even ones with no matching route inside it,
+// which would otherwise 401 unauthenticated public sales-page requests before they're reached.
+router.use(publicRouter);
 router.use(learnRouter);
 router.use(dashboardRouter);
 router.use(productsRouter);

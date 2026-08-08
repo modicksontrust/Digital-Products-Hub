@@ -22,6 +22,9 @@ import {
   UpdateProductResponse,
   DuplicateProductResponse,
   ArchiveProductResponse,
+  PublishProductBody,
+  PublishProductResponse,
+  UnpublishProductResponse,
   SubmitForReviewResponse,
   ReviewProductBody,
   ReviewProductResponse,
@@ -410,6 +413,89 @@ router.post("/products/:productId/archive", async (req, res): Promise<void> => {
     ),
   );
 });
+
+function slugify(title: string): string {
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 60) || "product"
+  );
+}
+
+async function generateUniqueSlug(title: string): Promise<string> {
+  const base = slugify(title);
+  for (let i = 0; i < 25; i++) {
+    const candidate = i === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const [existing] = await db
+      .select({ id: productsTable.id })
+      .from(productsTable)
+      .where(eq(productsTable.slug, candidate));
+    if (!existing) return candidate;
+  }
+  return `${base}-${Date.now()}`;
+}
+
+router.post(
+  "/products/:productId/publish",
+  async (req, res): Promise<void> => {
+    const product = await loadAccessible(req, String(req.params["productId"]));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const parsed = PublishProductBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const slug = product.slug ?? (await generateUniqueSlug(product.title));
+    const [updated] = await db
+      .update(productsTable)
+      .set({
+        published: true,
+        slug,
+        priceCents: parsed.data.priceCents ?? product.priceCents,
+      })
+      .where(eq(productsTable.id, product.id))
+      .returning();
+    await audit({
+      actorId: req.user!.id,
+      actorName: req.user!.fullName,
+      action: "product.published",
+      entityType: "product",
+      entityId: product.id,
+      detail: `Published "${product.title}"`,
+    });
+    res.json(
+      PublishProductResponse.parse(
+        await serializeProduct(updated, await ownerName(updated.ownerId)),
+      ),
+    );
+  },
+);
+
+router.post(
+  "/products/:productId/unpublish",
+  async (req, res): Promise<void> => {
+    const product = await loadAccessible(req, String(req.params["productId"]));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const [updated] = await db
+      .update(productsTable)
+      .set({ published: false })
+      .where(eq(productsTable.id, product.id))
+      .returning();
+    res.json(
+      UnpublishProductResponse.parse(
+        await serializeProduct(updated, await ownerName(updated.ownerId)),
+      ),
+    );
+  },
+);
 
 router.post(
   "/products/:productId/submit-review",

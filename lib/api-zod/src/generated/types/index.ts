@@ -92,6 +92,8 @@ export * from './productStatus';
 export * from './productType';
 export * from './productUpdate';
 export * from './productUpdateCoverConfig';
+export * from './publicSalesPage';
+export * from './publishProductBody';
 export * from './registerUploadedCoverBody';
 export * from './resetIssued';
 export * from './resetPasswordInput';

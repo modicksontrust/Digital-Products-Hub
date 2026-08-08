@@ -58,6 +58,9 @@ export async function serializeProduct(
       string,
       unknown
     > | null,
+    priceCents: product.priceCents ?? null,
+    published: product.published,
+    slug: product.slug ?? null,
     chapterCount: chs.length,
     wordCount: chs.reduce((sum, c) => sum + wordCount(c.contentMd), 0),
     createdAt: product.createdAt.toISOString(),

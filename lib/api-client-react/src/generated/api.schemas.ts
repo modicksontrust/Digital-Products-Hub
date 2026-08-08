@@ -430,6 +430,11 @@ export interface Product {
   status: ProductStatus;
   /** @nullable */
   coverConfig?: ProductCoverConfig;
+  /** @nullable */
+  priceCents?: number | null;
+  published?: boolean;
+  /** @nullable */
+  slug?: string | null;
   chapterCount: number;
   wordCount: number;
   createdAt: string;
@@ -522,6 +527,7 @@ export interface ProductUpdate {
   depth?: string;
   region?: string;
   lengthTier?: string;
+  priceCents?: number;
   coverConfig?: ProductUpdateCoverConfig;
 }
 
@@ -724,6 +730,10 @@ export interface GenerationJob {
   finishedAt?: string | null;
 }
 
+export interface PublishProductBody {
+  priceCents?: number;
+}
+
 export type SalesCopyFaqItem = {
   question: string;
   answer: string;
@@ -745,6 +755,21 @@ export interface SalesCopy {
   suggestedPriceBand?: string | null;
   /** @nullable */
   updatedAt?: string | null;
+}
+
+export interface PublicSalesPage {
+  productId: string;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  /** @nullable */
+  authorName?: string | null;
+  /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  priceCents?: number | null;
+  chapterCount: number;
+  salesCopy?: SalesCopy;
 }
 
 export type SalesCopyUpdateFaqItem = {

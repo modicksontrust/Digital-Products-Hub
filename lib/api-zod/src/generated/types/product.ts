@@ -36,6 +36,11 @@ export interface Product {
   status: ProductStatus;
   /** @nullable */
   coverConfig?: ProductCoverConfig;
+  /** @nullable */
+  priceCents?: number | null;
+  published?: boolean;
+  /** @nullable */
+  slug?: string | null;
   chapterCount: number;
   wordCount: number;
   createdAt: string;
