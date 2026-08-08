@@ -20,6 +20,10 @@ import {
   type NicheSuggestionsResponseSubNichesItem,
   type SubtopicSuggestionsResponseSubtopicsItem,
 } from "@workspace/api-client-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useUpload } from "@workspace/object-storage-web";
 import { useLocation, useSearch } from "wouter";
 import { 
@@ -553,11 +557,21 @@ export default function CreateEbook() {
 
   const isGeneratingSalesCopy = !!salesCopyJobId && salesCopyJob?.status !== "succeeded" && salesCopyJob?.status !== "failed";
 
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+
   const handleGenerateSalesCopy = () => {
     if (!urlProductId) return;
     generateSalesCopy.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => setSalesCopyJobId(job.id),
     });
+  };
+
+  const handleRegenerateSalesCopy = () => {
+    if (copyDirty) {
+      setShowRegenerateConfirm(true);
+    } else {
+      handleGenerateSalesCopy();
+    }
   };
 
   const handlePublish = () => {
@@ -2042,7 +2056,7 @@ export default function CreateEbook() {
                         <div className="flex items-center justify-between pt-2 border-t border-ink-100">
                           <button
                             className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-brand-600 font-medium"
-                            onClick={handleGenerateSalesCopy}
+                            onClick={handleRegenerateSalesCopy}
                             disabled={generateSalesCopy.isPending}
                           >
                             <RefreshCw className="w-3.5 h-3.5" /> Regenerate
@@ -2133,6 +2147,28 @@ export default function CreateEbook() {
           </div>
         </div>
       </div>
+      <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard your edits?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Regenerating will replace all your current sales copy with a new AI version. Any unsaved edits will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-brand-500 hover:bg-brand-600 text-white"
+              onClick={() => {
+                setShowRegenerateConfirm(false);
+                handleGenerateSalesCopy();
+              }}
+            >
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
