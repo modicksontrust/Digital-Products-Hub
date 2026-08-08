@@ -47,6 +47,7 @@ import type {
   ExportInput,
   ExportRecord,
   ForgotPasswordInput,
+  GenerateCoverBody,
   GenerationJob,
   GetAuditLogsParams,
   GetProductsParams,
@@ -76,9 +77,11 @@ import type {
   PlatformSettings,
   PlatformSettingsUpdate,
   Product,
+  ProductCover,
   ProductDetail,
   ProductInput,
   ProductUpdate,
+  RegisterUploadedCoverBody,
   ResetIssued,
   ResetPasswordInput,
   ReviewDecision,
@@ -3163,6 +3166,300 @@ export function useGetJob<TData = Awaited<ReturnType<typeof getJob>>, TError = E
 
 
 
+
+export const getGetProductCoversUrl = (productId: string,) => {
+
+
+
+
+  return `/api/products/${productId}/covers`
+}
+
+/**
+ * @summary List saved covers for a product
+ */
+export const getProductCovers = async (productId: string, options?: Parameters<typeof customFetch>[1]): Promise<ProductCover[]> => {
+
+  return customFetch<ProductCover[]>(getGetProductCoversUrl(productId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProductCoversQueryKey = (productId: string,) => {
+    return [
+    `/api/products/${productId}/covers`
+    ] as const;
+    }
+
+
+export const getGetProductCoversQueryOptions = <TData = Awaited<ReturnType<typeof getProductCovers>>, TError = ErrorType<unknown>>(productId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductCovers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProductCoversQueryKey(productId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductCovers>>> = ({ signal }) => getProductCovers(productId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: productId !== null && productId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProductCovers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProductCoversQueryResult = NonNullable<Awaited<ReturnType<typeof getProductCovers>>>
+export type GetProductCoversQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List saved covers for a product
+ */
+
+export function useGetProductCovers<TData = Awaited<ReturnType<typeof getProductCovers>>, TError = ErrorType<unknown>>(
+ productId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductCovers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProductCoversQueryOptions(productId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateProductCoverUrl = (productId: string,) => {
+
+
+
+
+  return `/api/products/${productId}/covers/generate`
+}
+
+/**
+ * @summary Generate an AI cover for a product in the given style
+ */
+export const generateProductCover = async (productId: string,
+    generateCoverBody: GenerateCoverBody, options?: Parameters<typeof customFetch>[1]): Promise<ProductCover> => {
+
+  return customFetch<ProductCover>(getGenerateProductCoverUrl(productId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(generateCoverBody)
+  }
+);}
+
+
+
+
+
+export const getGenerateProductCoverMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateProductCover>>, TError,{productId: string;data: BodyType<GenerateCoverBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateProductCover>>, TError,{productId: string;data: BodyType<GenerateCoverBody>}, TContext> => {
+
+const mutationKey = ['generateProductCover'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateProductCover>>, {productId: string;data: BodyType<GenerateCoverBody>}> = (props) => {
+          const {productId,data} = props ?? {};
+
+          return  generateProductCover(productId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateProductCoverMutationResult = NonNullable<Awaited<ReturnType<typeof generateProductCover>>>
+    export type GenerateProductCoverMutationBody = BodyType<GenerateCoverBody>
+    export type GenerateProductCoverMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate an AI cover for a product in the given style
+ */
+export const useGenerateProductCover = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateProductCover>>, TError,{productId: string;data: BodyType<GenerateCoverBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateProductCover>>,
+        TError,
+        {productId: string;data: BodyType<GenerateCoverBody>},
+        TContext
+      > => {
+      return useMutation(getGenerateProductCoverMutationOptions(options));
+    }
+
+export const getRegisterUploadedCoverUrl = (productId: string,) => {
+
+
+
+
+  return `/api/products/${productId}/covers/upload`
+}
+
+/**
+ * @summary Register a user-uploaded cover image (after presigned upload) as the product's active cover
+ */
+export const registerUploadedCover = async (productId: string,
+    registerUploadedCoverBody: RegisterUploadedCoverBody, options?: Parameters<typeof customFetch>[1]): Promise<ProductCover> => {
+
+  return customFetch<ProductCover>(getRegisterUploadedCoverUrl(productId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(registerUploadedCoverBody)
+  }
+);}
+
+
+
+
+
+export const getRegisterUploadedCoverMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerUploadedCover>>, TError,{productId: string;data: BodyType<RegisterUploadedCoverBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerUploadedCover>>, TError,{productId: string;data: BodyType<RegisterUploadedCoverBody>}, TContext> => {
+
+const mutationKey = ['registerUploadedCover'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerUploadedCover>>, {productId: string;data: BodyType<RegisterUploadedCoverBody>}> = (props) => {
+          const {productId,data} = props ?? {};
+
+          return  registerUploadedCover(productId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterUploadedCoverMutationResult = NonNullable<Awaited<ReturnType<typeof registerUploadedCover>>>
+    export type RegisterUploadedCoverMutationBody = BodyType<RegisterUploadedCoverBody>
+    export type RegisterUploadedCoverMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Register a user-uploaded cover image (after presigned upload) as the product's active cover
+ */
+export const useRegisterUploadedCover = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerUploadedCover>>, TError,{productId: string;data: BodyType<RegisterUploadedCoverBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerUploadedCover>>,
+        TError,
+        {productId: string;data: BodyType<RegisterUploadedCoverBody>},
+        TContext
+      > => {
+      return useMutation(getRegisterUploadedCoverMutationOptions(options));
+    }
+
+export const getSelectProductCoverUrl = (productId: string,
+    coverId: string,) => {
+
+
+
+
+  return `/api/products/${productId}/covers/${coverId}/select`
+}
+
+/**
+ * @summary Make a previously saved cover the product's active cover
+ */
+export const selectProductCover = async (productId: string,
+    coverId: string, options?: Parameters<typeof customFetch>[1]): Promise<Product> => {
+
+  return customFetch<Product>(getSelectProductCoverUrl(productId,coverId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSelectProductCoverMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectProductCover>>, TError,{productId: string;coverId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectProductCover>>, TError,{productId: string;coverId: string}, TContext> => {
+
+const mutationKey = ['selectProductCover'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectProductCover>>, {productId: string;coverId: string}> = (props) => {
+          const {productId,coverId} = props ?? {};
+
+          return  selectProductCover(productId,coverId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelectProductCoverMutationResult = NonNullable<Awaited<ReturnType<typeof selectProductCover>>>
+
+    export type SelectProductCoverMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Make a previously saved cover the product's active cover
+ */
+export const useSelectProductCover = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectProductCover>>, TError,{productId: string;coverId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof selectProductCover>>,
+        TError,
+        {productId: string;coverId: string},
+        TContext
+      > => {
+      return useMutation(getSelectProductCoverMutationOptions(options));
+    }
 
 export const getExportProductUrl = (productId: string,) => {
 

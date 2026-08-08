@@ -145,6 +145,7 @@ router.post(
         type: d.type,
         title: d.title,
         subtitle: d.subtitle ?? null,
+        authorName: d.authorName ?? null,
         topic: d.topic,
         audience: d.audience ?? null,
         tone: d.tone ?? null,

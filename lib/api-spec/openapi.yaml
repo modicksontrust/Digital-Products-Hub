@@ -15,6 +15,7 @@ tags:
   - name: products
   - name: generation
   - name: exportsTag
+  - name: covers
   - name: reviews
   - name: notifications
   - name: assets
@@ -813,6 +814,94 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationJob"
+
+  # ---------- Covers ----------
+  /products/{productId}/covers:
+    get:
+      operationId: getProductCovers
+      tags: [covers]
+      summary: List saved covers for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Saved covers, most recent first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductCover"
+  /products/{productId}/covers/generate:
+    post:
+      operationId: generateProductCover
+      tags: [covers]
+      summary: Generate an AI cover for a product in the given style
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateCoverBody"
+      responses:
+        "201":
+          description: Generated cover, set as the product's active cover
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductCover"
+  /products/{productId}/covers/upload:
+    post:
+      operationId: registerUploadedCover
+      tags: [covers]
+      summary: Register a user-uploaded cover image (after presigned upload) as the product's active cover
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUploadedCoverBody"
+      responses:
+        "201":
+          description: Registered cover, set as the product's active cover
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductCover"
+  /products/{productId}/covers/{coverId}/select:
+    post:
+      operationId: selectProductCover
+      tags: [covers]
+      summary: Make a previously saved cover the product's active cover
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: coverId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
 
   # ---------- Exports ----------
   /products/{productId}/export:
@@ -1739,6 +1828,7 @@ components:
         type: { type: string, enum: [ebook, lead_magnet, uploaded] }
         title: { type: string }
         subtitle: { type: ["string", "null"] }
+        authorName: { type: ["string", "null"] }
         topic: { type: ["string", "null"] }
         audience: { type: ["string", "null"] }
         tone: { type: ["string", "null"] }
@@ -1773,6 +1863,7 @@ components:
         type: { type: string, enum: [ebook, lead_magnet, uploaded] }
         title: { type: string, minLength: 1 }
         subtitle: { type: string }
+        authorName: { type: string }
         topic: { type: string, minLength: 1 }
         audience: { type: string }
         tone: { type: string }
@@ -1789,6 +1880,7 @@ components:
       properties:
         title: { type: string }
         subtitle: { type: string }
+        authorName: { type: string }
         topic: { type: string }
         audience: { type: string }
         tone: { type: string }
@@ -2033,6 +2125,29 @@ components:
         downloadUrl: { type: string }
         createdByName: { type: ["string", "null"] }
         createdAt: { type: string }
+
+    ProductCover:
+      type: object
+      required: [id, productId, styleKey, styleLabel, imageUrl, source, createdAt]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        styleKey: { type: string }
+        styleLabel: { type: string }
+        imageUrl: { type: string }
+        source: { type: string, enum: [ai, uploaded] }
+        createdAt: { type: string }
+    GenerateCoverBody:
+      type: object
+      required: [styleKey, styleLabel]
+      properties:
+        styleKey: { type: string, minLength: 1 }
+        styleLabel: { type: string, minLength: 1 }
+    RegisterUploadedCoverBody:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 1 }
 
     AppNotification:
       type: object

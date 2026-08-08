@@ -10,6 +10,7 @@ import type { ProductUpdateCoverConfig } from './productUpdateCoverConfig';
 export interface ProductUpdate {
   title?: string;
   subtitle?: string;
+  authorName?: string;
   topic?: string;
   audience?: string;
   tone?: string;

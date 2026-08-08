@@ -17,6 +17,7 @@ export const productsTable = pgTable("products", {
   leadMagnetFormat: text("lead_magnet_format"),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
+  authorName: text("author_name"),
   topic: text("topic"),
   audience: text("audience"),
   tone: text("tone"),
@@ -41,6 +42,22 @@ export const productsTable = pgTable("products", {
 });
 
 export type Product = typeof productsTable.$inferSelect;
+
+export const productCoversTable = pgTable("product_covers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id")
+    .notNull()
+    .references(() => productsTable.id, { onDelete: "cascade" }),
+  styleKey: text("style_key").notNull(), // e.g. split_diagonal_departure, uploaded
+  styleLabel: text("style_label").notNull(),
+  imagePath: text("image_path").notNull(), // /objects/... path served via /storage/objects
+  source: text("source").notNull().default("ai"), // ai|uploaded
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type ProductCover = typeof productCoversTable.$inferSelect;
 
 export const productChaptersTable = pgTable("product_chapters", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -412,6 +412,8 @@ export interface Product {
   /** @nullable */
   subtitle?: string | null;
   /** @nullable */
+  authorName?: string | null;
+  /** @nullable */
   topic?: string | null;
   /** @nullable */
   audience?: string | null;
@@ -492,6 +494,7 @@ export interface ProductInput {
   /** @minLength 1 */
   title: string;
   subtitle?: string;
+  authorName?: string;
   /** @minLength 1 */
   topic: string;
   audience?: string;
@@ -511,6 +514,7 @@ export type ProductUpdateCoverConfig = { [key: string]: unknown };
 export interface ProductUpdate {
   title?: string;
   subtitle?: string;
+  authorName?: string;
   topic?: string;
   audience?: string;
   tone?: string;
@@ -793,6 +797,36 @@ export interface ExportRecord {
   /** @nullable */
   createdByName?: string | null;
   createdAt: string;
+}
+
+export type ProductCoverSource = typeof ProductCoverSource[keyof typeof ProductCoverSource];
+
+
+export const ProductCoverSource = {
+  ai: 'ai',
+  uploaded: 'uploaded',
+} as const;
+
+export interface ProductCover {
+  id: string;
+  productId: string;
+  styleKey: string;
+  styleLabel: string;
+  imageUrl: string;
+  source: ProductCoverSource;
+  createdAt: string;
+}
+
+export interface GenerateCoverBody {
+  /** @minLength 1 */
+  styleKey: string;
+  /** @minLength 1 */
+  styleLabel: string;
+}
+
+export interface RegisterUploadedCoverBody {
+  /** @minLength 1 */
+  objectPath: string;
 }
 
 export interface AppNotification {

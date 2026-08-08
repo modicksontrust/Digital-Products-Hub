@@ -12,6 +12,7 @@ export interface ProductInput {
   /** @minLength 1 */
   title: string;
   subtitle?: string;
+  authorName?: string;
   /** @minLength 1 */
   topic: string;
   audience?: string;

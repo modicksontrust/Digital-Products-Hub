@@ -157,8 +157,16 @@ export default function Products() {
                   <TableRow key={product.id} className="group hover:bg-ink-50/50 cursor-pointer" onClick={() => setLocation(`/products/${product.id}`)}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-14 bg-ink-100 rounded flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-ink-400" />
+                        <div className="w-10 h-14 bg-ink-100 rounded overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {(product.coverConfig as { imageUrl?: string } | null)?.imageUrl ? (
+                            <img
+                              src={`${import.meta.env.BASE_URL}api/storage${(product.coverConfig as { imageUrl: string }).imageUrl.replace(/^\/api\/storage/, "")}`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <FileText className="w-5 h-5 text-ink-400" />
+                          )}
                         </div>
                         <div>
                           <p className="text-ink-900 group-hover:text-brand-600 transition-colors">{product.title}</p>

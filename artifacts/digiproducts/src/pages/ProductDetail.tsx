@@ -82,7 +82,7 @@ export default function ProductDetail() {
               )}
               
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-500">
-                <span>By {product.ownerName}</span>
+                <span>By {product.authorName || product.ownerName}</span>
                 <span>•</span>
                 <span>{product.chapterCount} chapters</span>
                 <span>•</span>

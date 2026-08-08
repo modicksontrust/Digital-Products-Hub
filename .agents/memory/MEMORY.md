@@ -1,3 +1,6 @@
 - [Orval/zod v4 codegen fix](orval-zod-v4.md) — orval 8 emits zod v4 syntax; codegen sed-rewrites imports to `zod/v4`, keep that step.
 - [esbuild bundling pitfalls](esbuild-bundling-pitfalls.md) — pdfkit/fontkit and connect-pg-simple createTableIfMissing break when bundled; externalize or create table manually.
 - [Composite lib stale dist](composite-lib-stale-dist.md) — after adding exports to a composite TS lib, run `tsc -b --force` in it or downstream typechecks use stale dist.
+- [orval api-zod barrel collision](orval-api-zod-barrel-collision.md) — never re-export `generated/types` alongside `generated/api` in api-zod's index; causes ambiguous-export errors.
+- [drizzle push non-interactive fallback](drizzle-push-noninteractive-fallback.md) — `drizzle-kit push`/`push-force` can hang on a TTY prompt here; create new tables via raw `CREATE TABLE` SQL instead.
+- [esbuild external transitive deps](esbuild-external-transitive-deps.md) — a package externalized in build.mjs must also be a direct dependency of the consuming service, not just transitive.

@@ -45,6 +45,7 @@ export async function serializeProduct(
     type: product.type,
     title: product.title,
     subtitle: product.subtitle,
+    authorName: product.authorName,
     topic: product.topic,
     audience: product.audience,
     tone: product.tone,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,8 @@ import {
   useCreateProduct, useUpdateProduct, useGenerateOutline, useGetJob, useGetProduct, 
   useGenerateChapters, useUpdateChapter, useExportProduct,
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
-  getGetJobQueryKey, getGetProductQueryKey,
+  useGetProductCovers, useGenerateProductCover, useRegisterUploadedCover, useSelectProductCover,
+  getGetJobQueryKey, getGetProductQueryKey, getGetProductCoversQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
   type SubtopicSuggestionsResponseSubtopicsItem,
 } from "@workspace/api-client-react";
@@ -23,12 +25,14 @@ import {
   ChevronRight, Loader2, Sparkles, FileText, Settings, PenTool, Layout, Download,
   GripVertical, Palette,
   AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
-  Wand2, UploadCloud, FileUp, ArrowLeft
+  Wand2, UploadCloud, FileUp, ArrowLeft, Check, RefreshCw, ImageIcon,
+  AlertTriangle, Crop, ZoomIn, ZoomOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { COVER_STYLE_OPTIONS } from "@/lib/coverStyles";
 
 export default function CreateEbook() {
   const searchParams = new URLSearchParams(useSearch());
@@ -223,7 +227,7 @@ export default function CreateEbook() {
   // STEP 2: Brief State
   // ==========================================
   const [brief, setBrief] = useState({
-    title: "", topic: "", audience: "", tone: "professional", chapterCount: 10, depth: "standard", language: "English",
+    title: "", authorName: "", topic: "", audience: "", tone: "professional", chapterCount: 10, depth: "standard", language: "English",
     region: "global_english", lengthTier: "pdf_guide"
   });
 
@@ -241,6 +245,7 @@ export default function CreateEbook() {
     const title = brief.title || selectedSubNiche?.title || topic;
     const payload = {
       title,
+      authorName: brief.authorName || undefined,
       topic,
       audience: brief.audience || selectedSubNiche?.suggestedAudience || undefined,
       tone: brief.tone,
@@ -272,7 +277,7 @@ export default function CreateEbook() {
     if (!brief.topic) { toast({ title: "Topic required", variant: "destructive" }); return; }
     
     createProduct.mutate({
-      data: { type: 'ebook', title: brief.title || 'Untitled Draft', topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language, region: brief.region, lengthTier: brief.lengthTier }
+      data: { type: 'ebook', title: brief.title || 'Untitled Draft', authorName: brief.authorName || undefined, topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language, region: brief.region, lengthTier: brief.lengthTier }
     }, {
       onSuccess: (product) => {
         generateOutline.mutate({ data: { productId: product.id } }, {
@@ -356,6 +361,76 @@ export default function CreateEbook() {
   const handleSaveChapterContent = (contentMd: string) => {
     if (!selectedChapterId || !urlProductId) return;
     updateChapter.mutate({ productId: urlProductId, chapterId: selectedChapterId, data: { contentMd } });
+  };
+
+  // ==========================================
+  // STEP 6: AI Cover Generation
+  // ==========================================
+  const queryClient = useQueryClient();
+  const [pendingStyleKey, setPendingStyleKey] = useState<string | null>(null);
+  const [pendingStyleLabel, setPendingStyleLabel] = useState<string | null>(null);
+  const [coverStage, setCoverStage] = useState<"picking" | "generating" | "result" | "failed" | "editing">("picking");
+  const [editingCover, setEditingCover] = useState<{ id: string; imageUrl: string; styleLabel: string } | null>(null);
+
+  const { data: savedCovers = [] } = useGetProductCovers(urlProductId ?? "", {
+    query: { enabled: !!urlProductId && step >= 6, queryKey: getGetProductCoversQueryKey(urlProductId || "") },
+  });
+  const activeCoverConfig = (detail?.product.coverConfig ?? null) as { coverId?: string; imageUrl?: string; styleKey?: string } | null;
+  const activeCover = savedCovers.find((c) => c.id === activeCoverConfig?.coverId) ?? savedCovers[0];
+
+  useEffect(() => {
+    if (step === 6 && activeCoverConfig?.imageUrl) {
+      setCoverStage("result");
+    }
+  }, [step, activeCoverConfig?.imageUrl]);
+
+  const generateCover = useGenerateProductCover();
+  const registerUploadedCover = useRegisterUploadedCover();
+  const selectCover = useSelectProductCover();
+  const { uploadFile: uploadCoverFile, isUploading: isUploadingCover } = useUpload({
+    onSuccess: (res) => {
+      if (!urlProductId) return;
+      registerUploadedCover.mutate({ productId: urlProductId, data: { objectPath: res.objectPath } }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
+          queryClient.invalidateQueries({ queryKey: getGetProductCoversQueryKey(urlProductId) });
+          setCoverStage("result");
+        },
+      });
+    },
+  });
+
+  const handlePickStyle = (styleKey: string, styleLabel: string) => {
+    if (!urlProductId) return;
+    setPendingStyleKey(styleKey);
+    setPendingStyleLabel(styleLabel);
+    setCoverStage("generating");
+    generateCover.mutate({ productId: urlProductId, data: { styleKey, styleLabel } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
+        queryClient.invalidateQueries({ queryKey: getGetProductCoversQueryKey(urlProductId) });
+        setCoverStage("result");
+      },
+      onError: () => {
+        setCoverStage("failed");
+      },
+    });
+  };
+
+  const handleRetryStyle = () => {
+    if (pendingStyleKey && pendingStyleLabel) {
+      handlePickStyle(pendingStyleKey, pendingStyleLabel);
+    }
+  };
+
+  const handleSelectSavedCover = (coverId: string) => {
+    if (!urlProductId) return;
+    selectCover.mutate({ productId: urlProductId, coverId }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
+        setCoverStage("result");
+      },
+    });
   };
 
   // ==========================================
@@ -992,6 +1067,17 @@ export default function CreateEbook() {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="authorName" className="text-base font-semibold">Author Name (Optional)</Label>
+                      <Input
+                        id="authorName"
+                        placeholder="e.g. Jane Smith"
+                        className="h-12 rounded-xl bg-ink-50/50"
+                        value={brief.authorName}
+                        onChange={e => setBrief({...brief, authorName: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="topic" className="text-base font-semibold flex items-center gap-2">
                         Core Topic <span className="text-destructive">*</span>
                       </Label>
@@ -1254,8 +1340,215 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 6: COVER & STEP 7: EXPORT */}
-            {(step === 6 || step === 7) && detail && (
+            {/* STEP 6: AI COVER GENERATION */}
+            {step === 6 && detail && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto">
+                {coverStage === "picking" && (
+                  <>
+                    <div>
+                      <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Pick your cover style</h2>
+                      <p className="text-ink-500">We'll generate a finished, ready-to-use cover from your book's title and topic.</p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {COVER_STYLE_OPTIONS.map((style) => (
+                        <button
+                          key={style.key}
+                          onClick={() => handlePickStyle(style.key, style.label)}
+                          className="group text-left rounded-2xl border border-ink-200 bg-white overflow-hidden hover:border-brand-400 hover:shadow-md transition-all"
+                        >
+                          <div
+                            className="h-28 w-full"
+                            style={{ background: `linear-gradient(135deg, ${style.gradient[0]}, ${style.gradient[1]})` }}
+                          />
+                          <div className="p-3">
+                            <div className="font-medium text-ink-900 text-sm leading-tight">{style.label}</div>
+                            <div className="text-xs text-ink-500 mt-0.5">{style.description}</div>
+                          </div>
+                        </button>
+                      ))}
+                      <label className="group text-left rounded-2xl border-2 border-dashed border-ink-300 bg-ink-50 overflow-hidden hover:border-brand-400 transition-all cursor-pointer flex flex-col">
+                        <div className="h-28 w-full flex items-center justify-center bg-ink-100">
+                          {isUploadingCover ? (
+                            <Loader2 className="w-6 h-6 text-ink-400 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-6 h-6 text-ink-400" />
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <div className="font-medium text-ink-900 text-sm leading-tight">Upload my own cover</div>
+                          <div className="text-xs text-ink-500 mt-0.5">Use an image you already have</div>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={isUploadingCover}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) uploadCoverFile(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    {savedCovers.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-ink-900 mb-3">Your saved covers</h3>
+                        <div className="flex gap-4 overflow-x-auto pb-2">
+                          {savedCovers.map((cover) => (
+                            <button
+                              key={cover.id}
+                              onClick={() => handleSelectSavedCover(cover.id)}
+                              className={cn(
+                                "shrink-0 w-24 rounded-xl overflow-hidden border-2 transition-all",
+                                activeCover?.id === cover.id ? "border-brand-500" : "border-ink-200 hover:border-ink-300"
+                              )}
+                            >
+                              <img
+                                src={`${import.meta.env.BASE_URL}api/storage${cover.imageUrl.replace(/^\/api\/storage/, "")}`}
+                                alt={cover.styleLabel}
+                                className="w-full h-32 object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {coverStage === "generating" && (
+                  <div className="flex flex-col items-center justify-center py-24 text-center">
+                    <div className="relative mb-6">
+                      <div className="w-20 h-20 rounded-2xl bg-brand-100 flex items-center justify-center">
+                        <ImageIcon className="w-9 h-9 text-brand-500" />
+                      </div>
+                      <Loader2 className="w-7 h-7 text-brand-500 animate-spin absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow" />
+                    </div>
+                    <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Designing your cover...</h2>
+                    <p className="text-ink-500">
+                      Generating a {COVER_STYLE_OPTIONS.find((s) => s.key === pendingStyleKey)?.label.toLowerCase() ?? "custom"} cover for "{detail.product.title}"
+                    </p>
+                  </div>
+                )}
+
+                {coverStage === "failed" && (
+                  <div className="flex flex-col items-center justify-center py-24 text-center">
+                    <div className="w-20 h-20 rounded-2xl bg-destructive/10 flex items-center justify-center mb-6">
+                      <AlertTriangle className="w-9 h-9 text-destructive" />
+                    </div>
+                    <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Couldn't generate that cover</h2>
+                    <p className="text-ink-500 max-w-sm mb-6">
+                      {pendingStyleLabel ? `We ran into a problem generating the "${pendingStyleLabel}" cover.` : "We ran into a problem generating that cover."} This can happen occasionally — you can try again or pick a different style.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <Button
+                        className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white"
+                        onClick={handleRetryStyle}
+                        disabled={generateCover.isPending}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" /> Try again
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-xl border-ink-200"
+                        onClick={() => setCoverStage("picking")}
+                      >
+                        Pick another style
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {coverStage === "editing" && editingCover && (
+                  <CoverEditor
+                    imageUrl={`${import.meta.env.BASE_URL}api/storage${editingCover.imageUrl.replace(/^\/api\/storage/, "")}`}
+                    styleLabel={editingCover.styleLabel}
+                    isSaving={isUploadingCover || registerUploadedCover.isPending}
+                    onCancel={() => { setEditingCover(null); setCoverStage("result"); }}
+                    onSave={(file) => uploadCoverFile(file)}
+                  />
+                )}
+
+                {coverStage === "result" && activeCover && (
+                  <>
+                    <div className="text-center">
+                      <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Your cover is ready</h2>
+                      <p className="text-ink-500">{activeCover.styleLabel}</p>
+                    </div>
+                    <div className="flex justify-center">
+                      <img
+                        src={`${import.meta.env.BASE_URL}api/storage${activeCover.imageUrl.replace(/^\/api\/storage/, "")}`}
+                        alt={activeCover.styleLabel}
+                        className="w-[280px] rounded-2xl shadow-xl border border-ink-200"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <a
+                        href={`${import.meta.env.BASE_URL}api/storage${activeCover.imageUrl.replace(/^\/api\/storage/, "")}`}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Button variant="outline" className="rounded-xl border-ink-200">
+                          <Download className="w-4 h-4 mr-2" /> Download
+                        </Button>
+                      </a>
+                      <Button
+                        variant="outline"
+                        className="rounded-xl border-ink-200"
+                        onClick={() => {
+                          setEditingCover({ id: activeCover.id, imageUrl: activeCover.imageUrl, styleLabel: activeCover.styleLabel });
+                          setCoverStage("editing");
+                        }}
+                      >
+                        <Crop className="w-4 h-4 mr-2" /> Edit cover
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-xl border-ink-200"
+                        onClick={() => setCoverStage("picking")}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" /> Change style
+                      </Button>
+                      <Button
+                        className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white"
+                        onClick={() => setStep(7)}
+                      >
+                        <Check className="w-4 h-4 mr-2" /> Continue
+                      </Button>
+                    </div>
+
+                    {savedCovers.length > 1 && (
+                      <div>
+                        <h3 className="font-semibold text-ink-900 mb-3">Your saved covers</h3>
+                        <div className="flex gap-4 overflow-x-auto pb-2 justify-center">
+                          {savedCovers.map((cover) => (
+                            <button
+                              key={cover.id}
+                              onClick={() => handleSelectSavedCover(cover.id)}
+                              className={cn(
+                                "shrink-0 w-24 rounded-xl overflow-hidden border-2 transition-all",
+                                activeCover?.id === cover.id ? "border-brand-500" : "border-ink-200 hover:border-ink-300"
+                              )}
+                            >
+                              <img
+                                src={`${import.meta.env.BASE_URL}api/storage${cover.imageUrl.replace(/^\/api\/storage/, "")}`}
+                                alt={cover.styleLabel}
+                                className="w-full h-32 object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* STEP 7: EXPORT */}
+            {step === 7 && detail && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1267,21 +1560,26 @@ export default function CreateEbook() {
                 <div className="grid md:grid-cols-2 gap-8">
                   {/* Preview pane */}
                   <div className="bg-ink-100 rounded-2xl p-8 flex items-center justify-center border border-ink-200 shadow-inner">
-                    <div 
-                      className="w-[210px] h-[297px] bg-white shadow-xl flex flex-col transition-all duration-300 relative overflow-hidden"
-                      style={{ 
-                        fontFamily: exportTheme === 'serif' ? 'Georgia, serif' : 'Inter, sans-serif'
-                      }}
-                    >
-                      <div 
-                        className="h-1/2 w-full transition-colors duration-300"
-                        style={{ backgroundColor: ((detail.product.coverConfig as any)?.primaryColor) || '#1FA06B' }}
+                    {activeCover ? (
+                      <img
+                        src={`${import.meta.env.BASE_URL}api/storage${activeCover.imageUrl.replace(/^\/api\/storage/, "")}`}
+                        alt={activeCover.styleLabel}
+                        className="w-[210px] h-[297px] object-cover rounded shadow-xl"
                       />
-                      <div className="p-4 flex flex-col justify-center flex-1 bg-white relative z-10 -mt-8 rounded-t-xl mx-2 shadow-sm">
-                        <h3 className="font-bold text-ink-900 leading-tight mb-1 text-sm">{detail.product.title}</h3>
-                        <p className="text-[8px] text-ink-500 uppercase tracking-widest">{detail.product.ownerName}</p>
+                    ) : (
+                      <div
+                        className="w-[210px] h-[297px] bg-white shadow-xl flex flex-col transition-all duration-300 relative overflow-hidden"
+                        style={{
+                          fontFamily: exportTheme === 'serif' ? 'Georgia, serif' : 'Inter, sans-serif'
+                        }}
+                      >
+                        <div className="h-1/2 w-full transition-colors duration-300" style={{ backgroundColor: '#1FA06B' }} />
+                        <div className="p-4 flex flex-col justify-center flex-1 bg-white relative z-10 -mt-8 rounded-t-xl mx-2 shadow-sm">
+                          <h3 className="font-bold text-ink-900 leading-tight mb-1 text-sm">{detail.product.title}</h3>
+                          <p className="text-[8px] text-ink-500 uppercase tracking-widest">{detail.product.authorName || detail.product.ownerName}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Controls */}
@@ -1291,7 +1589,7 @@ export default function CreateEbook() {
                         <h3 className="font-semibold text-ink-900 mb-4 flex items-center gap-2">
                           <Palette className="w-4 h-4 text-ink-400" /> Theme Selection
                         </h3>
-                        <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="grid grid-cols-2 gap-3">
                           <Button 
                             variant="outline" 
                             className={cn("justify-start h-auto py-3 px-4", exportTheme === 'minimal' && "border-brand-500 bg-brand-50")}
@@ -1313,25 +1611,16 @@ export default function CreateEbook() {
                             </div>
                           </Button>
                         </div>
-
-                        <h3 className="font-semibold text-ink-900 mb-3 text-sm">Cover Accent Color</h3>
-                        <div className="flex gap-3">
-                          {['#1FA06B', '#2E8B9E', '#D9A02B', '#7CB518', '#06251C', '#D64545'].map(color => (
-                            <button
-                              key={color}
-                              className={cn(
-                                "w-8 h-8 rounded-full shadow-sm border-2 transition-transform hover:scale-110",
-                                ((detail.product.coverConfig as any)?.primaryColor) === color ? "border-ink-900 scale-110" : "border-transparent"
-                              )}
-                              style={{ backgroundColor: color }}
-                              onClick={() => {
-                                // optimistic update could go here, omitting for brevity
-                              }}
-                            />
-                          ))}
-                        </div>
                       </CardContent>
                     </Card>
+
+                    <Button
+                      variant="ghost"
+                      className="text-ink-500"
+                      onClick={() => setStep(6)}
+                    >
+                      <Palette className="w-4 h-4 mr-2" /> Back to cover
+                    </Button>
 
                     <Button 
                       size="lg" 
@@ -1354,5 +1643,125 @@ export default function CreateEbook() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+// ==========================================
+// Cover crop/reposition editor
+// ==========================================
+const COVER_FRAME_W = 280;
+const COVER_FRAME_H = 373; // ~3:4 book cover ratio
+
+function CoverEditor({
+  imageUrl, styleLabel, isSaving, onCancel, onSave,
+}: {
+  imageUrl: string;
+  styleLabel: string;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: (file: File) => void;
+}) {
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  const [dragging, setDragging] = useState<{ startX: number; startY: number; origin: { x: number; y: number } } | null>(null);
+
+  const baseScale = naturalSize
+    ? Math.max(COVER_FRAME_W / naturalSize.w, COVER_FRAME_H / naturalSize.h)
+    : 1;
+  const scale = baseScale * zoom;
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setDragging({ startX: e.clientX, startY: e.clientY, origin: offset });
+  };
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    setOffset({ x: dragging.origin.x + (e.clientX - dragging.startX), y: dragging.origin.y + (e.clientY - dragging.startY) });
+  };
+  const handlePointerUp = () => setDragging(null);
+
+  const handleSave = async () => {
+    if (!naturalSize) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = COVER_FRAME_W;
+    canvas.height = COVER_FRAME_H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageUrl;
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+    const drawW = naturalSize.w * scale;
+    const drawH = naturalSize.h * scale;
+    const drawX = COVER_FRAME_W / 2 - drawW / 2 + offset.x;
+    const drawY = COVER_FRAME_H / 2 - drawH / 2 + offset.y;
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      onSave(new File([blob], "cover-edited.png", { type: "image/png" }));
+    }, "image/png");
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="text-center mb-6">
+        <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Reposition your cover</h2>
+        <p className="text-ink-500">Drag to reposition, zoom to fine-tune the crop for "{styleLabel}".</p>
+      </div>
+      <div
+        className="relative overflow-hidden rounded-2xl border border-ink-200 shadow-xl bg-ink-100 select-none touch-none"
+        style={{ width: COVER_FRAME_W, height: COVER_FRAME_H, cursor: dragging ? "grabbing" : "grab" }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+        <img
+          src={imageUrl}
+          alt={styleLabel}
+          draggable={false}
+          onLoad={(e) => setNaturalSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+          style={
+            naturalSize
+              ? {
+                  position: "absolute",
+                  left: COVER_FRAME_W / 2 + offset.x,
+                  top: COVER_FRAME_H / 2 + offset.y,
+                  width: naturalSize.w * scale,
+                  height: naturalSize.h * scale,
+                  transform: "translate(-50%, -50%)",
+                  maxWidth: "none",
+                }
+              : { opacity: 0 }
+          }
+        />
+      </div>
+
+      <div className="flex items-center gap-3 mt-6 w-[280px]">
+        <ZoomOut className="w-4 h-4 text-ink-400 shrink-0" />
+        <Slider
+          value={[zoom]}
+          min={1}
+          max={2.5}
+          step={0.01}
+          onValueChange={(v) => setZoom(v[0])}
+        />
+        <ZoomIn className="w-4 h-4 text-ink-400 shrink-0" />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+        <Button variant="outline" className="rounded-xl border-ink-200" onClick={onCancel} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button
+          className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white"
+          onClick={handleSave}
+          disabled={isSaving || !naturalSize}
+        >
+          {isSaving ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>) : (<><Check className="w-4 h-4 mr-2" /> Save crop</>)}
+        </Button>
+      </div>
+    </div>
   );
 }

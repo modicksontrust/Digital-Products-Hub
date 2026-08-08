@@ -356,6 +356,7 @@ export const GetProductsResponseItem = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -381,6 +382,7 @@ export const CreateProductBody = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string().min(1),
   "subtitle": zod.string().optional(),
+  "authorName": zod.string().optional(),
   "topic": zod.string().min(1),
   "audience": zod.string().optional(),
   "tone": zod.string().optional(),
@@ -401,6 +403,7 @@ export const CreateProductResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -431,6 +434,7 @@ export const ImportManuscriptResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -459,6 +463,7 @@ export const GetProductResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -503,6 +508,7 @@ export const UpdateProductParams = zod.object({
 export const UpdateProductBody = zod.object({
   "title": zod.string().optional(),
   "subtitle": zod.string().optional(),
+  "authorName": zod.string().optional(),
   "topic": zod.string().optional(),
   "audience": zod.string().optional(),
   "tone": zod.string().optional(),
@@ -520,6 +526,7 @@ export const UpdateProductResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -547,6 +554,7 @@ export const DuplicateProductResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -574,6 +582,7 @@ export const ArchiveProductResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -601,6 +610,7 @@ export const SubmitForReviewResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -633,6 +643,7 @@ export const ReviewProductResponse = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -821,6 +832,7 @@ export const GetReviewQueueResponseItem = zod.object({
   "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
   "topic": zod.string().nullish(),
   "audience": zod.string().nullish(),
   "tone": zod.string().nullish(),
@@ -1017,6 +1029,109 @@ export const GetJobResponse = zod.object({
 })).optional(),
   "createdAt": zod.string(),
   "finishedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary List saved covers for a product
+ */
+export const GetProductCoversParams = zod.object({
+  "productId": zod.coerce.string()
+})
+
+export const GetProductCoversResponseItem = zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "styleKey": zod.string(),
+  "styleLabel": zod.string(),
+  "imageUrl": zod.string(),
+  "source": zod.enum(['ai', 'uploaded']),
+  "createdAt": zod.string()
+})
+export const GetProductCoversResponse = zod.array(GetProductCoversResponseItem)
+
+
+/**
+ * @summary Generate an AI cover for a product in the given style
+ */
+export const GenerateProductCoverParams = zod.object({
+  "productId": zod.coerce.string()
+})
+
+
+
+
+
+export const GenerateProductCoverBody = zod.object({
+  "styleKey": zod.string().min(1),
+  "styleLabel": zod.string().min(1)
+})
+
+export const GenerateProductCoverResponse = zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "styleKey": zod.string(),
+  "styleLabel": zod.string(),
+  "imageUrl": zod.string(),
+  "source": zod.enum(['ai', 'uploaded']),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Register a user-uploaded cover image (after presigned upload) as the product's active cover
+ */
+export const RegisterUploadedCoverParams = zod.object({
+  "productId": zod.coerce.string()
+})
+
+
+
+
+export const RegisterUploadedCoverBody = zod.object({
+  "objectPath": zod.string().min(1)
+})
+
+export const RegisterUploadedCoverResponse = zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "styleKey": zod.string(),
+  "styleLabel": zod.string(),
+  "imageUrl": zod.string(),
+  "source": zod.enum(['ai', 'uploaded']),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Make a previously saved cover the product's active cover
+ */
+export const SelectProductCoverParams = zod.object({
+  "productId": zod.coerce.string(),
+  "coverId": zod.coerce.string()
+})
+
+export const SelectProductCoverResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "type": zod.enum(['ebook', 'lead_magnet', 'uploaded']),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "authorName": zod.string().nullish(),
+  "topic": zod.string().nullish(),
+  "audience": zod.string().nullish(),
+  "tone": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "depth": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "lengthTier": zod.string().nullish(),
+  "status": zod.enum(['draft', 'generating', 'ready', 'in_review', 'changes_requested', 'approved', 'archived']),
+  "coverConfig": zod.record(zod.string(), zod.unknown()).nullish(),
+  "chapterCount": zod.int(),
+  "wordCount": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
 })
 
 

@@ -7,6 +7,7 @@ import productsRouter from "./products";
 import generationRouter from "./generation";
 import adminRouter from "./admin";
 import storageRouter from "./storage";
+import coversRouter from "./covers";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(productsRouter);
 router.use(generationRouter);
 router.use(adminRouter);
 router.use(storageRouter);
+router.use(coversRouter);
 
 export default router;

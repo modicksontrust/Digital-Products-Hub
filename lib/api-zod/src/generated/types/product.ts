@@ -18,6 +18,8 @@ export interface Product {
   /** @nullable */
   subtitle?: string | null;
   /** @nullable */
+  authorName?: string | null;
+  /** @nullable */
   topic?: string | null;
   /** @nullable */
   audience?: string | null;

@@ -394,7 +394,7 @@ router.post("/products/:productId/exports", async (req, res): Promise<void> => {
       cover: {
         title: cover["title"] ?? product.title,
         subtitle: cover["subtitle"] ?? product.subtitle ?? undefined,
-        author: cover["author"] ?? brand?.defaultAuthor ?? undefined,
+        author: product.authorName ?? cover["author"] ?? brand?.defaultAuthor ?? undefined,
         primaryColor: cover["primaryColor"] ?? brand?.primaryColor,
         accentColor: cover["accentColor"] ?? brand?.accentColor,
       },
