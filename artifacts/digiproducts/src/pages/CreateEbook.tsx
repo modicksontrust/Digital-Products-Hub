@@ -490,6 +490,11 @@ export default function CreateEbook() {
   } | null>(null);
   const [copyDirty, setCopyDirty] = useState(false);
 
+  // Pre-regeneration snapshot stored in sessionStorage so it survives
+  // within-tab navigation and accidental back-button presses.
+  const [preRegenerationCopy, setPreRegenerationCopy] = useState<typeof editCopy>(null);
+  const [showUndoBanner, setShowUndoBanner] = useState(false);
+
   useEffect(() => {
     if (!salesCopyJob) return;
     if (salesCopyJob.status === "succeeded") {
@@ -529,6 +534,43 @@ export default function CreateEbook() {
     setCopyDirty(false);
   }, [salesCopy?.updatedAt]);
 
+  // Snapshot helpers — keyed by productId so different products don't collide.
+  const preRegenKey = urlProductId ? `preRegen_${urlProductId}` : null;
+
+  const savePreRegenerationSnapshot = (copy: NonNullable<typeof editCopy>) => {
+    if (!preRegenKey) return;
+    try {
+      sessionStorage.setItem(preRegenKey, JSON.stringify(copy));
+    } catch {
+      // sessionStorage may be unavailable in some browser contexts; fail silently.
+    }
+    setPreRegenerationCopy(copy);
+    setShowUndoBanner(true);
+  };
+
+  const clearPreRegenerationSnapshot = () => {
+    if (preRegenKey) {
+      try { sessionStorage.removeItem(preRegenKey); } catch { /* ignore */ }
+    }
+    setPreRegenerationCopy(null);
+    setShowUndoBanner(false);
+  };
+
+  // On step 8 mount, restore snapshot from sessionStorage if one exists.
+  useEffect(() => {
+    if (step !== 8 || !preRegenKey) return;
+    try {
+      const saved = sessionStorage.getItem(preRegenKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setPreRegenerationCopy(parsed);
+        setShowUndoBanner(true);
+      }
+    } catch {
+      // Ignore parse or access errors.
+    }
+  }, [step, preRegenKey]);
+
   const patchEditCopy = (patch: Partial<NonNullable<typeof editCopy>>) => {
     setEditCopy((prev) => (prev ? { ...prev, ...patch } : prev));
     setCopyDirty(true);
@@ -543,6 +585,7 @@ export default function CreateEbook() {
           setCopyDirty(false);
           refetchSalesCopy();
           toast({ title: "Sales copy saved" });
+          clearPreRegenerationSnapshot();
         },
         onError: () => {
           toast({ title: "Couldn't save changes", variant: "destructive" });
@@ -555,9 +598,20 @@ export default function CreateEbook() {
 
   const handleGenerateSalesCopy = () => {
     if (!urlProductId) return;
+    // Snapshot current copy before regenerating so the author can undo.
+    if (editCopy) {
+      savePreRegenerationSnapshot(editCopy);
+    }
     generateSalesCopy.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => setSalesCopyJobId(job.id),
     });
+  };
+
+  const handleUndoRegeneration = () => {
+    if (!preRegenerationCopy) return;
+    setEditCopy(preRegenerationCopy);
+    setCopyDirty(true);
+    clearPreRegenerationSnapshot();
   };
 
   const handlePublish = () => {
@@ -579,6 +633,7 @@ export default function CreateEbook() {
           onSuccess: () => {
             setCopyDirty(false);
             refetchSalesCopy();
+            clearPreRegenerationSnapshot();
             doPublish();
           },
           onError: () => {
@@ -1880,6 +1935,33 @@ export default function CreateEbook() {
                     {salesCopy?.updatedAt ? "Review your sales copy below, then publish it as a product to start selling." : "Generate compelling sales copy to sell your eBook."}
                   </p>
                 </div>
+
+                {/* Undo regeneration banner — shown when a pre-regeneration snapshot is present */}
+                {showUndoBanner && preRegenerationCopy && (
+                  <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-amber-800">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                      <span>Sales copy was regenerated. You can undo to restore the previous version.</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-100"
+                        onClick={handleUndoRegeneration}
+                      >
+                        Undo regeneration
+                      </Button>
+                      <button
+                        className="text-amber-500 hover:text-amber-700 text-xs"
+                        onClick={clearPreRegenerationSnapshot}
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {!salesCopy?.updatedAt && !isGeneratingSalesCopy && (
                   <Card className="border-ink-200 shadow-sm rounded-2xl">
