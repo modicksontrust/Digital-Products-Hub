@@ -1,13 +1,28 @@
+// Eagerly import every generated sample-cover thumbnail so the style picker
+// can show a real preview image instead of a flat color/gradient swatch.
+const coverThumbnails = import.meta.glob("../assets/covers/*.jpg", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+function thumbnailFor(key: string): string {
+  const match = coverThumbnails[`../assets/covers/${key}.jpg`];
+  if (!match) throw new Error(`Missing cover style thumbnail for "${key}"`);
+  return match;
+}
+
 export interface CoverStyleOption {
   key: string;
   label: string;
   description: string;
-  /** Two-stop gradient used for the style-picker thumbnail swatch. */
+  /** Two-stop gradient used as a loading placeholder behind the thumbnail. */
   gradient: [string, string];
+  /** Real sample-cover thumbnail shown in the style picker. */
+  thumbnail: string;
 }
 
 // Keep keys/labels in sync with artifacts/api-server/src/lib/coverStyles.ts
-export const COVER_STYLE_OPTIONS: CoverStyleOption[] = [
+const BASE_COVER_STYLE_OPTIONS: Omit<CoverStyleOption, "thumbnail">[] = [
   { key: "split_diagonal_departure", label: "Split Diagonal Departure", description: "Bold color-block diagonal", gradient: ["#1FA06B", "#06251C"] },
   { key: "premium_object_flatlay", label: "Premium Object Flatlay", description: "Overhead product photo", gradient: ["#E8DCC8", "#B8A47E"] },
   { key: "neon_route_map", label: "Neon Route Map", description: "Glowing map on dark", gradient: ["#0B0F1A", "#00E5FF"] },
@@ -29,3 +44,8 @@ export const COVER_STYLE_OPTIONS: CoverStyleOption[] = [
   { key: "pastel_blob_shapes", label: "Pastel Blob Shapes", description: "Layered soft blobs", gradient: ["#FBCFE8", "#C7D2FE"] },
   { key: "photo_bold_overlay", label: "Photo + Bold Overlay", description: "Photo with color panel", gradient: ["#1FA06B", "#111111"] },
 ];
+
+export const COVER_STYLE_OPTIONS: CoverStyleOption[] = BASE_COVER_STYLE_OPTIONS.map((style) => ({
+  ...style,
+  thumbnail: thumbnailFor(style.key),
+}));

@@ -1,14 +1,27 @@
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { useGetProduct, useSubmitForReview, getGetProductQueryKey } from "@workspace/api-client-react";
+import {
+  useGetProduct, useSubmitForReview, useGetProductExports, useExportProduct,
+  getGetProductQueryKey, getGetProductExportsQueryKey,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Download, CheckCircle, Clock, Edit3, MessageSquare } from "lucide-react";
+import { FileText, Download, Eye, CheckCircle, Clock, Edit3, MessageSquare, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+function toAppUrl(apiUrl: string) {
+  return apiUrl.startsWith("/api") ? import.meta.env.BASE_URL + apiUrl.slice(1) : apiUrl;
+}
+
+function formatFileSize(bytes: number | null | undefined) {
+  if (bytes == null) return null;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function ProductDetail() {
   const { productId } = useParams();
@@ -17,6 +30,22 @@ export default function ProductDetail() {
   });
   const submitReview = useSubmitForReview();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: exports, isLoading: exportsLoading } = useGetProductExports(productId || '', {
+    query: { enabled: !!productId, queryKey: getGetProductExportsQueryKey(productId || '') }
+  });
+  const exportProduct = useExportProduct();
+
+  const handleGenerateExport = () => {
+    if (!productId) return;
+    exportProduct.mutate({ productId, data: { format: 'pdf', pageSize: 'a4', theme: 'minimal' } }, {
+      onSuccess: () => {
+        toast({ title: "Export ready!" });
+        queryClient.invalidateQueries({ queryKey: getGetProductExportsQueryKey(productId) });
+      },
+      onError: () => toast({ title: "Export failed", variant: "destructive" }),
+    });
+  };
 
   if (isLoading) {
     return (
@@ -150,17 +179,95 @@ export default function ProductDetail() {
             </div>
           </TabsContent>
 
-          <TabsContent value="exports" className="mt-6">
-            <Card className="border-ink-100 shadow-sm">
-              <CardContent className="p-8 text-center text-ink-500">
-                <Download className="w-12 h-12 text-ink-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-ink-900 mb-2">No exports yet</h3>
-                <p className="mb-6 max-w-md mx-auto">Once you generate a PDF export in the wizard, it will appear here for easy downloading.</p>
-                <Link href={editPath}>
-                  <Button variant="outline" className="rounded-xl">Go to Export Wizard</Button>
-                </Link>
-              </CardContent>
-            </Card>
+          <TabsContent value="exports" className="mt-6 space-y-4">
+            {exportsLoading ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-6 h-6 text-brand-500 animate-spin" />
+              </div>
+            ) : exports && exports.length > 0 ? (
+              <>
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={handleGenerateExport}
+                    disabled={exportProduct.isPending}
+                  >
+                    {exportProduct.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                    ) : (
+                      <><FileText className="w-4 h-4 mr-2" /> Generate new export</>
+                    )}
+                  </Button>
+                </div>
+                {exports.map((exp) => {
+                  const downloadUrl = toAppUrl(exp.downloadUrl);
+                  const sizeLabel = formatFileSize(exp.fileSizeBytes);
+                  return (
+                    <Card key={exp.id} className="border-ink-100 shadow-sm">
+                      <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-ink-900">{exp.versionLabel}</h3>
+                            <Badge variant="outline" className="uppercase text-[10px]">{exp.format}</Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-500 mt-1">
+                            {exp.pageCount != null && <span>{exp.pageCount} pages</span>}
+                            {sizeLabel && <span>{sizeLabel}</span>}
+                            <span>{formatDistanceToNow(new Date(exp.createdAt))} ago</span>
+                            {exp.createdByName && <span>by {exp.createdByName}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a
+                            href={`${downloadUrl}?inline=1`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-ink-200 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+                          >
+                            <Eye className="w-4 h-4 mr-2" /> Preview
+                          </a>
+                          <a
+                            href={downloadUrl}
+                            download
+                            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors"
+                          >
+                            <Download className="w-4 h-4 mr-2" /> Download
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </>
+            ) : (
+              <Card className="border-ink-100 shadow-sm">
+                <CardContent className="p-8 text-center text-ink-500">
+                  <Download className="w-12 h-12 text-ink-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-ink-900 mb-2">No exports yet</h3>
+                  <p className="mb-6 max-w-md mx-auto">Generate a PDF export to make this eBook downloadable and previewable.</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <Button
+                      className="rounded-xl bg-brand-500 hover:bg-brand-600"
+                      onClick={handleGenerateExport}
+                      disabled={exportProduct.isPending}
+                    >
+                      {exportProduct.isPending ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                      ) : (
+                        <><FileText className="w-4 h-4 mr-2" /> Generate PDF export</>
+                      )}
+                    </Button>
+                    <Link href={editPath}>
+                      <Button variant="outline" className="rounded-xl">Go to Export Wizard</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="sales" className="mt-6">

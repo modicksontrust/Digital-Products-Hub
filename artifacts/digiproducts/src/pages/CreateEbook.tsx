@@ -23,7 +23,7 @@ import {
 import { useUpload } from "@workspace/object-storage-web";
 import { useLocation, useSearch } from "wouter";
 import { 
-  ChevronRight, Loader2, Sparkles, FileText, Settings, PenTool, Layout, Download,
+  ChevronRight, Loader2, Sparkles, FileText, Settings, PenTool, Layout, Download, Eye,
   GripVertical, Palette,
   AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
   Wand2, UploadCloud, FileUp, ArrowLeft, Check, RefreshCw, ImageIcon,
@@ -58,6 +58,26 @@ export default function CreateEbook() {
     { num: 7, title: "Export", icon: Download },
     { num: 8, title: "Publish", icon: DollarSign },
   ];
+
+  // Simulated percentage progress for the outline-generation loading screen.
+  // The outline job doesn't report a numeric percent, so we ramp toward ~92%
+  // while waiting and snap to 100% once the job actually succeeds.
+  const [outlineProgress, setOutlineProgress] = useState(0);
+  useEffect(() => {
+    if (step !== 3) {
+      setOutlineProgress(0);
+      return;
+    }
+    setOutlineProgress((p) => (p > 0 ? p : 8));
+    const interval = setInterval(() => {
+      setOutlineProgress((p) => {
+        if (p >= 92) return p;
+        const increment = p < 50 ? 6 : p < 75 ? 3 : 1;
+        return Math.min(92, p + increment);
+      });
+    }, 400);
+    return () => clearInterval(interval);
+  }, [step]);
 
   // Resume state if URL params are present
   useEffect(() => {
@@ -312,6 +332,7 @@ export default function CreateEbook() {
     
     // Outline Job Finished -> Load Outline Step
     if (step === 3 && job.type === 'outline' && job.status === 'succeeded') {
+      setOutlineProgress(100);
       refetchProduct().then(() => {
         // Clear jobId from URL to stay on outline view
         setLocation(`/create/ebook?productId=${urlProductId}`);
@@ -585,14 +606,20 @@ export default function CreateEbook() {
   // ==========================================
   const exportProduct = useExportProduct();
   const [exportTheme, setExportTheme] = useState("minimal");
-  
+  const [lastExportUrl, setLastExportUrl] = useState<string | null>(null);
+
+  const toAppUrl = (apiUrl: string) =>
+    apiUrl.startsWith('/api') ? import.meta.env.BASE_URL + apiUrl.slice(1) : apiUrl;
+
   const handleExport = () => {
     if (!urlProductId) return;
     exportProduct.mutate({ productId: urlProductId, data: { format: 'pdf', pageSize: 'a4', theme: exportTheme } }, {
       onSuccess: (record) => {
         toast({ title: "Export ready!" });
-        const url = record.downloadUrl.startsWith('/api') ? import.meta.env.BASE_URL + record.downloadUrl.slice(1) : record.downloadUrl;
-        window.open(url, '_blank');
+        // Store the URL and render real <a> links below instead of window.open() here --
+        // window.open() called from an async mutation callback (not the click's own call
+        // stack) gets silently blocked by popup blockers in most browsers.
+        setLastExportUrl(toAppUrl(record.downloadUrl));
       }
     });
   };
@@ -1322,7 +1349,8 @@ export default function CreateEbook() {
                 </div>
                 <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Structuring your book</h2>
                 <p className="text-ink-500 mb-8">The AI is crafting the perfect outline based on your brief...</p>
-                <Progress value={100} className="h-2 bg-brand-100 [&>div]:bg-brand-500 animate-pulse" />
+                <Progress value={outlineProgress} className="h-2 bg-brand-100 [&>div]:bg-brand-500 transition-all duration-500" />
+                <p className="text-sm font-semibold text-brand-600 mt-3">{Math.round(outlineProgress)}%</p>
               </div>
             )}
 
@@ -1505,9 +1533,16 @@ export default function CreateEbook() {
                           className="group text-left rounded-2xl border border-ink-200 bg-white overflow-hidden hover:border-brand-400 hover:shadow-md transition-all"
                         >
                           <div
-                            className="h-28 w-full"
-                            style={{ background: `linear-gradient(135deg, ${style.gradient[0]}, ${style.gradient[1]})` }}
-                          />
+                            className="h-28 w-full bg-cover bg-center"
+                            style={{ backgroundColor: style.gradient[0] }}
+                          >
+                            <img
+                              src={style.thumbnail}
+                              alt={style.label}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
                           <div className="p-3">
                             <div className="font-medium text-ink-900 text-sm leading-tight">{style.label}</div>
                             <div className="text-xs text-ink-500 mt-0.5">{style.description}</div>
@@ -1770,18 +1805,53 @@ export default function CreateEbook() {
                       <Palette className="w-4 h-4 mr-2" /> Back to cover
                     </Button>
 
-                    <Button 
-                      size="lg" 
-                      className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                      onClick={handleExport}
-                      disabled={exportProduct.isPending}
-                    >
-                      {exportProduct.isPending ? (
-                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Compiling PDF...</>
-                      ) : (
-                        <><Download className="w-5 h-5 mr-2" /> Download PDF Book</>
-                      )}
-                    </Button>
+                    {lastExportUrl ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <a
+                          href={`${lastExportUrl}?inline=1`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center h-12 rounded-xl border border-ink-200 font-semibold text-ink-700 hover:bg-ink-50 transition-colors"
+                        >
+                          <Eye className="w-5 h-5 mr-2" /> Preview
+                        </a>
+                        <a
+                          href={lastExportUrl}
+                          download
+                          className="inline-flex items-center justify-center h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold shadow-soft transition-colors"
+                        >
+                          <Download className="w-5 h-5 mr-2" /> Download
+                        </a>
+                      </div>
+                    ) : (
+                      <Button 
+                        size="lg" 
+                        className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                        onClick={handleExport}
+                        disabled={exportProduct.isPending}
+                      >
+                        {exportProduct.isPending ? (
+                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Compiling PDF...</>
+                        ) : (
+                          <><Download className="w-5 h-5 mr-2" /> Generate PDF Book</>
+                        )}
+                      </Button>
+                    )}
+
+                    {lastExportUrl && (
+                      <Button
+                        variant="ghost"
+                        className="w-full text-ink-500"
+                        onClick={handleExport}
+                        disabled={exportProduct.isPending}
+                      >
+                        {exportProduct.isPending ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Regenerating...</>
+                        ) : (
+                          <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate PDF</>
+                        )}
+                      </Button>
+                    )}
 
                     <Button
                       variant="outline"

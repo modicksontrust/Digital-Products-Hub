@@ -22,7 +22,8 @@ export const ai = new GoogleGenAI({
 });
 
 export async function generateImage(
-  prompt: string
+  prompt: string,
+  options?: { aspectRatio?: "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "9:16" | "16:9" | "21:9" }
 ): Promise<{ b64_json: string; mimeType: string }> {
   return pRetry(
     async () => {
@@ -31,6 +32,9 @@ export async function generateImage(
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           responseModalities: [Modality.TEXT, Modality.IMAGE],
+          ...(options?.aspectRatio
+            ? { imageConfig: { aspectRatio: options.aspectRatio } }
+            : {}),
         },
       });
 

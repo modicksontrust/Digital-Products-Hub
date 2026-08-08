@@ -113,7 +113,9 @@ router.post(
         topic: product.topic,
         authorName: product.authorName,
       });
-      const { b64_json, mimeType } = await generateImage(prompt);
+      // A4-proportioned (3:4 is the closest supported aspect ratio to A4's
+      // 210:297 / ~0.707) so exported/print covers match the A4 page size.
+      const { b64_json, mimeType } = await generateImage(prompt, { aspectRatio: "3:4" });
       const buffer = Buffer.from(b64_json, "base64");
       imagePath = await objectStorageService.saveBuffer(buffer, mimeType);
     } catch (error) {

@@ -344,7 +344,7 @@ function serializeExport(
   };
 }
 
-router.post("/products/:productId/exports", async (req, res): Promise<void> => {
+router.post("/products/:productId/export", async (req, res): Promise<void> => {
   const product = await loadOwnedProduct(
     req,
     res,
@@ -466,7 +466,17 @@ router.get("/exports/:exportId/download", async (req, res): Promise<void> => {
   const product = await loadOwnedProduct(req, res, exp.productId);
   if (!product) return;
   const safeTitle = product.title.replace(/[^\w\- ]+/g, "").trim() || "export";
-  res.download(exp.filePath, `${safeTitle}-${exp.version}.${exp.format === "md" ? "md" : "pdf"}`);
+  const extension = exp.format === "md" ? "md" : "pdf";
+  const fileName = `${safeTitle}-${exp.version}.${extension}`;
+  // `?inline=1` renders the file in-browser (PDF preview) instead of forcing a download.
+  if (req.query["inline"] === "1") {
+    const mimeType = extension === "pdf" ? "application/pdf" : "text/markdown";
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.sendFile(exp.filePath);
+    return;
+  }
+  res.download(exp.filePath, fileName);
 });
 
 export default router;
