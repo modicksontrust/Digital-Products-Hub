@@ -517,6 +517,12 @@ export default function CreateEbook() {
             {/* STEP 1: SETUP (niche + region + length/price) */}
             {step === 1 && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
+                <button
+                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                  onClick={() => setStep(0)}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Choose Your Niche</h2>
@@ -635,6 +641,12 @@ export default function CreateEbook() {
             {/* STEP 1.3: SUBTOPIC PICKING */}
             {step === 1.3 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <button
+                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                  onClick={() => setStep(1)}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Pick a Subtopic</h2>
@@ -642,13 +654,28 @@ export default function CreateEbook() {
                       Choose the area of {NICHES.find((n) => n.key === selectedNiche)?.label} to focus on before we suggest specific eBook topics.
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="shrink-0 rounded-xl"
-                    onClick={() => setIsWritingOwnSubtopic((v) => !v)}
-                  >
-                    <PenTool className="w-4 h-4 mr-2" /> Write my own
-                  </Button>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      className="rounded-xl"
+                      disabled={generateSubtopicSuggestions.isPending}
+                      onClick={() => selectedNiche && generateSubtopicSuggestions.mutate({ data: { niche: selectedNiche } })}
+                    >
+                      {generateSubtopicSuggestions.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4 mr-2" />
+                      )}
+                      Generate Fresh AI Ideas
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => setIsWritingOwnSubtopic((v) => !v)}
+                    >
+                      <PenTool className="w-4 h-4 mr-2" /> Write my own
+                    </Button>
+                  </div>
                 </div>
 
                 {isWritingOwnSubtopic ? (
@@ -718,6 +745,12 @@ export default function CreateEbook() {
             {/* STEP 1.6: TOPIC PICKING */}
             {step === 1.6 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <button
+                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                  onClick={() => setStep(1.3)}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Pick a Topic</h2>
@@ -881,6 +914,12 @@ export default function CreateEbook() {
             {/* STEP 2: BRIEF */}
             {step === 2 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                <button
+                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                  onClick={() => setStep(selectedNiche ? 1.6 : 1)}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
                 <div className="mb-6">
                   <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Project Brief</h2>
                   <p className="text-ink-500">Provide the core parameters to instruct the AI.</p>
