@@ -343,8 +343,7 @@ export default function CreateEbook() {
       <div className="flex flex-col h-full bg-paper">
         {/* Wizard Header */}
         <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <h1 className="font-display font-bold text-xl text-ink-900">eBook Generator</h1>
+          <div className="max-w-5xl mx-auto flex items-center justify-end">
             {step > 0 && (
             <div className="flex items-center gap-2">
               {steps.map((s, i) => (
@@ -844,7 +843,7 @@ export default function CreateEbook() {
                                 </div>
                                 <p className="text-sm text-ink-500 leading-snug mb-3">{sub.hook}</p>
                                 <div className="flex flex-wrap gap-1.5">
-                                  <Badge variant="secondary" className="text-xs font-normal">{sub.suggestedAudience}</Badge>
+                                  <Badge variant="secondary" className="text-xs font-normal whitespace-normal break-words text-left max-w-full">{sub.suggestedAudience}</Badge>
                                   <Badge variant="secondary" className="text-xs font-normal">
                                     {LENGTH_TIERS.find((t) => t.key === selectedLengthTier)?.label}
                                   </Badge>
