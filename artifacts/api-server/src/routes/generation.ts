@@ -25,6 +25,8 @@ import {
   GenerateLeadMagnetResponse,
   GenerateNicheSuggestionsBody,
   GenerateNicheSuggestionsResponse,
+  GenerateSubtopicSuggestionsBody,
+  GenerateSubtopicSuggestionsResponse,
   GetJobResponse,
   ExportProductBody,
   ExportProductResponse,
@@ -113,6 +115,32 @@ const NICHE_LABELS: Record<string, string> = {
   relationships: "Relationships",
 };
 
+router.post("/generate/subtopic-suggestions", async (req, res): Promise<void> => {
+  const parsed = GenerateSubtopicSuggestionsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const nicheLabel = NICHE_LABELS[parsed.data.niche] ?? parsed.data.niche;
+  // Exploratory / free — helps pick a starting point before any credits are spent.
+  const subtopics = await aiJson<{ title: string; description: string }[]>(
+    "You are a digital-product market researcher who tracks what self-published eBooks and lead magnets are currently selling well.",
+    `Give me 8 distinct, well-known subtopics (sub-categories) within the broader "${nicheLabel}" niche for a self-published eBook or PDF guide business. Think of these as the major sections a bookstore would use to organize "${nicheLabel}" books — each one should be specific enough to have its own dedicated audience, but broad enough to contain many possible book topics inside it.
+
+For each subtopic return an object with:
+- "title": a short subtopic name (1-4 words)
+- "description": one short sentence describing who this subtopic is for and why it matters
+
+Respond as a JSON array of exactly 8 objects, no other text.`,
+  );
+  res.json(
+    GenerateSubtopicSuggestionsResponse.parse({
+      niche: parsed.data.niche,
+      subtopics,
+    }),
+  );
+});
+
 router.post("/generate/niche-suggestions", async (req, res): Promise<void> => {
   const parsed = GenerateNicheSuggestionsBody.safeParse(req.body);
   if (!parsed.success) {
@@ -120,12 +148,14 @@ router.post("/generate/niche-suggestions", async (req, res): Promise<void> => {
     return;
   }
   const nicheLabel = NICHE_LABELS[parsed.data.niche] ?? parsed.data.niche;
+  const subtopic = parsed.data.subtopic?.trim();
+  const scopeLabel = subtopic ? `"${subtopic}" (a subtopic within the broader "${nicheLabel}" niche)` : `"${nicheLabel}" niche`;
   // Exploratory / free — helps pick a starting point before any credits are spent.
   const subNiches = await aiJson<
     { title: string; hook: string; suggestedTopic: string; suggestedAudience: string; trending?: boolean; sellabilityScore: number }[]
   >(
     "You are a digital-product market researcher who tracks what self-published eBooks and lead magnets are currently selling well.",
-    `Give me 8 of the most trending, hot, and most-searched-for sub-niches right now inside the "${nicheLabel}" niche for a self-published eBook or PDF guide business.
+    `Give me 8 of the most trending, hot, and most-searched-for sub-niches right now inside the ${scopeLabel} for a self-published eBook or PDF guide business.
 
 For each sub-niche return an object with:
 - "title": a short sub-niche name (2-5 words)

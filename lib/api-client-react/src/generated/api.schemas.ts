@@ -589,6 +589,40 @@ export const NicheSuggestionsInputNiche = {
 
 export interface NicheSuggestionsInput {
   niche: NicheSuggestionsInputNiche;
+  /** The chosen/typed subtopic within the niche to scope topic ideas to, e.g. 'Sex' under Health & Wellness */
+  subtopic?: string;
+}
+
+export type SubtopicSuggestionsInputNiche = typeof SubtopicSuggestionsInputNiche[keyof typeof SubtopicSuggestionsInputNiche];
+
+
+export const SubtopicSuggestionsInputNiche = {
+  health_wellness: 'health_wellness',
+  wealth_money: 'wealth_money',
+  relationships: 'relationships',
+} as const;
+
+export interface SubtopicSuggestionsInput {
+  niche: SubtopicSuggestionsInputNiche;
+}
+
+export type SubtopicSuggestionsResponseNiche = typeof SubtopicSuggestionsResponseNiche[keyof typeof SubtopicSuggestionsResponseNiche];
+
+
+export const SubtopicSuggestionsResponseNiche = {
+  health_wellness: 'health_wellness',
+  wealth_money: 'wealth_money',
+  relationships: 'relationships',
+} as const;
+
+export type SubtopicSuggestionsResponseSubtopicsItem = {
+  title: string;
+  description: string;
+};
+
+export interface SubtopicSuggestionsResponse {
+  niche: SubtopicSuggestionsResponseNiche;
+  subtopics: SubtopicSuggestionsResponseSubtopicsItem[];
 }
 
 export type NicheSuggestionsResponseNiche = typeof NicheSuggestionsResponseNiche[keyof typeof NicheSuggestionsResponseNiche];

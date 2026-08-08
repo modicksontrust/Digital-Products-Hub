@@ -87,6 +87,8 @@ import type {
   SalesCopyGenInput,
   SalesCopyUpdate,
   SessionUser,
+  SubtopicSuggestionsInput,
+  SubtopicSuggestionsResponse,
   UploadUrlRequest,
   UploadUrlResponse,
   User,
@@ -2698,6 +2700,71 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getGenerateNicheSuggestionsMutationOptions(options));
+    }
+
+export const getGenerateSubtopicSuggestionsUrl = () => {
+
+
+
+
+  return `/api/generate/subtopic-suggestions`
+}
+
+export const generateSubtopicSuggestions = async (subtopicSuggestionsInput: SubtopicSuggestionsInput, options?: Parameters<typeof customFetch>[1]): Promise<SubtopicSuggestionsResponse> => {
+
+  return customFetch<SubtopicSuggestionsResponse>(getGenerateSubtopicSuggestionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(subtopicSuggestionsInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateSubtopicSuggestionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSubtopicSuggestions>>, TError,{data: BodyType<SubtopicSuggestionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateSubtopicSuggestions>>, TError,{data: BodyType<SubtopicSuggestionsInput>}, TContext> => {
+
+const mutationKey = ['generateSubtopicSuggestions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateSubtopicSuggestions>>, {data: BodyType<SubtopicSuggestionsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateSubtopicSuggestions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateSubtopicSuggestionsMutationResult = NonNullable<Awaited<ReturnType<typeof generateSubtopicSuggestions>>>
+    export type GenerateSubtopicSuggestionsMutationBody = BodyType<SubtopicSuggestionsInput>
+    export type GenerateSubtopicSuggestionsMutationError = ErrorType<unknown>
+
+    export const useGenerateSubtopicSuggestions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSubtopicSuggestions>>, TError,{data: BodyType<SubtopicSuggestionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateSubtopicSuggestions>>,
+        TError,
+        {data: BodyType<SubtopicSuggestionsInput>},
+        TContext
+      > => {
+      return useMutation(getGenerateSubtopicSuggestionsMutationOptions(options));
     }
 
 export const getGenerateOutlineUrl = () => {

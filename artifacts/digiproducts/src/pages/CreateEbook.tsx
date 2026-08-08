@@ -12,9 +12,10 @@ import {
 import { 
   useCreateProduct, useGenerateOutline, useGetJob, useGetProduct, 
   useGenerateChapters, useUpdateChapter, useExportProduct,
-  useGenerateNicheSuggestions, useImportManuscript,
+  useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   getGetJobQueryKey, getGetProductQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
+  type SubtopicSuggestionsResponseSubtopicsItem,
 } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useLocation, useSearch } from "wouter";
@@ -42,6 +43,7 @@ export default function CreateEbook() {
 
   const steps = [
     { num: 1, title: "Setup", icon: Search },
+    { num: 1.3, title: "Subtopic", icon: Layout },
     { num: 1.6, title: "Topic", icon: Flame },
     { num: 2, title: "Brief", icon: FileText },
     { num: 3, title: "Outline", icon: Layout },
@@ -114,14 +116,49 @@ export default function CreateEbook() {
     { key: "relationships", label: "Relationships", description: "Dating, marriage, parenting, communication, social skills", icon: Users },
   ];
   const [selectedNiche, setSelectedNiche] = useState<typeof NICHES[number]["key"] | null>(null);
-  const [selectedSubNiche, setSelectedSubNiche] = useState<NicheSuggestionsResponseSubNichesItem | null>(null);
-  const generateNicheSuggestions = useGenerateNicheSuggestions();
+  const generateSubtopicSuggestions = useGenerateSubtopicSuggestions();
 
   const handlePickNiche = (nicheKey: typeof NICHES[number]["key"]) => {
     setSelectedNiche(nicheKey);
-    setSelectedSubNiche(null);
-    generateNicheSuggestions.mutate({ data: { niche: nicheKey } });
+    setSelectedSubtopic(null);
+    generateSubtopicSuggestions.mutate({ data: { niche: nicheKey } });
   };
+
+  // ==========================================
+  // STEP 1.3: Subtopic Picking State
+  // ==========================================
+  const [selectedSubtopic, setSelectedSubtopic] = useState<SubtopicSuggestionsResponseSubtopicsItem | null>(null);
+  const [isWritingOwnSubtopic, setIsWritingOwnSubtopic] = useState(false);
+  const [ownSubtopicText, setOwnSubtopicText] = useState("");
+  const generateNicheSuggestions = useGenerateNicheSuggestions();
+
+  const handlePickSubtopic = (subtopic: SubtopicSuggestionsResponseSubtopicsItem) => {
+    setSelectedSubtopic(subtopic);
+    setSelectedSubNiche(null);
+    if (selectedNiche) {
+      generateNicheSuggestions.mutate({ data: { niche: selectedNiche, subtopic: subtopic.title } });
+    }
+    setStep(1.6);
+  };
+
+  const handlePickOwnSubtopic = () => {
+    if (!ownSubtopicText.trim() || !selectedNiche) return;
+    const subtopic = { title: ownSubtopicText, description: "" };
+    setSelectedSubtopic(subtopic);
+    setSelectedSubNiche(null);
+    generateNicheSuggestions.mutate({ data: { niche: selectedNiche, subtopic: subtopic.title } });
+    setIsWritingOwnSubtopic(false);
+    setStep(1.6);
+  };
+
+  // ==========================================
+  // STEP 1.6: Topic Picking State
+  // ==========================================
+  const [selectedSubNiche, setSelectedSubNiche] = useState<NicheSuggestionsResponseSubNichesItem | null>(null);
+  const [topicSearch, setTopicSearch] = useState("");
+  const [showAllTopics, setShowAllTopics] = useState(false);
+  const [isWritingOwnTopic, setIsWritingOwnTopic] = useState(false);
+  const [ownTopicText, setOwnTopicText] = useState("");
 
   const handlePickSubNiche = (subNiche: NicheSuggestionsResponseSubNichesItem) => {
     setSelectedSubNiche(subNiche);
@@ -132,14 +169,6 @@ export default function CreateEbook() {
       audience: subNiche.suggestedAudience,
     }));
   };
-
-  // ==========================================
-  // STEP 1.6: Topic Picking State
-  // ==========================================
-  const [topicSearch, setTopicSearch] = useState("");
-  const [showAllTopics, setShowAllTopics] = useState(false);
-  const [isWritingOwnTopic, setIsWritingOwnTopic] = useState(false);
-  const [ownTopicText, setOwnTopicText] = useState("");
 
   const sortedTopics = (generateNicheSuggestions.data?.subNiches ?? [])
     .filter((sub) =>
@@ -156,6 +185,11 @@ export default function CreateEbook() {
     setBrief((f) => ({ ...f, title: f.title || ownTopicText, topic: ownTopicText }));
     setIsWritingOwnTopic(false);
     setStep(2);
+  };
+
+  const handleRegenerateTopics = () => {
+    if (!selectedNiche) return;
+    generateNicheSuggestions.mutate({ data: { niche: selectedNiche, subtopic: selectedSubtopic?.title } });
   };
 
   const REGIONS: { key: string; label: string; countries: string; description: string }[] = [
@@ -182,7 +216,7 @@ export default function CreateEbook() {
       region: selectedRegion,
       lengthTier: selectedLengthTier,
     }));
-    setStep(1.6);
+    setStep(1.3);
   };
 
   // ==========================================
@@ -598,13 +632,98 @@ export default function CreateEbook() {
               </div>
             )}
 
+            {/* STEP 1.3: SUBTOPIC PICKING */}
+            {step === 1.3 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Pick a Subtopic</h2>
+                    <p className="text-ink-500">
+                      Choose the area of {NICHES.find((n) => n.key === selectedNiche)?.label} to focus on before we suggest specific eBook topics.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="shrink-0 rounded-xl"
+                    onClick={() => setIsWritingOwnSubtopic((v) => !v)}
+                  >
+                    <PenTool className="w-4 h-4 mr-2" /> Write my own
+                  </Button>
+                </div>
+
+                {isWritingOwnSubtopic ? (
+                  <Card className="border-ink-200 rounded-2xl">
+                    <CardContent className="p-6 space-y-4">
+                      <div>
+                        <Label htmlFor="own-subtopic" className="mb-2 block">Your subtopic</Label>
+                        <Input
+                          id="own-subtopic"
+                          placeholder="e.g. Sex &amp; Intimacy"
+                          value={ownSubtopicText}
+                          onChange={(e) => setOwnSubtopicText(e.target.value)}
+                          autoFocus
+                        />
+                        <p className="text-xs text-ink-400 mt-2">The AI will suggest specific eBook topics inside this subtopic next.</p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setIsWritingOwnSubtopic(false)}>Cancel</Button>
+                        <Button
+                          className="bg-brand-500 hover:bg-brand-600 text-white"
+                          disabled={!ownSubtopicText.trim()}
+                          onClick={handlePickOwnSubtopic}
+                        >
+                          Use This Subtopic <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    {generateSubtopicSuggestions.isPending && (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="h-24 rounded-2xl bg-ink-100 animate-pulse" />
+                        ))}
+                      </div>
+                    )}
+
+                    {generateSubtopicSuggestions.isError && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4" /> Couldn't fetch subtopic suggestions.
+                        <Button variant="link" className="h-auto p-0" onClick={() => selectedNiche && handlePickNiche(selectedNiche)}>Try again</Button>
+                      </div>
+                    )}
+
+                    {generateSubtopicSuggestions.data && (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {generateSubtopicSuggestions.data.subtopics.map((sub, i) => (
+                          <Card
+                            key={i}
+                            className="cursor-pointer border-ink-200 shadow-sm hover:shadow-md transition-all rounded-2xl"
+                            onClick={() => handlePickSubtopic(sub)}
+                          >
+                            <CardContent className="p-5">
+                              <h4 className="font-semibold text-ink-900 mb-1">{sub.title}</h4>
+                              <p className="text-sm text-ink-500 leading-snug">{sub.description}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* STEP 1.6: TOPIC PICKING */}
             {step === 1.6 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Pick a Topic</h2>
-                    <p className="text-ink-500">Ranked by sellability</p>
+                    <p className="text-ink-500">
+                      {selectedSubtopic ? <>Ranked by sellability, inside <span className="font-semibold text-ink-700">{selectedSubtopic.title}</span></> : "Ranked by sellability"}
+                    </p>
                   </div>
                   <Button
                     variant="outline"
@@ -663,7 +782,7 @@ export default function CreateEbook() {
                     {generateNicheSuggestions.isError && (
                       <div className="flex items-center gap-2 text-sm text-destructive">
                         <AlertCircle className="w-4 h-4" /> Couldn't fetch topic ideas.
-                        <Button variant="link" className="h-auto p-0" onClick={() => selectedNiche && handlePickNiche(selectedNiche)}>Try again</Button>
+                        <Button variant="link" className="h-auto p-0" onClick={handleRegenerateTopics}>Try again</Button>
                       </div>
                     )}
 
@@ -730,7 +849,7 @@ export default function CreateEbook() {
                             variant="outline"
                             className="rounded-xl"
                             disabled={generateNicheSuggestions.isPending}
-                            onClick={() => selectedNiche && handlePickNiche(selectedNiche)}
+                            onClick={handleRegenerateTopics}
                           >
                             {generateNicheSuggestions.isPending ? (
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

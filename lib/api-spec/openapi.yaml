@@ -690,6 +690,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NicheSuggestionsResponse"
+  /generate/subtopic-suggestions:
+    post:
+      operationId: generateSubtopicSuggestions
+      tags: [generation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubtopicSuggestionsInput"
+      responses:
+        "200":
+          description: AI-suggested subtopics within the chosen niche
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubtopicSuggestionsResponse"
   /generate/outline:
     post:
       operationId: generateOutline
@@ -1864,6 +1881,25 @@ components:
       required: [niche]
       properties:
         niche: { type: string, enum: [health_wellness, wealth_money, relationships] }
+        subtopic: { type: string, description: "The chosen/typed subtopic within the niche to scope topic ideas to, e.g. 'Sex' under Health & Wellness" }
+    SubtopicSuggestionsInput:
+      type: object
+      required: [niche]
+      properties:
+        niche: { type: string, enum: [health_wellness, wealth_money, relationships] }
+    SubtopicSuggestionsResponse:
+      type: object
+      required: [niche, subtopics]
+      properties:
+        niche: { type: string, enum: [health_wellness, wealth_money, relationships] }
+        subtopics:
+          type: array
+          items:
+            type: object
+            required: [title, description]
+            properties:
+              title: { type: string }
+              description: { type: string }
     NicheSuggestionsResponse:
       type: object
       required: [niche, subNiches]

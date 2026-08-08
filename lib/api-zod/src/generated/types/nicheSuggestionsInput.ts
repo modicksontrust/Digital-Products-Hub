@@ -9,4 +9,6 @@ import type { NicheSuggestionsInputNiche } from './nicheSuggestionsInputNiche';
 
 export interface NicheSuggestionsInput {
   niche: NicheSuggestionsInputNiche;
+  /** The chosen/typed subtopic within the niche to scope topic ideas to, e.g. 'Sex' under Health & Wellness */
+  subtopic?: string;
 }

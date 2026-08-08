@@ -839,7 +839,8 @@ export const GetReviewQueueResponse = zod.array(GetReviewQueueResponseItem)
 
 
 export const GenerateNicheSuggestionsBody = zod.object({
-  "niche": zod.enum(['health_wellness', 'wealth_money', 'relationships'])
+  "niche": zod.enum(['health_wellness', 'wealth_money', 'relationships']),
+  "subtopic": zod.string().optional().describe('The chosen\/typed subtopic within the niche to scope topic ideas to, e.g. \'Sex\' under Health & Wellness')
 })
 
 export const GenerateNicheSuggestionsResponse = zod.object({
@@ -851,6 +852,19 @@ export const GenerateNicheSuggestionsResponse = zod.object({
   "suggestedAudience": zod.string(),
   "trending": zod.boolean().optional(),
   "sellabilityScore": zod.number().describe('0-100 estimate of how well this topic is likely to sell right now')
+}))
+})
+
+
+export const GenerateSubtopicSuggestionsBody = zod.object({
+  "niche": zod.enum(['health_wellness', 'wealth_money', 'relationships'])
+})
+
+export const GenerateSubtopicSuggestionsResponse = zod.object({
+  "niche": zod.enum(['health_wellness', 'wealth_money', 'relationships']),
+  "subtopics": zod.array(zod.object({
+  "title": zod.string(),
+  "description": zod.string()
 }))
 })
 
