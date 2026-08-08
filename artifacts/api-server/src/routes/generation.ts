@@ -122,7 +122,7 @@ router.post("/generate/niche-suggestions", async (req, res): Promise<void> => {
   const nicheLabel = NICHE_LABELS[parsed.data.niche] ?? parsed.data.niche;
   // Exploratory / free — helps pick a starting point before any credits are spent.
   const subNiches = await aiJson<
-    { title: string; hook: string; suggestedTopic: string; suggestedAudience: string; trending?: boolean }[]
+    { title: string; hook: string; suggestedTopic: string; suggestedAudience: string; trending?: boolean; sellabilityScore: number }[]
   >(
     "You are a digital-product market researcher who tracks what self-published eBooks and lead magnets are currently selling well.",
     `Give me 8 of the most trending, hot, and most-searched-for sub-niches right now inside the "${nicheLabel}" niche for a self-published eBook or PDF guide business.
@@ -133,8 +133,9 @@ For each sub-niche return an object with:
 - "suggestedTopic": a specific eBook topic/angle inside this sub-niche, phrased as a working title
 - "suggestedAudience": a specific target audience description for that topic
 - "trending": true if this is currently especially hot/rising in search interest, otherwise false
+- "sellabilityScore": your honest 0-100 estimate of how well this specific topic is likely to sell as a self-published eBook right now (demand, competition, willingness to pay)
 
-Order the list with the hottest, most in-demand sub-niches first. Respond as a JSON array of exactly 8 objects, no other text.`,
+Order the list with the highest "sellabilityScore" first. Respond as a JSON array of exactly 8 objects, no other text.`,
   );
   res.json(
     GenerateNicheSuggestionsResponse.parse({

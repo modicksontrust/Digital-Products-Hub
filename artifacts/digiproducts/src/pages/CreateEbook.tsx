@@ -41,7 +41,8 @@ export default function CreateEbook() {
   const { toast } = useToast();
 
   const steps = [
-    { num: 1, title: "Niche", icon: Search },
+    { num: 1, title: "Setup", icon: Search },
+    { num: 1.6, title: "Topic", icon: Flame },
     { num: 2, title: "Brief", icon: FileText },
     { num: 3, title: "Outline", icon: Layout },
     { num: 4, title: "Generate", icon: Sparkles },
@@ -130,7 +131,31 @@ export default function CreateEbook() {
       topic: subNiche.suggestedTopic,
       audience: subNiche.suggestedAudience,
     }));
-    // Stay on Step 1 — region & pricing sections reveal below the sub-niche grid.
+  };
+
+  // ==========================================
+  // STEP 1.6: Topic Picking State
+  // ==========================================
+  const [topicSearch, setTopicSearch] = useState("");
+  const [showAllTopics, setShowAllTopics] = useState(false);
+  const [isWritingOwnTopic, setIsWritingOwnTopic] = useState(false);
+  const [ownTopicText, setOwnTopicText] = useState("");
+
+  const sortedTopics = (generateNicheSuggestions.data?.subNiches ?? [])
+    .filter((sub) =>
+      !topicSearch.trim() ||
+      sub.title.toLowerCase().includes(topicSearch.toLowerCase()) ||
+      sub.hook.toLowerCase().includes(topicSearch.toLowerCase())
+    )
+    .slice()
+    .sort((a, b) => b.sellabilityScore - a.sellabilityScore);
+
+  const handlePickOwnTopic = () => {
+    if (!ownTopicText.trim()) return;
+    setSelectedSubNiche({ title: ownTopicText, hook: "", suggestedTopic: ownTopicText, suggestedAudience: "", sellabilityScore: 0 });
+    setBrief((f) => ({ ...f, title: f.title || ownTopicText, topic: ownTopicText }));
+    setIsWritingOwnTopic(false);
+    setStep(2);
   };
 
   const REGIONS: { key: string; label: string; countries: string; description: string }[] = [
@@ -157,7 +182,7 @@ export default function CreateEbook() {
       region: selectedRegion,
       lengthTier: selectedLengthTier,
     }));
-    setStep(2);
+    setStep(1.6);
   };
 
   // ==========================================
@@ -455,13 +480,13 @@ export default function CreateEbook() {
               </div>
             )}
 
-            {/* STEP 1: NICHE PICKING */}
+            {/* STEP 1: SETUP (niche + region + length/price) */}
             {step === 1 && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Choose Your Niche</h2>
-                    <p className="text-ink-500">Pick a niche and the AI will surface the sub-niches getting the most attention right now.</p>
+                    <p className="text-ink-500">Pick a niche, then set your target region and book length before the AI ranks topic ideas for you.</p>
                   </div>
                   <button
                     className="shrink-0 text-sm font-medium text-ink-500 hover:text-brand-600 underline underline-offset-2"
@@ -496,64 +521,6 @@ export default function CreateEbook() {
                 </div>
 
                 {selectedNiche && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-display font-bold text-ink-900">Pick a Sub-Niche</h3>
-                        <p className="text-sm text-ink-500">AI-ranked by what's trending and most searched-for right now.</p>
-                      </div>
-                      {generateNicheSuggestions.isPending && (
-                        <div className="flex items-center gap-2 text-sm text-brand-600 font-medium">
-                          <Loader2 className="w-4 h-4 animate-spin" /> Searching trends...
-                        </div>
-                      )}
-                    </div>
-
-                    {generateNicheSuggestions.isPending && (
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        {[...Array(4)].map((_, i) => (
-                          <div key={i} className="h-24 rounded-2xl bg-ink-100 animate-pulse" />
-                        ))}
-                      </div>
-                    )}
-
-                    {generateNicheSuggestions.isError && (
-                      <div className="flex items-center gap-2 text-sm text-destructive">
-                        <AlertCircle className="w-4 h-4" /> Couldn't fetch sub-niche suggestions.
-                        <Button variant="link" className="h-auto p-0" onClick={() => handlePickNiche(selectedNiche)}>Try again</Button>
-                      </div>
-                    )}
-
-                    {generateNicheSuggestions.data && (
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        {generateNicheSuggestions.data.subNiches.map((sub, i) => (
-                          <Card
-                            key={i}
-                            className={cn(
-                              "cursor-pointer border-ink-200 shadow-sm hover:shadow-md transition-all rounded-2xl",
-                              selectedSubNiche?.title === sub.title && "border-brand-500 bg-brand-50/40"
-                            )}
-                            onClick={() => handlePickSubNiche(sub)}
-                          >
-                            <CardContent className="p-5">
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <h4 className="font-semibold text-ink-900">{sub.title}</h4>
-                                {sub.trending && (
-                                  <Badge className="bg-gold-50 text-gold-700 border-gold-200 shrink-0 gap-1">
-                                    <Flame className="w-3 h-3" /> Trending
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-ink-500 leading-snug">{sub.hook}</p>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {selectedSubNiche && (
                   <div className="space-y-4 pt-2">
                     <div>
                       <h3 className="text-xl font-display font-bold text-ink-900">Target Region</h3>
@@ -585,7 +552,7 @@ export default function CreateEbook() {
                   </div>
                 )}
 
-                {selectedSubNiche && (
+                {selectedNiche && (
                   <div className="space-y-4 pt-2">
                     <div>
                       <h3 className="text-xl font-display font-bold text-ink-900">Book Length &amp; Price</h3>
@@ -626,6 +593,167 @@ export default function CreateEbook() {
                         Continue <ChevronRight className="w-5 h-5 ml-1" />
                       </Button>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 1.6: TOPIC PICKING */}
+            {step === 1.6 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Pick a Topic</h2>
+                    <p className="text-ink-500">Ranked by sellability</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="shrink-0 rounded-xl"
+                    onClick={() => setIsWritingOwnTopic((v) => !v)}
+                  >
+                    <PenTool className="w-4 h-4 mr-2" /> Write my own
+                  </Button>
+                </div>
+
+                {isWritingOwnTopic ? (
+                  <Card className="border-ink-200 rounded-2xl">
+                    <CardContent className="p-6 space-y-4">
+                      <div>
+                        <Label htmlFor="own-topic" className="mb-2 block">Your eBook topic</Label>
+                        <Input
+                          id="own-topic"
+                          placeholder="e.g. The Zero Capital Side Hustle Guide"
+                          value={ownTopicText}
+                          onChange={(e) => setOwnTopicText(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setIsWritingOwnTopic(false)}>Cancel</Button>
+                        <Button
+                          className="bg-brand-500 hover:bg-brand-600 text-white"
+                          disabled={!ownTopicText.trim()}
+                          onClick={handlePickOwnTopic}
+                        >
+                          Use This Topic <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
+                      <Input
+                        placeholder="Search topics..."
+                        value={topicSearch}
+                        onChange={(e) => setTopicSearch(e.target.value)}
+                        className="pl-10 h-11 rounded-xl"
+                      />
+                    </div>
+
+                    {generateNicheSuggestions.isPending && (
+                      <div className="grid gap-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="h-28 rounded-2xl bg-ink-100 animate-pulse" />
+                        ))}
+                      </div>
+                    )}
+
+                    {generateNicheSuggestions.isError && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4" /> Couldn't fetch topic ideas.
+                        <Button variant="link" className="h-auto p-0" onClick={() => selectedNiche && handlePickNiche(selectedNiche)}>Try again</Button>
+                      </div>
+                    )}
+
+                    {generateNicheSuggestions.data && (
+                      <>
+                        <div className="space-y-3">
+                          {sortedTopics.slice(0, showAllTopics ? undefined : 6).map((sub, i) => (
+                            <Card
+                              key={i}
+                              className={cn(
+                                "cursor-pointer border-ink-200 shadow-sm hover:shadow-md transition-all rounded-2xl",
+                                selectedSubNiche?.title === sub.title && "border-brand-500 bg-brand-50/40"
+                              )}
+                              onClick={() => handlePickSubNiche(sub)}
+                            >
+                              <CardContent className="p-5">
+                                <div className="flex items-start justify-between gap-3 mb-1">
+                                  <h4 className="font-semibold text-ink-900">{sub.title}</h4>
+                                  <Badge className={cn(
+                                    "shrink-0 gap-1 border-0",
+                                    sub.sellabilityScore >= 80 ? "bg-lime-100 text-lime-700" :
+                                    sub.sellabilityScore >= 60 ? "bg-gold-50 text-gold-700" : "bg-ink-100 text-ink-500"
+                                  )}>
+                                    <Flame className="w-3 h-3" /> {sub.sellabilityScore}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-ink-500 leading-snug mb-3">{sub.hook}</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  <Badge variant="secondary" className="text-xs font-normal">{sub.suggestedAudience}</Badge>
+                                  <Badge variant="secondary" className="text-xs font-normal">
+                                    {LENGTH_TIERS.find((t) => t.key === selectedLengthTier)?.label}
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs font-normal">
+                                    {REGIONS.find((r) => r.key === selectedRegion)?.label}
+                                  </Badge>
+                                  {sub.trending && (
+                                    <Badge className="bg-gold-50 text-gold-700 border-gold-200 text-xs font-normal gap-1">
+                                      <Flame className="w-3 h-3" /> Trending
+                                    </Badge>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+
+                        {!showAllTopics && sortedTopics.length > 6 && (
+                          <div className="text-center">
+                            <button
+                              className="text-sm font-medium text-brand-600 hover:text-brand-700 underline underline-offset-2"
+                              onClick={() => setShowAllTopics(true)}
+                            >
+                              Show All {sortedTopics.length} Topics
+                            </button>
+                          </div>
+                        )}
+
+                        {sortedTopics.length === 0 && (
+                          <p className="text-center text-sm text-ink-400 py-6">No topics match your search.</p>
+                        )}
+
+                        <div className="flex justify-center pt-2">
+                          <Button
+                            variant="outline"
+                            className="rounded-xl"
+                            disabled={generateNicheSuggestions.isPending}
+                            onClick={() => selectedNiche && handlePickNiche(selectedNiche)}
+                          >
+                            {generateNicheSuggestions.isPending ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-4 h-4 mr-2" />
+                            )}
+                            Generate Fresh AI Ideas
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {selectedSubNiche && !isWritingOwnTopic && (
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      size="lg"
+                      className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                      onClick={() => setStep(2)}
+                    >
+                      Continue <ChevronRight className="w-5 h-5 ml-1" />
+                    </Button>
                   </div>
                 )}
               </div>

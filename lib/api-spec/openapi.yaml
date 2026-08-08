@@ -1873,13 +1873,14 @@ components:
           type: array
           items:
             type: object
-            required: [title, hook, suggestedTopic, suggestedAudience]
+            required: [title, hook, suggestedTopic, suggestedAudience, sellabilityScore]
             properties:
               title: { type: string }
               hook: { type: string }
               suggestedTopic: { type: string }
               suggestedAudience: { type: string }
               trending: { type: boolean }
+              sellabilityScore: { type: number, description: "0-100 estimate of how well this topic is likely to sell right now" }
     OutlineGenInput:
       type: object
       required: [productId]

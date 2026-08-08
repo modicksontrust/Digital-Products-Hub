@@ -606,6 +606,8 @@ export type NicheSuggestionsResponseSubNichesItem = {
   suggestedTopic: string;
   suggestedAudience: string;
   trending?: boolean;
+  /** 0-100 estimate of how well this topic is likely to sell right now */
+  sellabilityScore: number;
 };
 
 export interface NicheSuggestionsResponse {

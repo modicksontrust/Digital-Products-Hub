@@ -849,7 +849,8 @@ export const GenerateNicheSuggestionsResponse = zod.object({
   "hook": zod.string(),
   "suggestedTopic": zod.string(),
   "suggestedAudience": zod.string(),
-  "trending": zod.boolean().optional()
+  "trending": zod.boolean().optional(),
+  "sellabilityScore": zod.number().describe('0-100 estimate of how well this topic is likely to sell right now')
 }))
 })
 
