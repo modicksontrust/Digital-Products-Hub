@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import {
   GripVertical, Palette,
   AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
   Wand2, UploadCloud, FileUp, ArrowLeft, Check, RefreshCw, ImageIcon,
-  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2, Trash2, Plus
+  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2, Trash2, Plus, RotateCcw, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -531,6 +531,12 @@ export default function CreateEbook() {
       suggestedPriceBand: salesCopy.suggestedPriceBand ?? "",
     });
     setCopyDirty(false);
+    // If this sync was triggered by a regeneration, show the undo banner so
+    // the author can revert to their previous copy with one click.
+    if (pendingUndoCapture.current) {
+      setShowUndoBanner(true);
+      pendingUndoCapture.current = false;
+    }
   }, [salesCopy?.updatedAt]);
 
   const patchEditCopy = (patch: Partial<NonNullable<typeof editCopy>>) => {
@@ -545,6 +551,9 @@ export default function CreateEbook() {
       {
         onSuccess: () => {
           setCopyDirty(false);
+          // Saving new edits locks in the current copy — clear the undo snapshot.
+          setShowUndoBanner(false);
+          setPreRegenerationCopy(null);
           refetchSalesCopy();
           toast({ title: "Sales copy saved" });
         },
@@ -559,11 +568,32 @@ export default function CreateEbook() {
 
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
+  // Undo regeneration: snapshot the copy state just before generation so we
+  // can restore it if the author regrets the new version.
+  const [preRegenerationCopy, setPreRegenerationCopy] = useState<typeof editCopy | null>(null);
+  const [showUndoBanner, setShowUndoBanner] = useState(false);
+  // A ref so the salesCopy sync effect can detect when it was triggered by a
+  // regeneration (not just an initial load) without stale closure issues.
+  const pendingUndoCapture = useRef(false);
+
   const handleGenerateSalesCopy = () => {
     if (!urlProductId) return;
+    // Snapshot the current copy before blowing it away with the new version.
+    if (editCopy) {
+      setPreRegenerationCopy(editCopy);
+      pendingUndoCapture.current = true;
+    }
     generateSalesCopy.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => setSalesCopyJobId(job.id),
     });
+  };
+
+  const handleUndoRegeneration = () => {
+    if (!preRegenerationCopy) return;
+    setEditCopy(preRegenerationCopy);
+    setCopyDirty(true);
+    setShowUndoBanner(false);
+    setPreRegenerationCopy(null);
   };
 
   const handleRegenerateSalesCopy = () => {
@@ -1930,6 +1960,31 @@ export default function CreateEbook() {
 
                 {salesCopy?.updatedAt && !isGeneratingSalesCopy && editCopy && (
                   <>
+                    {/* Undo regeneration banner */}
+                    {showUndoBanner && preRegenerationCopy && (
+                      <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-sm">
+                        <div className="flex items-center gap-2 text-amber-800">
+                          <RotateCcw className="w-4 h-4 shrink-0" />
+                          <span>Sales copy regenerated. Not happy with the result?</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            className="font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2"
+                            onClick={handleUndoRegeneration}
+                          >
+                            Undo regeneration
+                          </button>
+                          <button
+                            className="text-amber-500 hover:text-amber-700"
+                            onClick={() => setShowUndoBanner(false)}
+                            aria-label="Dismiss"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <Card className="border-ink-200 shadow-sm rounded-2xl overflow-hidden">
                       <CardContent className="p-8 space-y-6">
 
