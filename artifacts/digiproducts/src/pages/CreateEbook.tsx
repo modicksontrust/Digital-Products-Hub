@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { COVER_STYLE_OPTIONS } from "@/lib/coverStyles";
+import { SalesPagePreview } from "@/components/SalesPagePreview";
 
 export default function CreateEbook() {
   const searchParams = new URLSearchParams(useSearch());
@@ -465,6 +466,7 @@ export default function CreateEbook() {
   // ==========================================
   const [salesCopyJobId, setSalesCopyJobId] = useState<string | null>(null);
   const [price, setPrice] = useState("17");
+  const [showPreview, setShowPreview] = useState(false);
   const [priceInitialized, setPriceInitialized] = useState(false);
 
   const { data: salesCopy, refetch: refetchSalesCopy } = useGetSalesCopy(urlProductId || "", {
@@ -779,7 +781,7 @@ export default function CreateEbook() {
 
         {/* Wizard Content */}
         <div className="flex-1 overflow-auto p-8">
-          <div className={cn("mx-auto w-full", step === 5 ? "max-w-7xl" : "max-w-4xl")}>
+          <div className={cn("mx-auto w-full", step === 5 ? "max-w-7xl" : (step === 8 && showPreview) ? "max-w-[1400px]" : "max-w-4xl")}>
 
             {/* STEP 0: START WITH AI OR UPLOAD YOUR OWN */}
             {step === 0 && (
@@ -1973,304 +1975,376 @@ export default function CreateEbook() {
 
             {/* STEP 8: PUBLISH (SALES PAGE) */}
             {step === 8 && detail && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-3xl mx-auto">
-                <button
-                  className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
-                  onClick={() => setStep(7)}
-                >
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </button>
-                <div className="text-center">
-                  <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Sales Page</h2>
-                  <p className="text-ink-500">
-                    {salesCopy?.updatedAt ? "Review your sales copy below, then publish it as a product to start selling." : "Generate compelling sales copy to sell your eBook."}
-                  </p>
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+
+                {/* Top bar: back + title + preview toggle */}
+                <div className={cn("flex flex-col gap-4", showPreview ? "" : "max-w-3xl mx-auto")}>
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <button
+                      className="flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+                      onClick={() => setStep(7)}
+                    >
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </button>
+
+                    {/* Edit / Preview toggle — shown once sales copy is ready */}
+                    {editCopy && !isGeneratingSalesCopy && (
+                      <div className="flex items-center rounded-xl border border-ink-200 bg-ink-50 p-1 gap-1">
+                        <button
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                            !showPreview
+                              ? "bg-white text-ink-900 shadow-sm border border-ink-200"
+                              : "text-ink-500 hover:text-ink-700"
+                          )}
+                          onClick={() => setShowPreview(false)}
+                        >
+                          <PenTool className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <button
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                            showPreview
+                              ? "bg-white text-ink-900 shadow-sm border border-ink-200"
+                              : "text-ink-500 hover:text-ink-700"
+                          )}
+                          onClick={() => setShowPreview(true)}
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Preview
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!showPreview && (
+                    <div className="text-center">
+                      <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Sales Page</h2>
+                      <p className="text-ink-500">
+                        {salesCopy?.updatedAt ? "Review your sales copy below, then publish it as a product to start selling." : "Generate compelling sales copy to sell your eBook."}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Undo regeneration banner — shown when a pre-regeneration snapshot is present */}
+                  {showUndoBanner && preRegenerationCopy && (
+                    <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm text-amber-800">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                        <span>Sales copy was regenerated. You can undo to restore the previous version.</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-100"
+                          onClick={handleUndoRegeneration}
+                        >
+                          Undo regeneration
+                        </Button>
+                        <button
+                          className="text-amber-500 hover:text-amber-700 text-xs"
+                          onClick={clearPreRegenerationSnapshot}
+                          title="Dismiss"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Undo regeneration banner — shown when a pre-regeneration snapshot is present */}
-                {showUndoBanner && preRegenerationCopy && (
-                  <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm text-amber-800">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
-                      <span>Sales copy was regenerated. You can undo to restore the previous version.</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-100"
-                        onClick={handleUndoRegeneration}
-                      >
-                        Undo regeneration
-                      </Button>
-                      <button
-                        className="text-amber-500 hover:text-amber-700 text-xs"
-                        onClick={clearPreRegenerationSnapshot}
-                        title="Dismiss"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Main content: split-pane when preview is on, single-column otherwise */}
+                <div className={cn(
+                  showPreview && editCopy
+                    ? "grid grid-cols-1 lg:grid-cols-[480px_1fr] gap-0 items-start rounded-2xl overflow-hidden border border-ink-200 shadow-sm"
+                    : "max-w-3xl mx-auto space-y-8"
+                )}>
 
-                {!salesCopy?.updatedAt && !isGeneratingSalesCopy && (
-                  <Card className="border-ink-200 shadow-sm rounded-2xl">
-                    <CardContent className="p-10 flex flex-col items-center text-center">
-                      <div className="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center mb-5">
-                        <DollarSign className="w-7 h-7 text-brand-500" />
-                      </div>
-                      <h3 className="text-xl font-bold text-ink-900 mb-2">Generate Sales Copy</h3>
-                      <p className="text-ink-500 max-w-sm mb-6">
-                        AI will write a full sales page with a headline, benefits, and FAQs based on your eBook content.
-                      </p>
-                      <Button
-                        className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white"
-                        onClick={handleGenerateSalesCopy}
-                        disabled={generateSalesCopy.isPending}
-                      >
-                        {generateSalesCopy.isPending ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting...</>
-                        ) : (
-                          <><Sparkles className="w-4 h-4 mr-2" /> Generate Sales Copy</>
-                        )}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+                  {/* ---- Left / main column: form ---- */}
+                  <div className={cn(
+                    showPreview && editCopy ? "space-y-0 border-r border-ink-200 overflow-y-auto max-h-[calc(100vh-220px)]" : "space-y-8"
+                  )}>
 
-                {isGeneratingSalesCopy && (
-                  <div className="flex flex-col items-center justify-center py-24 text-center">
-                    <Loader2 className="w-9 h-9 text-brand-500 animate-spin mb-6" />
-                    <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Writing your sales page...</h2>
-                    <p className="text-ink-500">Crafting a headline, benefits, and FAQs for "{detail.product.title}"</p>
-                  </div>
-                )}
-
-                {salesCopy?.updatedAt && !isGeneratingSalesCopy && editCopy && (
-                  <>
-                    <Card className="border-ink-200 shadow-sm rounded-2xl overflow-hidden">
-                      <CardContent className="p-8 space-y-6">
-
-                        {/* Headline */}
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold uppercase tracking-widest text-ink-400">Headline</label>
-                          <Input
-                            className="text-xl font-display font-bold text-ink-900 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
-                            value={editCopy.headline}
-                            onChange={(e) => patchEditCopy({ headline: e.target.value })}
-                          />
-                        </div>
-
-                        {/* Subheadline */}
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold uppercase tracking-widest text-ink-400">Subheadline</label>
-                          <Input
-                            className="text-ink-500 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
-                            value={editCopy.subheadline}
-                            onChange={(e) => patchEditCopy({ subheadline: e.target.value })}
-                          />
-                        </div>
-
-                        {/* Bullets */}
-                        <div className="space-y-2">
-                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">What's inside</h4>
-                          <ul className="space-y-2">
-                            {editCopy.bullets.map((b, i) => (
-                              <li key={i} className="flex items-center gap-2">
-                                <Check className="w-4 h-4 text-brand-500 shrink-0" />
-                                <Input
-                                  className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-0.5 flex-1"
-                                  value={b}
-                                  onChange={(e) => {
-                                    const next = [...editCopy.bullets];
-                                    next[i] = e.target.value;
-                                    patchEditCopy({ bullets: next });
-                                  }}
-                                />
-                                <button
-                                  className="text-ink-300 hover:text-red-400 transition-colors"
-                                  onClick={() => patchEditCopy({ bullets: editCopy.bullets.filter((_, j) => j !== i) })}
-                                  title="Remove bullet"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                          <button
-                            className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium mt-1"
-                            onClick={() => patchEditCopy({ bullets: [...editCopy.bullets, ""] })}
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add bullet
-                          </button>
-                        </div>
-
-                        {/* Who it's for */}
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Who it's for</h4>
-                          <Textarea
-                            className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 resize-none min-h-[60px]"
-                            value={editCopy.whoItsFor}
-                            onChange={(e) => patchEditCopy({ whoItsFor: e.target.value })}
-                          />
-                        </div>
-
-                        {/* FAQ */}
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">FAQ</h4>
-                          {editCopy.faq.map((f, i) => (
-                            <div key={i} className="space-y-1 border border-ink-100 rounded-xl p-3 relative group">
-                              <button
-                                className="absolute top-2 right-2 text-ink-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                                onClick={() => patchEditCopy({ faq: editCopy.faq.filter((_, j) => j !== i) })}
-                                title="Remove FAQ item"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                              <Input
-                                className="text-sm font-medium text-ink-900 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-0.5"
-                                placeholder="Question"
-                                value={f.question}
-                                onChange={(e) => {
-                                  const next = editCopy.faq.map((item, j) =>
-                                    j === i ? { ...item, question: e.target.value } : item,
-                                  );
-                                  patchEditCopy({ faq: next });
-                                }}
-                              />
-                              <Textarea
-                                className="text-sm text-ink-500 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 resize-none min-h-[50px]"
-                                placeholder="Answer"
-                                value={f.answer}
-                                onChange={(e) => {
-                                  const next = editCopy.faq.map((item, j) =>
-                                    j === i ? { ...item, answer: e.target.value } : item,
-                                  );
-                                  patchEditCopy({ faq: next });
-                                }}
-                              />
-                            </div>
-                          ))}
-                          <button
-                            className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium"
-                            onClick={() => patchEditCopy({ faq: [...editCopy.faq, { question: "", answer: "" }] })}
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add FAQ item
-                          </button>
-                        </div>
-
-                        {/* CTA Text */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Call-to-action button text</h4>
-                            <span className={cn(
-                              "text-xs tabular-nums",
-                              editCopy.ctaText.length > 40 ? "text-amber-600 font-medium" : "text-ink-300",
-                            )}>
-                              {editCopy.ctaText.length}/40
-                            </span>
+                    {!salesCopy?.updatedAt && !isGeneratingSalesCopy && (
+                      <Card className={cn("border-ink-200 shadow-sm", showPreview ? "rounded-none border-0" : "rounded-2xl")}>
+                        <CardContent className="p-10 flex flex-col items-center text-center">
+                          <div className="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center mb-5">
+                            <DollarSign className="w-7 h-7 text-brand-500" />
                           </div>
-                          <Input
-                            className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
-                            placeholder="e.g. Get instant access"
-                            value={editCopy.ctaText}
-                            onChange={(e) => patchEditCopy({ ctaText: e.target.value })}
-                          />
-                          {editCopy.ctaText.length > 40 && (
-                            <p className="text-xs text-amber-600">Keep it short so the button doesn't wrap awkwardly on the sales page.</p>
-                          )}
-                        </div>
-
-                        {/* Save / Regenerate row */}
-                        <div className="flex items-center justify-between pt-2 border-t border-ink-100">
-                          <button
-                            className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-brand-600 font-medium"
+                          <h3 className="text-xl font-bold text-ink-900 mb-2">Generate Sales Copy</h3>
+                          <p className="text-ink-500 max-w-sm mb-6">
+                            AI will write a full sales page with a headline, benefits, and FAQs based on your eBook content.
+                          </p>
+                          <Button
+                            className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white"
                             onClick={handleGenerateSalesCopy}
                             disabled={generateSalesCopy.isPending}
                           >
-                            <RefreshCw className="w-3.5 h-3.5" /> Regenerate
-                          </button>
-                          {copyDirty && (
+                            {generateSalesCopy.isPending ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting...</>
+                            ) : (
+                              <><Sparkles className="w-4 h-4 mr-2" /> Generate Sales Copy</>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {isGeneratingSalesCopy && (
+                      <div className="flex flex-col items-center justify-center py-24 text-center">
+                        <Loader2 className="w-9 h-9 text-brand-500 animate-spin mb-6" />
+                        <h2 className="text-2xl font-display font-bold text-ink-900 mb-2">Writing your sales page...</h2>
+                        <p className="text-ink-500">Crafting a headline, benefits, and FAQs for "{detail.product.title}"</p>
+                      </div>
+                    )}
+
+                    {salesCopy?.updatedAt && !isGeneratingSalesCopy && editCopy && (
+                      <>
+                        <Card className={cn("border-ink-200 shadow-sm overflow-hidden", showPreview ? "rounded-none border-0 border-b" : "rounded-2xl")}>
+                          <CardContent className="p-8 space-y-6">
+
+                            {/* Headline */}
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold uppercase tracking-widest text-ink-400">Headline</label>
+                              <Input
+                                className="text-xl font-display font-bold text-ink-900 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
+                                value={editCopy.headline}
+                                onChange={(e) => patchEditCopy({ headline: e.target.value })}
+                              />
+                            </div>
+
+                            {/* Subheadline */}
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold uppercase tracking-widest text-ink-400">Subheadline</label>
+                              <Input
+                                className="text-ink-500 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
+                                value={editCopy.subheadline}
+                                onChange={(e) => patchEditCopy({ subheadline: e.target.value })}
+                              />
+                            </div>
+
+                            {/* Bullets */}
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">What's inside</h4>
+                              <ul className="space-y-2">
+                                {editCopy.bullets.map((b, i) => (
+                                  <li key={i} className="flex items-center gap-2">
+                                    <Check className="w-4 h-4 text-brand-500 shrink-0" />
+                                    <Input
+                                      className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-0.5 flex-1"
+                                      value={b}
+                                      onChange={(e) => {
+                                        const next = [...editCopy.bullets];
+                                        next[i] = e.target.value;
+                                        patchEditCopy({ bullets: next });
+                                      }}
+                                    />
+                                    <button
+                                      className="text-ink-300 hover:text-red-400 transition-colors"
+                                      onClick={() => patchEditCopy({ bullets: editCopy.bullets.filter((_, j) => j !== i) })}
+                                      title="Remove bullet"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                              <button
+                                className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium mt-1"
+                                onClick={() => patchEditCopy({ bullets: [...editCopy.bullets, ""] })}
+                              >
+                                <Plus className="w-3.5 h-3.5" /> Add bullet
+                              </button>
+                            </div>
+
+                            {/* Who it's for */}
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Who it's for</h4>
+                              <Textarea
+                                className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 resize-none min-h-[60px]"
+                                value={editCopy.whoItsFor}
+                                onChange={(e) => patchEditCopy({ whoItsFor: e.target.value })}
+                              />
+                            </div>
+
+                            {/* FAQ */}
+                            <div className="space-y-3">
+                              <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">FAQ</h4>
+                              {editCopy.faq.map((f, i) => (
+                                <div key={i} className="space-y-1 border border-ink-100 rounded-xl p-3 relative group">
+                                  <button
+                                    className="absolute top-2 right-2 text-ink-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                    onClick={() => patchEditCopy({ faq: editCopy.faq.filter((_, j) => j !== i) })}
+                                    title="Remove FAQ item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <Input
+                                    className="text-sm font-medium text-ink-900 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-0.5"
+                                    placeholder="Question"
+                                    value={f.question}
+                                    onChange={(e) => {
+                                      const next = editCopy.faq.map((item, j) =>
+                                        j === i ? { ...item, question: e.target.value } : item,
+                                      );
+                                      patchEditCopy({ faq: next });
+                                    }}
+                                  />
+                                  <Textarea
+                                    className="text-sm text-ink-500 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 resize-none min-h-[50px]"
+                                    placeholder="Answer"
+                                    value={f.answer}
+                                    onChange={(e) => {
+                                      const next = editCopy.faq.map((item, j) =>
+                                        j === i ? { ...item, answer: e.target.value } : item,
+                                      );
+                                      patchEditCopy({ faq: next });
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                              <button
+                                className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium"
+                                onClick={() => patchEditCopy({ faq: [...editCopy.faq, { question: "", answer: "" }] })}
+                              >
+                                <Plus className="w-3.5 h-3.5" /> Add FAQ item
+                              </button>
+                            </div>
+
+                            {/* CTA Text */}
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Call-to-action button text</h4>
+                              <Input
+                                className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
+                                placeholder="e.g. Get instant access"
+                                value={editCopy.ctaText}
+                                onChange={(e) => patchEditCopy({ ctaText: e.target.value })}
+                              />
+                            </div>
+
+                            {/* Save / Regenerate row */}
+                            <div className="flex items-center justify-between pt-2 border-t border-ink-100">
+                              <button
+                                className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-brand-600 font-medium"
+                                onClick={handleGenerateSalesCopy}
+                                disabled={generateSalesCopy.isPending}
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" /> Regenerate
+                              </button>
+                              {copyDirty && (
+                                <Button
+                                  size="sm"
+                                  className="rounded-lg bg-brand-500 hover:bg-brand-600 text-white"
+                                  onClick={handleSaveCopy}
+                                  disabled={updateSalesCopyMutation.isPending}
+                                >
+                                  {updateSalesCopyMutation.isPending ? (
+                                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving...</>
+                                  ) : (
+                                    "Save changes"
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className={cn("border-ink-200 shadow-sm", showPreview ? "rounded-none border-0 border-b" : "rounded-2xl")}>
+                          <CardContent className="p-8 space-y-4">
+                            <h4 className="font-semibold text-ink-900">Set your price</h4>
+                            <div className="relative w-40">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400">$</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="1"
+                                className="h-12 rounded-xl bg-ink-50/50 pl-7"
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                              />
+                            </div>
+                            {salesCopy.suggestedPriceBand && (
+                              <p className="text-xs text-ink-400">AI suggested range: {salesCopy.suggestedPriceBand}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <div className={cn(showPreview ? "p-8" : "")}>
+                          {detail.product.published && detail.product.slug ? (
+                            <Card className={cn("border-brand-200 bg-brand-50/50 shadow-sm", showPreview ? "rounded-2xl" : "rounded-2xl")}>
+                              <CardContent className="p-6 flex flex-wrap items-center justify-between gap-4">
+                                <div>
+                                  <p className="font-semibold text-ink-900 flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-brand-600" /> Your sales page is live
+                                  </p>
+                                  <a
+                                    href={`${import.meta.env.BASE_URL}p/${detail.product.slug}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-sm text-brand-600 hover:underline break-all"
+                                  >
+                                    {window.location.origin}{import.meta.env.BASE_URL}p/{detail.product.slug}
+                                  </a>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button variant="outline" className="rounded-xl border-ink-200" onClick={handlePublish} disabled={publishProduct.isPending}>
+                                    Update price
+                                  </Button>
+                                  <Button variant="ghost" className="text-ink-500" onClick={handleUnpublish} disabled={unpublishProduct.isPending}>
+                                    Unpublish
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ) : (
                             <Button
-                              size="sm"
-                              className="rounded-lg bg-brand-500 hover:bg-brand-600 text-white"
-                              onClick={handleSaveCopy}
-                              disabled={updateSalesCopyMutation.isPending}
+                              size="lg"
+                              className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                              onClick={handlePublish}
+                              disabled={publishProduct.isPending}
                             >
-                              {updateSalesCopyMutation.isPending ? (
-                                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving...</>
+                              {publishProduct.isPending ? (
+                                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Publishing...</>
                               ) : (
-                                "Save changes"
+                                <><Sparkles className="w-5 h-5 mr-2" /> Publish sales page</>
                               )}
                             </Button>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-ink-200 shadow-sm rounded-2xl">
-                      <CardContent className="p-8 space-y-4">
-                        <h4 className="font-semibold text-ink-900">Set your price</h4>
-                        <div className="relative w-40">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400">$</span>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            className="h-12 rounded-xl bg-ink-50/50 pl-7"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
-                          />
-                        </div>
-                        {salesCopy.suggestedPriceBand && (
-                          <p className="text-xs text-ink-400">AI suggested range: {salesCopy.suggestedPriceBand}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {detail.product.published && detail.product.slug ? (
-                      <Card className="border-brand-200 bg-brand-50/50 shadow-sm rounded-2xl">
-                        <CardContent className="p-6 flex flex-wrap items-center justify-between gap-4">
-                          <div>
-                            <p className="font-semibold text-ink-900 flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-brand-600" /> Your sales page is live
-                            </p>
-                            <a
-                              href={`${import.meta.env.BASE_URL}p/${detail.product.slug}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-sm text-brand-600 hover:underline break-all"
-                            >
-                              {window.location.origin}{import.meta.env.BASE_URL}p/{detail.product.slug}
-                            </a>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" className="rounded-xl border-ink-200" onClick={handlePublish} disabled={publishProduct.isPending}>
-                              Update price
-                            </Button>
-                            <Button variant="ghost" className="text-ink-500" onClick={handleUnpublish} disabled={unpublishProduct.isPending}>
-                              Unpublish
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <Button
-                        size="lg"
-                        className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                        onClick={handlePublish}
-                        disabled={publishProduct.isPending}
-                      >
-                        {publishProduct.isPending ? (
-                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Publishing...</>
-                        ) : (
-                          <><Sparkles className="w-5 h-5 mr-2" /> Publish sales page</>
-                        )}
-                      </Button>
+                      </>
                     )}
-                  </>
-                )}
+                  </div>
+
+                  {/* ---- Right column: live preview (only in split-pane mode) ---- */}
+                  {showPreview && editCopy && (
+                    <div className="sticky top-0 overflow-y-auto max-h-[calc(100vh-220px)] bg-[#060913]">
+                      <div className="px-2 py-2 bg-[#0D1326]/80 border-b border-[#1C243E] flex items-center gap-2">
+                        <div className="flex gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
+                        </div>
+                        <span className="text-[#8F9BB3] text-xs font-mono truncate flex-1 text-center pr-8">
+                          Live Preview
+                        </span>
+                      </div>
+                      <SalesPagePreview
+                        headline={editCopy.headline}
+                        subheadline={editCopy.subheadline}
+                        bullets={editCopy.bullets}
+                        whoItsFor={editCopy.whoItsFor}
+                        faq={editCopy.faq}
+                        ctaText={editCopy.ctaText}
+                        title={detail.product.title}
+                        authorName={detail.product.authorName}
+                        priceCents={Number.isFinite(Math.round(parseFloat(price || "0") * 100)) ? Math.round(parseFloat(price || "0") * 100) : null}
+                        chapterCount={detail.product.chapterCount}
+                        coverUrl={activeCover ? `${import.meta.env.BASE_URL}api/storage${activeCover.imageUrl.replace(/^\/api\/storage/, "")}` : null}
+                      />
+                    </div>
+                  )}
+
+                </div>
               </div>
             )}
 
