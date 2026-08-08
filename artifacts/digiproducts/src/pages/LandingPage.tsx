@@ -38,10 +38,10 @@ export default function LandingPage() {
               <Lock className="w-4 h-4" />
               Private Team Platform
             </div>
-            <h1 className="text-5xl md:text-7xl font-display font-bold text-ink-900 tracking-tight leading-[1.1] mb-6">
+            <h1 className="text-3xl md:text-5xl font-display font-bold text-ink-900 tracking-tight leading-[1.15] mb-5">
               The internal production studio for <span className="text-transparent bg-clip-text grad-create">digital assets.</span>
             </h1>
-            <p className="text-xl text-ink-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-ink-600 mb-8 max-w-2xl mx-auto leading-relaxed">
               Create, generate, and publish high-converting eBooks and lead magnets at scale, with built-in quality control and team approval workflows.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -100,8 +100,8 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-6">
                 <span className="text-2xl">⚡️</span>
               </div>
-              <h3 className="text-xl font-display font-bold text-ink-900 mb-3">AI-Powered Generation</h3>
-              <p className="text-ink-600 leading-relaxed">
+              <h3 className="text-lg font-display font-bold text-ink-900 mb-3">AI-Powered Generation</h3>
+              <p className="text-sm text-ink-600 leading-relaxed">
                 Go from a one-sentence brief to a fully structured, written, and formatted 10-chapter eBook in under 10 minutes.
               </p>
             </div>
@@ -109,8 +109,8 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-lime-50 text-lime-600 flex items-center justify-center mb-6">
                 <span className="text-2xl">🎨</span>
               </div>
-              <h3 className="text-xl font-display font-bold text-ink-900 mb-3">Print-Ready Exports</h3>
-              <p className="text-ink-600 leading-relaxed">
+              <h3 className="text-lg font-display font-bold text-ink-900 mb-3">Print-Ready Exports</h3>
+              <p className="text-sm text-ink-600 leading-relaxed">
                 Beautiful, templated PDFs generated on the fly. No more wrestling with InDesign or waiting for external designers.
               </p>
             </div>
@@ -118,8 +118,8 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-gold-50 text-gold-600 flex items-center justify-center mb-6">
                 <span className="text-2xl">🛡️</span>
               </div>
-              <h3 className="text-xl font-display font-bold text-ink-900 mb-3">Quality Controlled</h3>
-              <p className="text-ink-600 leading-relaxed">
+              <h3 className="text-lg font-display font-bold text-ink-900 mb-3">Quality Controlled</h3>
+              <p className="text-sm text-ink-600 leading-relaxed">
                 Built-in approval workflows and a mandatory onboarding gate ensures the team produces on-brand, high-quality assets.
               </p>
             </div>
