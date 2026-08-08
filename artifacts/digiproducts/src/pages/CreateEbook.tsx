@@ -15,7 +15,7 @@ import {
   useGenerateChapters, useUpdateChapter, useExportProduct,
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   useGetProductCovers, useGenerateProductCover, useRegisterUploadedCover, useSelectProductCover,
-  useGetSalesCopy, useGenerateSalesCopy, usePublishProduct, useUnpublishProduct,
+  useGetSalesCopy, useGenerateSalesCopy, useUpdateSalesCopy, usePublishProduct, useUnpublishProduct,
   getGetJobQueryKey, getGetProductQueryKey, getGetProductCoversQueryKey, getGetSalesCopyQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
   type SubtopicSuggestionsResponseSubtopicsItem,
@@ -27,7 +27,7 @@ import {
   GripVertical, Palette,
   AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
   Wand2, UploadCloud, FileUp, ArrowLeft, Check, RefreshCw, ImageIcon,
-  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2
+  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2, Trash2, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -453,8 +453,21 @@ export default function CreateEbook() {
     },
   });
   const generateSalesCopy = useGenerateSalesCopy();
+  const updateSalesCopyMutation = useUpdateSalesCopy();
   const publishProduct = usePublishProduct();
   const unpublishProduct = useUnpublishProduct();
+
+  // Local editable copy state
+  const [editCopy, setEditCopy] = useState<{
+    headline: string;
+    subheadline: string;
+    bullets: string[];
+    whoItsFor: string;
+    faq: { question: string; answer: string }[];
+    ctaText: string;
+    suggestedPriceBand: string;
+  } | null>(null);
+  const [copyDirty, setCopyDirty] = useState(false);
 
   useEffect(() => {
     if (!salesCopyJob) return;
@@ -479,6 +492,44 @@ export default function CreateEbook() {
     }
   }, [detail?.product.priceCents, salesCopy?.suggestedPriceBand, priceInitialized]);
 
+  // Sync server sales copy into local editable state (on first load or after regeneration).
+  // Gate on updatedAt so the editor appears even when headline is blank.
+  useEffect(() => {
+    if (!salesCopy?.updatedAt) return;
+    setEditCopy({
+      headline: salesCopy.headline ?? "",
+      subheadline: salesCopy.subheadline ?? "",
+      bullets: salesCopy.bullets ?? [],
+      whoItsFor: salesCopy.whoItsFor ?? "",
+      faq: (salesCopy.faq ?? []) as { question: string; answer: string }[],
+      ctaText: salesCopy.ctaText ?? "",
+      suggestedPriceBand: salesCopy.suggestedPriceBand ?? "",
+    });
+    setCopyDirty(false);
+  }, [salesCopy?.updatedAt]);
+
+  const patchEditCopy = (patch: Partial<NonNullable<typeof editCopy>>) => {
+    setEditCopy((prev) => (prev ? { ...prev, ...patch } : prev));
+    setCopyDirty(true);
+  };
+
+  const handleSaveCopy = () => {
+    if (!urlProductId || !editCopy) return;
+    updateSalesCopyMutation.mutate(
+      { productId: urlProductId, data: editCopy },
+      {
+        onSuccess: () => {
+          setCopyDirty(false);
+          refetchSalesCopy();
+          toast({ title: "Sales copy saved" });
+        },
+        onError: () => {
+          toast({ title: "Couldn't save changes", variant: "destructive" });
+        },
+      },
+    );
+  };
+
   const isGeneratingSalesCopy = !!salesCopyJobId && salesCopyJob?.status !== "succeeded" && salesCopyJob?.status !== "failed";
 
   const handleGenerateSalesCopy = () => {
@@ -491,12 +542,32 @@ export default function CreateEbook() {
   const handlePublish = () => {
     if (!urlProductId) return;
     const cents = Math.round(parseFloat(price || "0") * 100);
-    publishProduct.mutate({ productId: urlProductId, data: { priceCents: Number.isFinite(cents) ? cents : undefined } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
-        toast({ title: "Published!", description: "Your sales page is live." });
-      },
-    });
+    const doPublish = () => {
+      publishProduct.mutate({ productId: urlProductId, data: { priceCents: Number.isFinite(cents) ? cents : undefined } }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
+          toast({ title: "Published!", description: "Your sales page is live." });
+        },
+      });
+    };
+    // Auto-save unsaved copy edits before publishing so the live page reflects them
+    if (copyDirty && editCopy) {
+      updateSalesCopyMutation.mutate(
+        { productId: urlProductId, data: editCopy },
+        {
+          onSuccess: () => {
+            setCopyDirty(false);
+            refetchSalesCopy();
+            doPublish();
+          },
+          onError: () => {
+            toast({ title: "Couldn't save your copy edits — please try again", variant: "destructive" });
+          },
+        },
+      );
+    } else {
+      doPublish();
+    }
   };
 
   const handleUnpublish = () => {
@@ -1736,11 +1807,11 @@ export default function CreateEbook() {
                 <div className="text-center">
                   <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Sales Page</h2>
                   <p className="text-ink-500">
-                    {salesCopy?.headline ? "Review your sales copy below, then publish it as a product to start selling." : "Generate compelling sales copy to sell your eBook."}
+                    {salesCopy?.updatedAt ? "Review your sales copy below, then publish it as a product to start selling." : "Generate compelling sales copy to sell your eBook."}
                   </p>
                 </div>
 
-                {!salesCopy?.headline && !isGeneratingSalesCopy && (
+                {!salesCopy?.updatedAt && !isGeneratingSalesCopy && (
                   <Card className="border-ink-200 shadow-sm rounded-2xl">
                     <CardContent className="p-10 flex flex-col items-center text-center">
                       <div className="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center mb-5">
@@ -1773,56 +1844,154 @@ export default function CreateEbook() {
                   </div>
                 )}
 
-                {salesCopy?.headline && !isGeneratingSalesCopy && (
+                {salesCopy?.updatedAt && !isGeneratingSalesCopy && editCopy && (
                   <>
                     <Card className="border-ink-200 shadow-sm rounded-2xl overflow-hidden">
                       <CardContent className="p-8 space-y-6">
-                        <div>
-                          <h3 className="text-2xl font-display font-bold text-ink-900 mb-1">{salesCopy.headline}</h3>
-                          {salesCopy.subheadline && <p className="text-ink-500">{salesCopy.subheadline}</p>}
+
+                        {/* Headline */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-widest text-ink-400">Headline</label>
+                          <Input
+                            className="text-xl font-display font-bold text-ink-900 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
+                            value={editCopy.headline}
+                            onChange={(e) => patchEditCopy({ headline: e.target.value })}
+                          />
                         </div>
 
-                        {(salesCopy.bullets ?? []).length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">What's inside</h4>
-                            <ul className="space-y-1.5">
-                              {(salesCopy.bullets ?? []).map((b, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-ink-700">
-                                  <Check className="w-4 h-4 text-brand-500 mt-0.5 shrink-0" /> {b}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                        {/* Subheadline */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-widest text-ink-400">Subheadline</label>
+                          <Input
+                            className="text-ink-500 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
+                            value={editCopy.subheadline}
+                            onChange={(e) => patchEditCopy({ subheadline: e.target.value })}
+                          />
+                        </div>
 
-                        {salesCopy.whoItsFor && (
-                          <div>
-                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">Who it's for</h4>
-                            <p className="text-sm text-ink-700">{salesCopy.whoItsFor}</p>
-                          </div>
-                        )}
+                        {/* Bullets */}
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">What's inside</h4>
+                          <ul className="space-y-2">
+                            {editCopy.bullets.map((b, i) => (
+                              <li key={i} className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-brand-500 shrink-0" />
+                                <Input
+                                  className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-0.5 flex-1"
+                                  value={b}
+                                  onChange={(e) => {
+                                    const next = [...editCopy.bullets];
+                                    next[i] = e.target.value;
+                                    patchEditCopy({ bullets: next });
+                                  }}
+                                />
+                                <button
+                                  className="text-ink-300 hover:text-red-400 transition-colors"
+                                  onClick={() => patchEditCopy({ bullets: editCopy.bullets.filter((_, j) => j !== i) })}
+                                  title="Remove bullet"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                          <button
+                            className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium mt-1"
+                            onClick={() => patchEditCopy({ bullets: [...editCopy.bullets, ""] })}
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add bullet
+                          </button>
+                        </div>
 
-                        {(salesCopy.faq ?? []).length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400 mb-2">FAQ</h4>
-                            <div className="space-y-3">
-                              {(salesCopy.faq ?? []).map((f, i) => (
-                                <div key={i}>
-                                  <p className="text-sm font-medium text-ink-900">{f.question}</p>
-                                  <p className="text-sm text-ink-500">{f.answer}</p>
-                                </div>
-                              ))}
+                        {/* Who it's for */}
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Who it's for</h4>
+                          <Textarea
+                            className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 resize-none min-h-[60px]"
+                            value={editCopy.whoItsFor}
+                            onChange={(e) => patchEditCopy({ whoItsFor: e.target.value })}
+                          />
+                        </div>
+
+                        {/* FAQ */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">FAQ</h4>
+                          {editCopy.faq.map((f, i) => (
+                            <div key={i} className="space-y-1 border border-ink-100 rounded-xl p-3 relative group">
+                              <button
+                                className="absolute top-2 right-2 text-ink-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                onClick={() => patchEditCopy({ faq: editCopy.faq.filter((_, j) => j !== i) })}
+                                title="Remove FAQ item"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              <Input
+                                className="text-sm font-medium text-ink-900 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-0.5"
+                                placeholder="Question"
+                                value={f.question}
+                                onChange={(e) => {
+                                  const next = editCopy.faq.map((item, j) =>
+                                    j === i ? { ...item, question: e.target.value } : item,
+                                  );
+                                  patchEditCopy({ faq: next });
+                                }}
+                              />
+                              <Textarea
+                                className="text-sm text-ink-500 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 resize-none min-h-[50px]"
+                                placeholder="Answer"
+                                value={f.answer}
+                                onChange={(e) => {
+                                  const next = editCopy.faq.map((item, j) =>
+                                    j === i ? { ...item, answer: e.target.value } : item,
+                                  );
+                                  patchEditCopy({ faq: next });
+                                }}
+                              />
                             </div>
-                          </div>
-                        )}
+                          ))}
+                          <button
+                            className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium"
+                            onClick={() => patchEditCopy({ faq: [...editCopy.faq, { question: "", answer: "" }] })}
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add FAQ item
+                          </button>
+                        </div>
 
-                        <button
-                          className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium"
-                          onClick={handleGenerateSalesCopy}
-                          disabled={generateSalesCopy.isPending}
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> Regenerate sales copy
-                        </button>
+                        {/* CTA Text */}
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-semibold uppercase tracking-widest text-ink-400">Call-to-action button text</h4>
+                          <Input
+                            className="text-sm text-ink-700 border-0 border-b border-ink-200 rounded-none px-0 bg-transparent focus-visible:ring-0 focus-visible:border-brand-400 h-auto py-1"
+                            placeholder="e.g. Get instant access"
+                            value={editCopy.ctaText}
+                            onChange={(e) => patchEditCopy({ ctaText: e.target.value })}
+                          />
+                        </div>
+
+                        {/* Save / Regenerate row */}
+                        <div className="flex items-center justify-between pt-2 border-t border-ink-100">
+                          <button
+                            className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-brand-600 font-medium"
+                            onClick={handleGenerateSalesCopy}
+                            disabled={generateSalesCopy.isPending}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> Regenerate
+                          </button>
+                          {copyDirty && (
+                            <Button
+                              size="sm"
+                              className="rounded-lg bg-brand-500 hover:bg-brand-600 text-white"
+                              onClick={handleSaveCopy}
+                              disabled={updateSalesCopyMutation.isPending}
+                            >
+                              {updateSalesCopyMutation.isPending ? (
+                                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving...</>
+                              ) : (
+                                "Save changes"
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
 
