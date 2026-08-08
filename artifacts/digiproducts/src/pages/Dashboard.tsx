@@ -52,7 +52,7 @@ export default function Dashboard() {
               Welcome back
             </Badge>
             <h1 className="text-4xl font-display font-bold tracking-tight mb-2 text-background">
-              What are we building today?
+              {user?.fullName ? `What are we building today, ${user.fullName.split(" ")[0]}?` : "What are we building today?"}
             </h1>
             <p className="text-brand-100 text-lg opacity-90 max-w-xl">
               Create high-converting eBooks, guides, and lead magnets using our fine-tuned AI engines.

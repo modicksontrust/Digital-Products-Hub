@@ -3,7 +3,7 @@ import { useGetMe, useLogout, useGetNotifications, useMarkNotificationRead, getG
 import { 
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
   CreditCard, History, PenTool, LayoutTemplate,
-  LogOut, User, Bell, ChevronDown, CheckCircle
+  LogOut, User, Bell, ChevronDown, CheckCircle, Menu
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -22,17 +22,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 
-export function Sidebar() {
-  const [location] = useLocation();
+function useNavigation() {
   const { data: user } = useGetMe();
-  
   const isLocked = user && user.role !== 'admin' && !user.onboardingComplete && !user.onboardingExempt;
-  
+
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, locked: isLocked },
     { name: "My Products", href: "/products", icon: BookOpen, locked: isLocked },
@@ -70,10 +69,30 @@ export function Sidebar() {
     }] : [])
   ];
 
+  return { navigation, isLocked, user };
+}
+
+/** Returns a human-readable title for the current route, for the header's page-title slot. */
+export function usePageTitle(): string {
+  const [location] = useLocation();
+  const { navigation } = useNavigation();
+  const flat = navigation.flatMap((section) => (section.items ? section.items : [section]));
+  const match = flat.find((item) => location === item.href || location.startsWith(item.href.split('?')[0] + '/'));
+  if (match) return match.name;
+  if (location.startsWith('/account')) return 'Account Settings';
+  if (location.startsWith('/products/')) return 'Product Detail';
+  if (location.startsWith('/learn/')) return 'Academy';
+  return 'DigiProducts';
+}
+
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const [location] = useLocation();
+  const { navigation, isLocked, user } = useNavigation();
+
   return (
-    <div className="hidden md:flex flex-col w-64 border-r border-brand-900 grad-sidebar text-brand-100 min-h-[100dvh] fixed left-0 top-0 bottom-0 z-40">
+    <>
       <div className="p-6">
-        <Link href={isLocked ? "/learn" : "/dashboard"} className="flex items-center gap-2">
+        <Link href={isLocked ? "/learn" : "/dashboard"} className="flex items-center gap-2" onClick={onNavigate}>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
             D
           </div>
@@ -98,6 +117,7 @@ export function Sidebar() {
                     <li key={item.name}>
                       <Link 
                         href={item.locked ? "/learn" : item.href}
+                        onClick={onNavigate}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group",
                           active 
@@ -138,6 +158,14 @@ export function Sidebar() {
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <div className="hidden md:flex flex-col w-64 border-r border-brand-900 grad-sidebar text-brand-100 min-h-[100dvh] fixed left-0 top-0 bottom-0 z-40">
+      <SidebarNav />
     </div>
   );
 }
@@ -164,13 +192,38 @@ export function Topbar({ variant = "default" }: { variant?: "default" | "transpa
     });
   };
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const pageTitle = usePageTitle();
+
   return (
     <header className={cn(
-      "h-16 flex items-center justify-between px-6 z-30 fixed top-0 inset-x-0 md:left-64 transition-colors",
+      "h-16 flex items-center justify-between px-4 sm:px-6 z-30 fixed top-0 inset-x-0 md:left-64 transition-colors",
       variant === "transparent" ? "bg-transparent" : "border-b bg-white"
     )}>
-      <div className="flex items-center gap-4">
-        {/* Mobile menu toggle would go here */}
+      <div className="flex items-center gap-3 min-w-0">
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "md:hidden rounded-full h-10 w-10 shrink-0",
+              variant === "transparent" ? "text-white/90 hover:text-white hover:bg-white/10" : "text-ink-500 hover:text-ink-900"
+            )}
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+          <SheetContent side="left" className="p-0 w-64 border-none grad-sidebar text-brand-100 flex flex-col">
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
+          </SheetContent>
+        </Sheet>
+        <h1 className={cn(
+          "font-display font-semibold text-lg truncate",
+          variant === "transparent" ? "text-white" : "text-ink-900"
+        )}>
+          {pageTitle}
+        </h1>
       </div>
       
       <div className="flex items-center gap-4">
