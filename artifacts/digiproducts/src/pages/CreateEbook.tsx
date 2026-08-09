@@ -20,6 +20,7 @@ import {
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   useGetProductCovers, useGenerateProductCover, useRegisterUploadedCover, useSelectProductCover,
   useGetSalesCopy, useGenerateSalesCopy, useUpdateSalesCopy, usePublishProduct, useUnpublishProduct,
+  useGeneratePreviewToken,
   getGetJobQueryKey, getGetProductQueryKey, getGetProductCoversQueryKey, getGetSalesCopyQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
   type SubtopicSuggestionsResponseSubtopicsItem,
@@ -31,7 +32,7 @@ import {
   GripVertical, Palette,
   AlertCircle, HeartPulse, DollarSign, Users, Flame, Search,
   Wand2, UploadCloud, FileUp, ArrowLeft, Check, RefreshCw, ImageIcon,
-  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2, Trash2, Plus
+  AlertTriangle, Crop, ZoomIn, ZoomOut, CheckCircle2, Trash2, Plus, Link2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -483,6 +484,7 @@ export default function CreateEbook() {
   const updateSalesCopyMutation = useUpdateSalesCopy();
   const publishProduct = usePublishProduct();
   const unpublishProduct = useUnpublishProduct();
+  const generatePreviewTokenMutation = useGeneratePreviewToken();
 
   // Local editable copy state
   const [editCopy, setEditCopy] = useState<{
@@ -705,6 +707,33 @@ export default function CreateEbook() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(urlProductId) });
         toast({ title: "Unpublished", description: "Your sales page is no longer live." });
+      },
+    });
+  };
+
+  const handleShareDraftLink = () => {
+    if (!urlProductId) return;
+    generatePreviewTokenMutation.mutate({ productId: urlProductId }, {
+      onSuccess: (result) => {
+        // Build the URL the same way existing live-page links do:
+        // origin + BASE_URL (web artifact base path) + SPA route + token param.
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const absoluteUrl = `${window.location.origin}${base}/p/${result.slug}?preview=${result.token}`;
+        navigator.clipboard.writeText(absoluteUrl).then(() => {
+          toast({
+            title: "Draft link copied!",
+            description: "Anyone with this link can preview your page for 48 hours.",
+          });
+        }).catch(() => {
+          // Clipboard may be blocked; fall back to showing the URL in the toast
+          toast({
+            title: "Draft link generated",
+            description: absoluteUrl,
+          });
+        });
+      },
+      onError: () => {
+        toast({ title: "Couldn't generate a draft link — please try again", variant: "destructive" });
       },
     });
   };
@@ -2297,18 +2326,33 @@ export default function CreateEbook() {
                               </CardContent>
                             </Card>
                           ) : (
-                            <Button
-                              size="lg"
-                              className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                              onClick={handlePublish}
-                              disabled={publishProduct.isPending}
-                            >
-                              {publishProduct.isPending ? (
-                                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Publishing...</>
-                              ) : (
-                                <><Sparkles className="w-5 h-5 mr-2" /> Publish sales page</>
-                              )}
-                            </Button>
+                            <div className="space-y-3">
+                              <Button
+                                size="lg"
+                                className="w-full h-12 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                                onClick={handlePublish}
+                                disabled={publishProduct.isPending}
+                              >
+                                {publishProduct.isPending ? (
+                                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Publishing...</>
+                                ) : (
+                                  <><Sparkles className="w-5 h-5 mr-2" /> Publish sales page</>
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                className="w-full h-11 rounded-xl border-ink-200 text-ink-600 font-medium"
+                                onClick={handleShareDraftLink}
+                                disabled={generatePreviewTokenMutation.isPending}
+                              >
+                                {generatePreviewTokenMutation.isPending ? (
+                                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating link...</>
+                                ) : (
+                                  <><Link2 className="w-4 h-4 mr-2" /> Share draft link</>
+                                )}
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </>

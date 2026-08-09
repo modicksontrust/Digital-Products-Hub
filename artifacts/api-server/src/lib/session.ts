@@ -27,6 +27,19 @@ export async function ensureSessionTable(): Promise<void> {
   `);
 }
 
+export async function ensurePreviewTokensTable(): Promise<void> {
+  await sessionPool.query(`
+    CREATE TABLE IF NOT EXISTS preview_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      token TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT preview_tokens_token_unique UNIQUE (token)
+    );
+  `);
+}
+
 export const sessionPool = new pg.Pool({
   connectionString: process.env["DATABASE_URL"],
   max: 3,

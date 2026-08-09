@@ -171,3 +171,15 @@ export const generationJobsTable = pgTable("generation_jobs", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export const previewTokensTable = pgTable("preview_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id")
+    .notNull()
+    .references(() => productsTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

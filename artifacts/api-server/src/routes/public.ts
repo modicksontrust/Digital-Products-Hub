@@ -1,11 +1,12 @@
 import { Readable } from "stream";
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import {
   db,
   productsTable,
   productChaptersTable,
   salesCopyTable,
+  previewTokensTable,
 } from "@workspace/db";
 import { GetPublicSalesPageResponse } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
@@ -21,11 +22,46 @@ async function loadPublishedProductByslug(slug: string) {
   return product && product.published ? product : null;
 }
 
+/**
+ * Load a product by slug regardless of publish status, but only when
+ * a valid, non-expired preview token is present in the request query.
+ */
+async function loadProductBySlugWithToken(slug: string, token: string) {
+  const now = new Date();
+  const [product] = await db
+    .select()
+    .from(productsTable)
+    .where(eq(productsTable.slug, slug));
+
+  if (!product) return null;
+
+  const [row] = await db
+    .select()
+    .from(previewTokensTable)
+    .where(
+      and(
+        eq(previewTokensTable.productId, product.id),
+        eq(previewTokensTable.token, token),
+        gt(previewTokensTable.expiresAt, now),
+      ),
+    );
+
+  return row ? product : null;
+}
+
 router.get(
   "/public/sales-page/:slug",
   async (req, res): Promise<void> => {
     const slug = String(req.params["slug"]);
-    const product = await loadPublishedProductByslug(slug);
+    const previewToken = req.query["preview"] ? String(req.query["preview"]) : null;
+
+    let product = null;
+    if (previewToken) {
+      product = await loadProductBySlugWithToken(slug, previewToken);
+    } else {
+      product = await loadPublishedProductByslug(slug);
+    }
+
     if (!product) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -40,6 +76,15 @@ router.get(
       .where(eq(salesCopyTable.productId, product.id));
     const cover = (product.coverConfig ?? null) as { imageUrl?: string } | null;
 
+    // Pass the preview token through to the cover proxy URL so the cover
+    // also loads for unpublished draft previews.
+    const coverBase = `/public/sales-page/${slug}/cover`;
+    const coverUrl = cover?.imageUrl
+      ? previewToken
+        ? `${coverBase}?preview=${previewToken}`
+        : coverBase
+      : null;
+
     res.json(
       GetPublicSalesPageResponse.parse({
         productId: product.id,
@@ -48,7 +93,7 @@ router.get(
         authorName: product.authorName,
         // Cover images live behind the authed /storage/objects/* route, so
         // point anonymous visitors at this router's own passthrough instead.
-        coverImageUrl: cover?.imageUrl ? `/public/sales-page/${slug}/cover` : null,
+        coverImageUrl: coverUrl,
         priceCents: product.priceCents,
         chapterCount: chapters.length,
         salesCopy: {
@@ -71,7 +116,15 @@ router.get(
   "/public/sales-page/:slug/cover",
   async (req: Request, res: Response): Promise<void> => {
     const slug = String(req.params["slug"]);
-    const product = await loadPublishedProductByslug(slug);
+    const previewToken = req.query["preview"] ? String(req.query["preview"]) : null;
+
+    let product = null;
+    if (previewToken) {
+      product = await loadProductBySlugWithToken(slug, previewToken);
+    } else {
+      product = await loadPublishedProductByslug(slug);
+    }
+
     const cover = (product?.coverConfig ?? null) as { imageUrl?: string } | null;
     if (!product || !cover?.imageUrl) {
       res.status(404).json({ error: "Not found" });

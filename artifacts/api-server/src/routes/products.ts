@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { randomBytes } from "crypto";
 import {
   db,
   productsTable,
@@ -8,6 +9,7 @@ import {
   reviewsTable,
   commentsTable,
   salesCopyTable,
+  previewTokensTable,
   type Product,
 } from "@workspace/db";
 import {
@@ -42,6 +44,7 @@ import {
   UpdateSalesCopyBody,
   UpdateSalesCopyResponse,
   GetReviewQueueResponse,
+  GeneratePreviewTokenResponse,
 } from "@workspace/api-zod";
 import {
   requireAuth,
@@ -845,5 +848,38 @@ router.put("/products/:productId/sales-copy", async (req, res): Promise<void> =>
     .returning();
   res.json(UpdateSalesCopyResponse.parse(serializeSalesCopy(product.id, row)));
 });
+
+router.post(
+  "/products/:productId/preview-token",
+  async (req, res): Promise<void> => {
+    const product = await loadAccessible(req, String(req.params["productId"]));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+
+    // Ensure the product has a slug so the preview URL is well-formed.
+    const slug = product.slug ?? (await generateUniqueSlug(product.title));
+    if (!product.slug) {
+      await db
+        .update(productsTable)
+        .set({ slug })
+        .where(eq(productsTable.id, product.id));
+    }
+
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+    await db.insert(previewTokensTable).values({
+      productId: product.id,
+      token,
+      expiresAt,
+    });
+
+    // Return the token and slug; the web client builds the browser-facing URL
+    // using import.meta.env.BASE_URL so the path matches the SPA's routing.
+    res.json(GeneratePreviewTokenResponse.parse({ token, slug, expiresAt: expiresAt.toISOString() }));
+  },
+);
 
 export default router;

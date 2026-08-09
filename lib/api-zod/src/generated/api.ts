@@ -1895,3 +1895,17 @@ export const GetStorageObjectParams = zod.object({
 export const GetStorageObjectResponse = zod.unknown()
 
 
+/**
+ * @summary Generate a short-lived preview token for a draft product
+ */
+export const GeneratePreviewTokenParams = zod.object({
+  productId: zod.coerce.string(),
+})
+
+export const GeneratePreviewTokenResponse = zod.object({
+  token: zod.string(),
+  slug: zod.string(),
+  expiresAt: zod.string(),
+})
+
+

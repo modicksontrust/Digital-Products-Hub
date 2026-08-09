@@ -2030,17 +2030,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUnpublishProductMutationOptions(options));
     }
 
-export const getGetPublicSalesPageUrl = (slug: string,) => {
-
-
-
-
-  return `/api/public/sales-page/${slug}`
+export const getGetPublicSalesPageUrl = (slug: string, previewToken?: string) => {
+  const base = `/api/public/sales-page/${slug}`;
+  return previewToken ? `${base}?preview=${encodeURIComponent(previewToken)}` : base;
 }
 
-export const getPublicSalesPage = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicSalesPage> => {
+export const getPublicSalesPage = async (slug: string, previewToken?: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicSalesPage> => {
 
-  return customFetch<PublicSalesPage>(getGetPublicSalesPageUrl(slug),
+  return customFetch<PublicSalesPage>(getGetPublicSalesPageUrl(slug, previewToken),
   {
     ...options,
     method: 'GET'
@@ -2052,25 +2049,26 @@ export const getPublicSalesPage = async (slug: string, options?: Parameters<type
 
 
 
-
-export const getGetPublicSalesPageQueryKey = (slug: string,) => {
+export const getGetPublicSalesPageQueryKey = (slug: string, previewToken?: string) => {
+    if (previewToken) {
+      return [`/api/public/sales-page/${slug}`, { preview: previewToken }] as const;
+    }
     return [
     `/api/public/sales-page/${slug}`
     ] as const;
     }
 
 
-export const getGetPublicSalesPageQueryOptions = <TData = Awaited<ReturnType<typeof getPublicSalesPage>>, TError = ErrorType<void>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetPublicSalesPageQueryOptions = <TData = Awaited<ReturnType<typeof getPublicSalesPage>>, TError = ErrorType<void>>(slug: string, previewToken?: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetPublicSalesPageQueryKey(slug);
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicSalesPageQueryKey(slug, previewToken);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicSalesPage>>> = ({ signal }) => getPublicSalesPage(slug, { signal, ...requestOptions });
-
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicSalesPage>>> = ({ signal }) => getPublicSalesPage(slug, previewToken, { signal, ...requestOptions });
 
 
 
@@ -2084,18 +2082,16 @@ export type GetPublicSalesPageQueryError = ErrorType<void>
 
 
 export function useGetPublicSalesPage<TData = Awaited<ReturnType<typeof getPublicSalesPage>>, TError = ErrorType<void>>(
- slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ slug: string, previewToken?: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicSalesPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetPublicSalesPageQueryOptions(slug,options)
+  const queryOptions = getGetPublicSalesPageQueryOptions(slug, previewToken, options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
 
 
 
@@ -5858,6 +5854,56 @@ export function useGetStorageObject<TData = Awaited<ReturnType<typeof getStorage
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+export type GeneratePreviewTokenResult = { token: string; slug: string; expiresAt: string };
+
+export const getGeneratePreviewTokenUrl = (productId: string) => {
+  return `/api/products/${productId}/preview-token`;
+};
+
+export const generatePreviewToken = async (
+  productId: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<GeneratePreviewTokenResult> => {
+  return customFetch<GeneratePreviewTokenResult>(getGeneratePreviewTokenUrl(productId), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getGeneratePreviewTokenMutationOptions = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePreviewToken>>, TError, { productId: string }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseMutationOptions<Awaited<ReturnType<typeof generatePreviewToken>>, TError, { productId: string }, TContext> => {
+  const mutationKey = ['generatePreviewToken'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof generatePreviewToken>>, { productId: string }> = (props) => {
+    const { productId } = props ?? {};
+    return generatePreviewToken(productId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GeneratePreviewTokenMutationResult = NonNullable<Awaited<ReturnType<typeof generatePreviewToken>>>;
+export type GeneratePreviewTokenMutationError = ErrorType<unknown>;
+
+export const useGeneratePreviewToken = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePreviewToken>>, TError, { productId: string }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseMutationResult<Awaited<ReturnType<typeof generatePreviewToken>>, TError, { productId: string }, TContext> => {
+  return useMutation(getGeneratePreviewTokenMutationOptions(options));
+};
 
 
 

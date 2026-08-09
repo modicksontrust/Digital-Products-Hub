@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { useSearch } from "wouter";
 import { useGetPublicSalesPage, getGetPublicSalesPageQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -6,8 +7,14 @@ import { SalesPagePreview } from "@/components/SalesPagePreview";
 
 export default function SalesPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { data, isLoading, isError } = useGetPublicSalesPage(slug || "", {
-    query: { enabled: !!slug, queryKey: getGetPublicSalesPageQueryKey(slug || "") },
+  const search = useSearch();
+  const previewToken = new URLSearchParams(search).get("preview") ?? undefined;
+
+  const { data, isLoading, isError } = useGetPublicSalesPage(slug || "", previewToken, {
+    query: {
+      enabled: !!slug,
+      queryKey: getGetPublicSalesPageQueryKey(slug || "", previewToken),
+    },
   });
   const { toast } = useToast();
 
@@ -29,6 +36,7 @@ export default function SalesPage() {
   }
 
   const copy = data.salesCopy;
+  // coverImageUrl from the API already contains ?preview=<token> when needed
   const coverUrl = data.coverImageUrl
     ? `${import.meta.env.BASE_URL}api${data.coverImageUrl}`
     : null;
