@@ -1,4 +1,4 @@
-# DigiProducts
+# PokiPoki
 
 Internal production studio where an invite-only team creates, reviews, and exports AI-generated eBooks and lead magnets.
 

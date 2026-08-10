@@ -55,13 +55,13 @@ export async function seed(): Promise<void> {
 
   await db
     .insert(brandKitTable)
-    .values({ id: "default", defaultAuthor: "DigiProducts Studio" })
+    .values({ id: "default", defaultAuthor: "PokiPoki Studio" })
     .onConflictDoNothing();
 
   const [m1] = await db
     .insert(learnModulesTable)
     .values({
-      title: "Welcome to DigiProducts",
+      title: "Welcome to PokiPoki",
       description: "How the studio works and what great products look like.",
       stage: "create",
       orderIndex: 0,

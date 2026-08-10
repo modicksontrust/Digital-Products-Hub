@@ -82,7 +82,7 @@ export function usePageTitle(): string {
   if (location.startsWith('/account')) return 'Account Settings';
   if (location.startsWith('/products/')) return 'Product Detail';
   if (location.startsWith('/learn/')) return 'Academy';
-  return 'DigiProducts';
+  return 'PokiPoki';
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -96,7 +96,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
             D
           </div>
-          <span className="font-display font-bold text-xl tracking-tight text-white">DigiProducts</span>
+          <span className="font-display font-bold text-xl tracking-tight text-white">PokiPoki</span>
         </Link>
       </div>
 

@@ -10,7 +10,7 @@ export function AuthLayout({ children, title, subtitle }: { children: React.Reac
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
               D
             </div>
-            <span className="font-display font-bold text-xl tracking-tight text-ink-900">DigiProducts</span>
+            <span className="font-display font-bold text-xl tracking-tight text-ink-900">PokiPoki</span>
           </Link>
         </div>
         

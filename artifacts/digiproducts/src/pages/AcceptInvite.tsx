@@ -75,7 +75,7 @@ export default function AcceptInvite() {
     if (!token) return;
     acceptInvite.mutate({ token, data: values }, {
       onSuccess: async () => {
-        toast({ title: "Account created", description: "Welcome to DigiProducts!" });
+        toast({ title: "Account created", description: "Welcome to PokiPoki!" });
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         setLocation("/learn");
       },

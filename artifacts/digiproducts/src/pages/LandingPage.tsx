@@ -12,7 +12,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
               D
             </div>
-            <span className="font-display font-bold text-xl tracking-tight text-ink-900">DigiProducts</span>
+            <span className="font-display font-bold text-xl tracking-tight text-ink-900">PokiPoki</span>
           </div>
           
           <div className="flex items-center gap-4">
@@ -133,9 +133,9 @@ export default function LandingPage() {
           <div className="w-6 h-6 rounded flex items-center justify-center text-white font-bold bg-brand-500">
             D
           </div>
-          <span className="font-display font-bold text-white tracking-tight">DigiProducts</span>
+          <span className="font-display font-bold text-white tracking-tight">PokiPoki</span>
         </div>
-        <p className="text-sm">© {new Date().getFullYear()} DigiProducts Internal. All rights reserved.</p>
+        <p className="text-sm">© {new Date().getFullYear()} PokiPoki Internal. All rights reserved.</p>
       </footer>
     </div>
   );

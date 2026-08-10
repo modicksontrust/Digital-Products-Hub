@@ -281,7 +281,7 @@ export function SalesPagePreview({
       {/* Footer */}
       <footer className="bg-[#FAF8F4] py-10 border-t border-[#E7E1D4] text-center z-10 relative">
         <p className="text-[#6B7284] text-xs uppercase tracking-wider">
-          Made with <span className="text-[#20242E] font-semibold">DigiProducts</span>
+          Made with <span className="text-[#20242E] font-semibold">PokiPoki</span>
         </p>
       </footer>
     </div>
