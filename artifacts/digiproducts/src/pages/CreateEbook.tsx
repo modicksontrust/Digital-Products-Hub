@@ -131,7 +131,7 @@ export default function CreateEbook() {
     }, {
       onSuccess: (product) => {
         setLocation(`/create/ebook?productId=${product.id}`);
-        setStep(5);
+        setStep(3.5); // Review Outline — let the author confirm the detected chapters before editing
       },
       onError: () => {
         toast({ title: "Couldn't import that manuscript", description: "Try a .docx, .pdf, or pasted text.", variant: "destructive" });
@@ -1494,18 +1494,44 @@ export default function CreateEbook() {
             {/* STEP 3.5: REVIEW OUTLINE */}
             {step === 3.5 && detail && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                {(() => {
+                  // Imported manuscripts arrive with every chapter's content already
+                  // filled in (split straight from the uploaded/pasted text), unlike
+                  // an AI-generated outline where chapters only have a title/summary
+                  // and still need their content written. Use that to tell the two
+                  // apart instead of a schema flag, since detecting it this way stays
+                  // correct even if the import path changes upstream.
+                  const chaptersAlreadyWritten =
+                    detail.chapters.length > 0 &&
+                    detail.chapters.every((c) => !!c.contentMd?.trim());
+                  return (
+                <>
                 <div className="mb-6 flex justify-between items-end">
                   <div>
                     <h2 className="text-3xl font-display font-bold text-ink-900 mb-2">Review Outline</h2>
-                    <p className="text-ink-500">Edit, reorder, or approve the generated chapter structure.</p>
+                    <p className="text-ink-500">
+                      {chaptersAlreadyWritten
+                        ? "Confirm the chapters we detected from your manuscript look right before you start editing."
+                        : "Edit, reorder, or approve the generated chapter structure."}
+                    </p>
                   </div>
-                  <Button 
-                    size="lg" 
-                    className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                    onClick={handleStartGeneration}
-                  >
-                    Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" />
-                  </Button>
+                  {chaptersAlreadyWritten ? (
+                    <Button
+                      size="lg"
+                      className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                      onClick={() => setStep(5)}
+                    >
+                      Chapters look correct <ChevronRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                      onClick={handleStartGeneration}
+                    >
+                      Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -1540,6 +1566,9 @@ export default function CreateEbook() {
                     + Add Chapter Manually
                   </Button>
                 </div>
+                </>
+                  );
+                })()}
               </div>
             )}
 
