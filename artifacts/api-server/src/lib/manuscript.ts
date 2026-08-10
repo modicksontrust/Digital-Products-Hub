@@ -44,7 +44,9 @@ export function splitIntoChapters(rawText: string, fallbackTitle: string): Parse
   const lines = text.split("\n");
 
   const markdownHeadingRe = /^#{1,2}\s+(.+)$/;
-  const chapterHeadingRe = /^chapter\s+\d+[:.\-\s]*(.*)$/i;
+  // Matches "Chapter 3" (digits) or "Chapter Three" (spelled-out numbers up to twenty)
+  const chapterHeadingRe =
+    /^chapter\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)[:.\-\s]*(.*)$/i;
 
   type Boundary = { index: number; title: string };
   const boundaries: Boundary[] = [];
