@@ -53,7 +53,7 @@ export default function Account() {
                 <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-2xl font-bold mb-4 border border-white/20 backdrop-blur">
                   {user?.fullName.charAt(0)}
                 </div>
-                <h2 className="font-display font-bold text-xl mb-1">{user?.fullName}</h2>
+                <h2 className="font-display font-bold text-xl mb-1 text-background">{user?.fullName}</h2>
                 <p className="text-brand-200 text-sm mb-4">{user?.email}</p>
                 <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-lime-400">
                   <Shield className="w-4 h-4" /> {user?.role}
