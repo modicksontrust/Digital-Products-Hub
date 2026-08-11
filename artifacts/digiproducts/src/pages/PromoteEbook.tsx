@@ -317,8 +317,16 @@ export default function PromoteEbook() {
                             : "border-ink-200 hover:border-brand-300"
                         )}
                       >
-                        <div className="w-10 h-14 bg-ink-100 rounded flex items-center justify-center shrink-0">
-                          <FileText className="w-5 h-5 text-ink-400" />
+                        <div className="w-10 h-14 bg-ink-100 rounded overflow-hidden flex items-center justify-center shrink-0">
+                          {(p.coverConfig as { imageUrl?: string } | null)?.imageUrl ? (
+                            <img
+                              src={`${import.meta.env.BASE_URL}api/storage${(p.coverConfig as { imageUrl: string }).imageUrl.replace(/^\/api\/storage/, "")}`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <FileText className="w-5 h-5 text-ink-400" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-ink-900 truncate">{p.title}</p>
