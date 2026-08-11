@@ -69,6 +69,7 @@ export default function ProductDetail() {
   const [reviewDecision, setReviewDecision] = useState<"approved" | "changes_requested" | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const [activeTab, setActiveTab] = useState("chapters");
+  const [historyFilter, setHistoryFilter] = useState<"all" | "approved" | "changes_requested">("all");
   const commentsTabRef = useRef<HTMLButtonElement>(null);
 
   const reviewMutation = useMutation({
@@ -379,12 +380,42 @@ export default function ProductDetail() {
           <TabsContent value="comments" className="mt-6">
             <Card className="border-ink-100 shadow-sm">
               <CardHeader className="border-b border-ink-100">
-                <CardTitle className="text-lg font-semibold">Review History</CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <CardTitle className="text-lg font-semibold">Review History</CardTitle>
+                  {reviewHistory && reviewHistory.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      {(["all", "approved", "changes_requested"] as const).map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => setHistoryFilter(f)}
+                          className={cn(
+                            "text-xs font-medium px-3 py-1 rounded-full border transition-colors",
+                            historyFilter === f
+                              ? f === "approved"
+                                ? "bg-lime-500 border-lime-500 text-white"
+                                : f === "changes_requested"
+                                ? "bg-rose-500 border-rose-500 text-white"
+                                : "bg-ink-800 border-ink-800 text-white"
+                              : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"
+                          )}
+                        >
+                          {f === "all" ? "All" : f === "approved" ? "Approved" : "Changes Requested"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="p-6">
-                {reviewHistory && reviewHistory.length > 0 ? (
+                {(() => {
+                  const filtered = reviewHistory
+                    ? historyFilter === "all"
+                      ? reviewHistory
+                      : reviewHistory.filter((r: { decision: string }) => r.decision === historyFilter)
+                    : [];
+                  return filtered && filtered.length > 0 ? (
                   <ol className="relative border-l border-ink-200 space-y-0">
-                    {reviewHistory.map((review, idx) => (
+                    {filtered.map((review, idx) => (
                       <li key={review.id} className="mb-8 ml-6 last:mb-0">
                         <span className={cn(
                           "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-white",
@@ -424,9 +455,10 @@ export default function ProductDetail() {
                 ) : (
                   <div className="text-center py-8 text-ink-500">
                     <MessageSquare className="w-12 h-12 text-ink-300 mx-auto mb-4" />
-                    <p>No reviews yet.</p>
+                    <p>{historyFilter === "all" ? "No reviews yet." : "No reviews match this filter."}</p>
                   </div>
-                )}
+                );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
