@@ -555,7 +555,7 @@ export default function ProductDetail() {
                   const filtered = reviewHistory
                     ? historyFilter === "all"
                       ? reviewHistory
-                      : reviewHistory.filter((r: { decision: string }) => r.decision === historyFilter)
+                      : reviewHistory.filter((r) => r.decision === historyFilter)
                     : [];
                   return filtered && filtered.length > 0 ? (
                   <ol className="relative border-l border-ink-200 space-y-0">

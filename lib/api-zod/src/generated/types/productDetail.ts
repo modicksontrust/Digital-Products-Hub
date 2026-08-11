@@ -13,4 +13,5 @@ export interface ProductDetail {
   product: Product;
   chapters: Chapter[];
   latestReview?: Review;
+  reviewHistory?: Review[];
 }
