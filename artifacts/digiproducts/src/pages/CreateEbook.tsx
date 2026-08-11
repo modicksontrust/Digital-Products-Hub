@@ -305,19 +305,28 @@ export default function CreateEbook() {
 
   const handleStartBrief = () => {
     if (!brief.topic) { toast({ title: "Topic required", variant: "destructive" }); return; }
-    
-    createProduct.mutate({
-      data: { type: 'ebook', title: brief.title || 'Untitled Draft', authorName: brief.authorName || undefined, topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language, region: brief.region, lengthTier: brief.lengthTier }
-    }, {
-      onSuccess: (product) => {
-        generateOutline.mutate({ data: { productId: product.id } }, {
-          onSuccess: (job) => {
-            setLocation(`/create/ebook?productId=${product.id}&jobId=${job.id}`);
-            setStep(3);
-          }
-        });
-      }
-    });
+
+    const briefPayload = { title: brief.title || 'Untitled Draft', authorName: brief.authorName || undefined, topic: brief.topic, audience: brief.audience, tone: brief.tone, chapterCount: brief.chapterCount, depth: brief.depth, language: brief.language, region: brief.region, lengthTier: brief.lengthTier };
+
+    const startOutline = (productId: string) => {
+      generateOutline.mutate({ data: { productId } }, {
+        onSuccess: (job) => {
+          setLocation(`/create/ebook?productId=${productId}&jobId=${job.id}`);
+          setStep(3);
+        }
+      });
+    };
+
+    if (urlProductId) {
+      // Existing product — update brief then regenerate outline without creating a duplicate
+      updateProduct.mutate({ productId: urlProductId, data: briefPayload }, {
+        onSuccess: () => startOutline(urlProductId),
+      });
+    } else {
+      createProduct.mutate({ data: { type: 'ebook', ...briefPayload } }, {
+        onSuccess: (product) => startOutline(product.id),
+      });
+    }
   };
 
   // ==========================================
