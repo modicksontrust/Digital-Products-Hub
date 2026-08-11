@@ -94,7 +94,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <div className="p-6">
         <Link href={isLocked ? "/learn" : "/dashboard"} className="flex items-center gap-2" onClick={onNavigate}>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
-            D
+            P
           </div>
           <span className="font-display font-bold text-xl tracking-tight text-white">PokiPoki</span>
         </Link>
