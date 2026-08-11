@@ -1171,9 +1171,23 @@ export default function CreateEbook() {
                     )}
 
                     {generateSubtopicSuggestions.isError && (
-                      <div className="flex items-center gap-2 text-sm text-destructive">
-                        <AlertCircle className="w-4 h-4" /> Couldn't fetch subtopic suggestions.
-                        <Button variant="link" className="h-auto p-0" onClick={() => selectedNiche && handlePickNiche(selectedNiche)}>Try again</Button>
+                      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-center space-y-3">
+                        <AlertCircle className="w-8 h-8 text-destructive mx-auto" />
+                        <div>
+                          <p className="font-semibold text-ink-900">Couldn't load suggestions</p>
+                          <p className="text-sm text-ink-500 mt-1">
+                            {(generateSubtopicSuggestions.error as { status?: number })?.status === 502
+                              ? "Our AI hit a snag generating ideas — give it another try."
+                              : "Something went wrong. Please try again."}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="rounded-xl"
+                          onClick={() => selectedNiche && handlePickNiche(selectedNiche)}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" /> Try again
+                        </Button>
                       </div>
                     )}
 
@@ -1269,9 +1283,23 @@ export default function CreateEbook() {
                     )}
 
                     {generateNicheSuggestions.isError && (
-                      <div className="flex items-center gap-2 text-sm text-destructive">
-                        <AlertCircle className="w-4 h-4" /> Couldn't fetch topic ideas.
-                        <Button variant="link" className="h-auto p-0" onClick={handleRegenerateTopics}>Try again</Button>
+                      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-center space-y-3">
+                        <AlertCircle className="w-8 h-8 text-destructive mx-auto" />
+                        <div>
+                          <p className="font-semibold text-ink-900">Couldn't load topic ideas</p>
+                          <p className="text-sm text-ink-500 mt-1">
+                            {(generateNicheSuggestions.error as { status?: number })?.status === 502
+                              ? "Our AI hit a snag generating ideas — give it another try."
+                              : "Something went wrong. Please try again."}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="rounded-xl"
+                          onClick={handleRegenerateTopics}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" /> Try again
+                        </Button>
                       </div>
                     )}
 
