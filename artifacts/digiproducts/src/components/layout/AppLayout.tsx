@@ -170,7 +170,7 @@ export function Sidebar() {
   );
 }
 
-export function Topbar({ variant = "default", actions, titleHref }: { variant?: "default" | "transparent"; actions?: React.ReactNode; titleHref?: string }) {
+export function Topbar({ variant = "default", actions, titleHref, titleOnClick }: { variant?: "default" | "transparent"; actions?: React.ReactNode; titleHref?: string; titleOnClick?: () => void }) {
   const { data: user } = useGetMe();
   const logout = useLogout();
   const { toast } = useToast();
@@ -232,7 +232,7 @@ export function Topbar({ variant = "default", actions, titleHref }: { variant?: 
           </SheetContent>
         </Sheet>
         {titleHref ? (
-          <Link to={titleHref}>
+          <Link href={titleHref} onClick={titleOnClick}>
             <h1 className={cn(
               "font-display font-semibold text-lg truncate hover:opacity-70 transition-opacity cursor-pointer",
               (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
@@ -359,17 +359,19 @@ export function AppLayout({
   headerVariant = "default",
   headerActions,
   headerTitleHref,
+  headerTitleOnClick,
 }: {
   children: React.ReactNode;
   headerVariant?: "default" | "transparent";
   headerActions?: React.ReactNode;
   headerTitleHref?: string;
+  headerTitleOnClick?: () => void;
 }) {
   return (
     <div className="min-h-[100dvh] bg-paper">
       <Sidebar />
       <div className="flex flex-col min-h-[100dvh] md:pl-64 relative">
-        <Topbar variant={headerVariant} actions={headerActions} titleHref={headerTitleHref} />
+        <Topbar variant={headerVariant} actions={headerActions} titleHref={headerTitleHref} titleOnClick={headerTitleOnClick} />
         <main className={cn("flex-1 flex flex-col relative z-0", headerVariant === "default" && "pt-16")}>
           {children}
         </main>
