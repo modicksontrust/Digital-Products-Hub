@@ -1659,13 +1659,19 @@ export default function CreateEbook() {
                       Chapters look correct <ChevronRight className="w-5 h-5 ml-2" />
                     </Button>
                   ) : (
-                    <Button
-                      size="lg"
-                      className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                      onClick={handleStartGeneration}
-                    >
-                      Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" />
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-gold-50 text-gold-700 rounded-xl border border-gold-200">
+                        <Sparkles className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Est. Cost: {1 + detail.chapters.length} credits</span>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
+                        onClick={handleStartGeneration}
+                      >
+                        Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </div>
                   )}
                 </div>
 
