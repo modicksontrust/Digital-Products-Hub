@@ -104,14 +104,49 @@ export default function PromoteEbook() {
   const [objective, setObjective] = useState<Objective | null>(null);
   const [results, setResults] = useState<GeneratedResults | null>(null);
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const { data: products } = useGetProducts({}, { query: { queryKey: getGetProductsQueryKey() } });
   const ebookProducts = products?.filter(p => p.type === "ebook" && p.status !== "archived") ?? [];
+
+  const prefillBookDetails = async (product: { id: string; title: string; topic?: string | null; audience?: string | null; priceCents?: number | null }) => {
+    // Immediately fill known fields from product data
+    setBookDetails(d => ({
+      ...d,
+      title: product.title,
+      audience: product.audience ?? d.audience,
+      price: product.priceCents ? String(Math.round(product.priceCents / 100)) : d.price,
+    }));
+
+    // AI-generate painPoint + benefits in the background
+    setDetailsLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/generate/book-details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bookTitle: product.title, topic: product.topic ?? undefined, audience: product.audience ?? undefined }),
+      });
+      if (res.ok) {
+        const data: { painPoint: string; benefits: string[] } = await res.json();
+        setBookDetails(d => ({
+          ...d,
+          painPoint: data.painPoint || d.painPoint,
+          benefits: data.benefits?.length ? data.benefits : d.benefits,
+        }));
+      }
+    } catch {
+      // Silent — user can fill manually
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   const startWizard = () => {
     setStep("select"); setSelectedProduct(null); setAdType(null);
     setBookDetails({ title: "", painPoint: "", audience: "", country: "Global", price: "", benefits: [] });
     setBenefitInput(""); setPlatforms(new Set()); setObjective(null); setResults(null);
+    setDetailsLoading(false);
     setMode("wizard");
   };
 
@@ -307,8 +342,9 @@ export default function PromoteEbook() {
                       <button
                         key={p.id}
                         onClick={() => {
-                          setSelectedProduct({ id: p.id, title: p.title, topic: p.topic });
-                          setBookDetails(d => ({ ...d, title: p.title }));
+                          const prod = { id: p.id, title: p.title, topic: p.topic, audience: (p as { audience?: string | null }).audience, priceCents: (p as { priceCents?: number | null }).priceCents };
+                          setSelectedProduct(prod);
+                          prefillBookDetails(prod);
                         }}
                         className={cn(
                           "w-full text-left flex items-center gap-4 bg-white border-2 rounded-xl p-4 transition-all",
@@ -376,7 +412,15 @@ export default function PromoteEbook() {
             {/* ── Step: Book Details ────────────────────────────────── */}
             {step === "details" && (
               <div>
-                <p className="text-ink-500 mb-6">Review your book details. This data shapes every ad creative.</p>
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-ink-500">Review your book details. This data shapes every ad creative.</p>
+                  {detailsLoading && (
+                    <span className="flex items-center gap-1.5 text-xs text-brand-500 font-medium">
+                      <span className="w-3 h-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin inline-block" />
+                      Auto-filling with AI…
+                    </span>
+                  )}
+                </div>
                 <div className="bg-white border border-ink-200 rounded-2xl p-6 space-y-5">
                   <div>
                     <label className="block text-sm font-semibold text-ink-700 mb-1.5">Book Title <span className="text-brand-500">*</span></label>

@@ -177,6 +177,36 @@ Order the list with the highest "sellabilityScore" first. Respond as a JSON arra
   );
 });
 
+router.post("/generate/book-details", async (req, res): Promise<void> => {
+  const { bookTitle, topic, audience } = req.body as { bookTitle?: string; topic?: string; audience?: string };
+  if (!bookTitle?.trim()) {
+    res.status(400).json({ error: "bookTitle is required" });
+    return;
+  }
+  const context = [
+    topic ? `Topic/angle: ${topic}` : "",
+    audience ? `Target audience: ${audience}` : "",
+  ].filter(Boolean).join("\n");
+
+  try {
+    const result = await aiJson<{ painPoint: string; benefits: string[] }>(
+      "You are a digital-product marketing strategist who writes compelling, specific ad copy for self-published eBooks.",
+      `Given the following eBook, return a JSON object with exactly two fields:
+- "painPoint": a single clear, specific sentence describing the main frustration or problem this book solves (written from the reader's perspective, present tense, vivid and relatable)
+- "benefits": an array of exactly 5 concise benefit statements (each 5-10 words, outcome-focused, starts with a strong verb or result)
+
+eBook title: "${bookTitle}"
+${context}
+
+Respond ONLY with valid JSON. No prose, no markdown fences.`,
+      512,
+    );
+    res.json({ painPoint: result.painPoint ?? "", benefits: Array.isArray(result.benefits) ? result.benefits : [] });
+  } catch {
+    res.status(502).json({ error: "AI generation failed", painPoint: "", benefits: [] });
+  }
+});
+
 router.post("/generate/ad-copy", async (req, res): Promise<void> => {
   const parsed = GenerateAdCopyBody.safeParse(req.body);
   if (!parsed.success) {
