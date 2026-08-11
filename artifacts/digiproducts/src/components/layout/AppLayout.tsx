@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useGetMe, useLogout, useGetNotifications, useMarkNotificationRead, getGetNotificationsQueryKey } from "@workspace/api-client-react";
 import { 
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
-  CreditCard, History, PenTool, LayoutTemplate,
+  CreditCard, History, PenTool, LayoutTemplate, Megaphone,
   LogOut, User, Bell, ChevronDown, CheckCircle, Menu
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -40,6 +40,7 @@ function useNavigation() {
       items: [
         { name: "eBook / PDF Generator", href: "/create/ebook", icon: PenTool, locked: isLocked },
         { name: "Lead Magnet", href: "/create/lead-magnet", icon: LayoutTemplate, locked: isLocked },
+        { name: "Promote eBook", href: "/create/promote-ebook", icon: Megaphone, locked: isLocked },
       ]
     },
     {

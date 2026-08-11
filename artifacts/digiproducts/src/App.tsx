@@ -22,6 +22,7 @@ import NotFound from "@/pages/not-found";
 import SalesPage from "@/pages/SalesPage";
 
 import CreateLeadMagnet from "@/pages/CreateLeadMagnet";
+import PromoteEbook from "@/pages/PromoteEbook";
 
 export default function App() {
   return (
@@ -98,6 +99,11 @@ export default function App() {
         <Route path="/create/lead-magnet">
           <ProtectedRoute>
             <CreateLeadMagnet />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/create/promote-ebook">
+          <ProtectedRoute>
+            <PromoteEbook />
           </ProtectedRoute>
         </Route>
         
