@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow, format } from "date-fns";
 import { 
   FileText, PenTool, LayoutTemplate, Clock, 
-  CheckCircle, Download, FileUp, Sparkles, AlertCircle, ChevronRight,
+  CheckCircle, Download, FileUp, AlertCircle, ChevronRight,
   CreditCard, History, GraduationCap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,6 @@ export default function Dashboard() {
     { label: "Awaiting Review", value: stats?.awaitingReview || 0, icon: AlertCircle, bg: "grad-tile-gold" },
     { label: "Approved", value: stats?.approved || 0, icon: CheckCircle, bg: "grad-tile-lime" },
     { label: "Total PDF Exports", value: stats?.totalExports || 0, icon: Download, bg: "grad-tile-deep-emerald" },
-    { label: "AI Credits", value: stats?.creditsRemaining || 0, icon: Sparkles, bg: "grad-tile-pine" },
   ];
 
   return (
