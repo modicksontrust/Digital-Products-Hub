@@ -1,15 +1,24 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import {
-  useGetProduct, useSubmitForReview, useGetProductExports, useExportProduct,
+  useGetProduct, useGetMe, useSubmitForReview, useGetProductExports, useExportProduct,
   getGetProductQueryKey, getGetProductExportsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Download, Eye, CheckCircle, Clock, Edit3, MessageSquare, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { FileText, Download, Eye, CheckCircle, XCircle, Clock, Edit3, MessageSquare, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -23,11 +32,31 @@ function formatFileSize(bytes: number | null | undefined) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const submitReviewFn = async (
+  base: string,
+  productId: string,
+  decision: "approved" | "changes_requested",
+  comment: string,
+): Promise<void> => {
+  const res = await fetch(`${base}api/products/${productId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ decision, comment: comment.trim() || undefined }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? "Review failed");
+  }
+};
+
 export default function ProductDetail() {
   const { productId } = useParams();
+  const base = import.meta.env.BASE_URL;
   const { data: detail, isLoading } = useGetProduct(productId || '', {
     query: { enabled: !!productId, queryKey: getGetProductQueryKey(productId || '') }
   });
+  const { data: me } = useGetMe();
   const submitReview = useSubmitForReview();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -35,6 +64,30 @@ export default function ProductDetail() {
     query: { enabled: !!productId, queryKey: getGetProductExportsQueryKey(productId || '') }
   });
   const exportProduct = useExportProduct();
+
+  // Inline review dialog state
+  const [reviewDecision, setReviewDecision] = useState<"approved" | "changes_requested" | null>(null);
+  const [reviewComment, setReviewComment] = useState("");
+
+  const reviewMutation = useMutation({
+    mutationFn: () => submitReviewFn(base, productId!, reviewDecision!, reviewComment),
+    onSuccess: () => {
+      toast({
+        title: reviewDecision === "approved" ? "Product approved ✓" : "Changes requested",
+        description: reviewDecision === "approved"
+          ? "The creator will be notified."
+          : "The creator will be notified and can revise.",
+      });
+      // Refresh this product and the review queue
+      queryClient.invalidateQueries({ queryKey: getGetProductQueryKey(productId || '') });
+      queryClient.invalidateQueries({ queryKey: ["review-queue"] });
+      setReviewDecision(null);
+      setReviewComment("");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
   const handleGenerateExport = () => {
     if (!productId) return;
@@ -64,6 +117,9 @@ export default function ProductDetail() {
   const { product, chapters, latestReview } = detail;
   const isEbook = product.type === 'ebook';
   const editPath = `/create/${isEbook ? 'ebook' : 'lead-magnet'}?productId=${product.id}`;
+
+  const canReview = me?.role === 'admin' || me?.role === 'manager';
+  const showReviewBanner = product.status === 'in_review' && canReview;
 
   const handleSubmitReview = () => {
     if (!productId) return;
@@ -135,6 +191,36 @@ export default function ProductDetail() {
             </Link>
           </div>
         </div>
+
+        {/* Inline Review Banner — visible to managers/admins when product is in review */}
+        {showReviewBanner && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900">This product is awaiting your review</p>
+                <p className="text-sm text-amber-700 mt-0.5">Approve it or request changes from the creator.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 gap-1.5"
+                onClick={() => { setReviewDecision("changes_requested"); setReviewComment(""); }}
+              >
+                <XCircle className="w-4 h-4" /> Request Changes
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-xl bg-lime-500 hover:bg-lime-600 text-white gap-1.5"
+                onClick={() => { setReviewDecision("approved"); setReviewComment(""); }}
+              >
+                <CheckCircle className="w-4 h-4" /> Approve
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content Tabs */}
         <Tabs defaultValue="chapters">
@@ -307,6 +393,49 @@ export default function ProductDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Inline Review Confirmation Dialog */}
+      <Dialog open={!!reviewDecision} onOpenChange={open => !open && setReviewDecision(null)}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {reviewDecision === "approved" ? "Approve product" : "Request changes"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-ink-600">
+              {reviewDecision === "approved"
+                ? `"${product.title}" will be marked as approved and the creator will be notified.`
+                : `Describe what needs to change. The creator will be notified and can revise.`}
+            </p>
+            <Textarea
+              placeholder={reviewDecision === "approved" ? "Optional note to the creator…" : "What needs to be changed? (required)"}
+              value={reviewComment}
+              onChange={e => setReviewComment(e.target.value)}
+              className="rounded-xl resize-none"
+              rows={3}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="rounded-xl" onClick={() => setReviewDecision(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => reviewMutation.mutate()}
+              disabled={reviewMutation.isPending || (reviewDecision === "changes_requested" && !reviewComment.trim())}
+              className={
+                reviewDecision === "approved"
+                  ? "rounded-xl bg-lime-500 hover:bg-lime-600 text-white"
+                  : "rounded-xl bg-rose-500 hover:bg-rose-600 text-white"
+              }
+            >
+              {reviewMutation.isPending
+                ? "Submitting…"
+                : reviewDecision === "approved" ? "Approve" : "Send Feedback"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
