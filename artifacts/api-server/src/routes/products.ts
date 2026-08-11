@@ -559,6 +559,10 @@ router.post(
       return;
     }
     const user = req.user!;
+    if (product.ownerId === user.id) {
+      res.status(403).json({ error: "You cannot review your own product" });
+      return;
+    }
     await db.insert(reviewsTable).values({
       productId: product.id,
       reviewerId: user.id,

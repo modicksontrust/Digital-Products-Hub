@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useGetProducts, getGetProductsQueryKey } from "@workspace/api-client-react";
+import { useGetProducts, getGetProductsQueryKey, useGetMe } from "@workspace/api-client-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ interface ReviewProduct {
   title: string;
   type: string;
   status: string;
+  ownerId: string;
   ownerName?: string | null;
   updatedAt: string;
   coverConfig?: { imageUrl?: string } | null;
@@ -63,6 +64,8 @@ export default function ReviewQueue() {
   const base = import.meta.env.BASE_URL;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: me } = useGetMe();
 
   const { data: queue, isLoading } = useQuery({
     queryKey: ["review-queue"],
@@ -168,23 +171,25 @@ export default function ReviewQueue() {
                           </Badge>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 gap-1.5"
-                          onClick={() => openDialog(product, "changes_requested")}
-                        >
-                          <XCircle className="w-4 h-4" /> Request Changes
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="rounded-xl bg-lime-500 hover:bg-lime-600 text-white gap-1.5"
-                          onClick={() => openDialog(product, "approved")}
-                        >
-                          <CheckCircle className="w-4 h-4" /> Approve
-                        </Button>
-                      </div>
+                      {product.ownerId !== me?.id && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 gap-1.5"
+                            onClick={() => openDialog(product, "changes_requested")}
+                          >
+                            <XCircle className="w-4 h-4" /> Request Changes
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="rounded-xl bg-lime-500 hover:bg-lime-600 text-white gap-1.5"
+                            onClick={() => openDialog(product, "approved")}
+                          >
+                            <CheckCircle className="w-4 h-4" /> Approve
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-4 mt-3 text-xs text-ink-400">
