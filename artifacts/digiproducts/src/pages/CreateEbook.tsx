@@ -45,10 +45,15 @@ export default function CreateEbook() {
   const searchParams = new URLSearchParams(useSearch());
   const urlProductId = searchParams.get("productId");
   const urlJobId = searchParams.get("jobId");
-  
+  const urlStep = searchParams.get("step");
+
   // Skip the "how do you want to start" choice when resuming an existing
   // product — it only applies to starting a brand new eBook from scratch.
-  const [step, setStep] = useState(() => (urlProductId ? (urlJobId ? 3 : 5) : 0));
+  // A ?step= param lets ProductDetail deep-link to the right wizard stage.
+  const [step, setStep] = useState(() => {
+    if (urlStep) return Number(urlStep);
+    return urlProductId ? (urlJobId ? 3 : 5) : 0;
+  });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 

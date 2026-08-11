@@ -128,7 +128,22 @@ export default function ProductDetail() {
 
   const { product, chapters, latestReview, reviewHistory } = detail;
   const isEbook = product.type === 'ebook';
-  const editPath = `/create/${isEbook ? 'ebook' : 'lead-magnet'}?productId=${product.id}`;
+
+  // Compute which wizard step to resume at based on what's already done.
+  const ebookResumeStep = (() => {
+    if (!chapters || chapters.length === 0) return 5; // editor
+    const allReady = chapters.every((c: { status: string }) => c.status === 'ready');
+    if (!allReady) return 5; // still generating
+    const hasCover = !!(product.coverConfig as { imageUrl?: string } | null)?.imageUrl;
+    if (!hasCover) return 6; // cover picker
+    const hasExport = exports && exports.length > 0;
+    if (!hasExport) return 7; // export
+    return 8; // publish / sales copy
+  })();
+
+  const editPath = isEbook
+    ? `/create/ebook?productId=${product.id}&step=${ebookResumeStep}`
+    : `/create/lead-magnet?productId=${product.id}`;
 
   const isOwner = me?.id === product.ownerId;
   const canReview = (me?.role === 'admin' || me?.role === 'manager') && !isOwner;
