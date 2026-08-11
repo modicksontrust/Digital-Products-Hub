@@ -253,20 +253,6 @@ export function Topbar({ variant = "default", actions, titleHref, titleOnClick }
       
       <div className="flex items-center gap-4">
         {actions}
-        {/* Credits Chip */}
-        <div className={cn(
-          "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border",
-          (variant === "transparent" && !scrolled)
-            ? "bg-white/15 border-white/25 backdrop-blur-sm"
-            : "bg-gradient-to-r from-gold-300/20 to-gold-400/20 border-gold-300/30"
-        )}>
-          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gold-400 to-gold-500 shadow-sm flex items-center justify-center">
-            <span className="text-[10px] text-white font-bold">✨</span>
-          </div>
-          <span className={cn("text-sm font-semibold", (variant === "transparent" && !scrolled) ? "text-white" : "text-gold-500")}>{user?.creditsBalance || 0}</span>
-          <span className={cn("text-xs font-medium uppercase tracking-wide", (variant === "transparent" && !scrolled) ? "text-white/80" : "text-gold-500/80")}>Credits</span>
-        </div>
-
         {/* Notifications */}
         <Popover>
           <PopoverTrigger asChild>
