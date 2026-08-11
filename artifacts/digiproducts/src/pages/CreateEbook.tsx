@@ -261,6 +261,25 @@ export default function CreateEbook() {
     region: "global_english", lengthTier: "pdf_guide"
   });
 
+  // Pre-fill brief fields when resuming an existing product (e.g. user clicked
+  // "Setup" in the nav bar to go back and edit their brief).
+  useEffect(() => {
+    if (!urlProductId || !detail?.product) return;
+    const p = detail.product;
+    setBrief({
+      title: p.title ?? "",
+      authorName: p.authorName ?? "",
+      topic: p.topic ?? "",
+      audience: p.audience ?? "",
+      tone: p.tone ?? "professional",
+      chapterCount: p.chapterCount ?? 10,
+      depth: p.depth ?? "standard",
+      language: p.language ?? "English",
+      region: p.region ?? "global_english",
+      lengthTier: p.lengthTier ?? "pdf_guide",
+    });
+  }, [urlProductId, detail?.product?.id]);
+
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const generateOutline = useGenerateOutline();
