@@ -4,7 +4,8 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import {
   useGetProduct, useGetMe, useSubmitForReview, useGetProductExports, useExportProduct,
-  getGetProductQueryKey, getGetProductExportsQueryKey,
+  useGetSalesCopy,
+  getGetProductQueryKey, getGetProductExportsQueryKey, getGetSalesCopyQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,9 @@ export default function ProductDetail() {
     query: { enabled: !!productId, queryKey: getGetProductExportsQueryKey(productId || '') }
   });
   const exportProduct = useExportProduct();
+  const { data: salesCopy, isLoading: salesCopyLoading } = useGetSalesCopy(productId || '', {
+    query: { enabled: !!productId, queryKey: getGetSalesCopyQueryKey(productId || '') }
+  });
 
   // Inline review dialog state
   const [reviewDecision, setReviewDecision] = useState<"approved" | "changes_requested" | null>(null);
@@ -367,14 +371,111 @@ export default function ProductDetail() {
           </TabsContent>
 
           <TabsContent value="sales" className="mt-6">
-            <Card className="border-ink-100 shadow-sm">
-              <CardContent className="p-8 text-center text-ink-500">
-                <FileText className="w-12 h-12 text-ink-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-ink-900 mb-2">Sales Copy Not Generated</h3>
-                <p className="mb-6 max-w-md mx-auto">Generate sales page copy using the AI based on your final product content.</p>
-                <Button variant="outline" className="rounded-xl">Generate Sales Copy</Button>
-              </CardContent>
-            </Card>
+            {salesCopyLoading ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-6 h-6 text-brand-500 animate-spin" />
+              </div>
+            ) : salesCopy?.headline ? (
+              <div className="space-y-6">
+                {/* Header row */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-display font-bold text-ink-900">{salesCopy.headline}</h2>
+                    {salesCopy.subheadline && (
+                      <p className="text-ink-600 mt-1">{salesCopy.subheadline}</p>
+                    )}
+                  </div>
+                  <Link href={editPath}>
+                    <Button variant="outline" size="sm" className="rounded-xl shrink-0">
+                      <Edit3 className="w-4 h-4 mr-2" /> Edit in wizard
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Bullet points */}
+                  {salesCopy.bullets && salesCopy.bullets.length > 0 && (
+                    <Card className="border-ink-100 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold text-ink-700 uppercase tracking-wide">Key Benefits</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <ul className="space-y-2">
+                          {salesCopy.bullets.map((b, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-ink-700">
+                              <CheckCircle className="w-4 h-4 text-lime-500 mt-0.5 shrink-0" />
+                              {b}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Who it's for + price + CTA */}
+                  <div className="space-y-4">
+                    {salesCopy.whoItsFor && (
+                      <Card className="border-ink-100 shadow-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold text-ink-700 uppercase tracking-wide">Who It's For</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <p className="text-sm text-ink-700">{salesCopy.whoItsFor}</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    <div className="flex gap-4">
+                      {salesCopy.suggestedPriceBand && (
+                        <Card className="border-ink-100 shadow-sm flex-1">
+                          <CardContent className="p-4">
+                            <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1">Suggested Price</p>
+                            <p className="text-lg font-bold text-ink-900">{salesCopy.suggestedPriceBand}</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                      {salesCopy.ctaText && (
+                        <Card className="border-brand-100 bg-brand-50 shadow-sm flex-1">
+                          <CardContent className="p-4">
+                            <p className="text-xs font-semibold text-brand-600 uppercase tracking-wide mb-1">CTA Button</p>
+                            <p className="text-sm font-bold text-brand-800">"{salesCopy.ctaText}"</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* FAQ */}
+                {salesCopy.faq && salesCopy.faq.length > 0 && (
+                  <Card className="border-ink-100 shadow-sm">
+                    <CardHeader className="border-b border-ink-100 pb-3">
+                      <CardTitle className="text-sm font-semibold text-ink-700 uppercase tracking-wide">FAQ</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {salesCopy.faq.map((item, i) => (
+                        <div key={i} className={cn("px-6 py-4", i < salesCopy.faq!.length - 1 && "border-b border-ink-100")}>
+                          <p className="font-semibold text-ink-900 text-sm mb-1">{item.question}</p>
+                          <p className="text-sm text-ink-600">{item.answer}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              <Card className="border-ink-100 shadow-sm">
+                <CardContent className="p-8 text-center text-ink-500">
+                  <FileText className="w-12 h-12 text-ink-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-ink-900 mb-2">No sales copy yet</h3>
+                  <p className="mb-6 max-w-md mx-auto">
+                    Generate your headline, benefit bullets, FAQ, and suggested price in the eBook wizard.
+                  </p>
+                  <Link href={editPath}>
+                    <Button className="rounded-xl bg-brand-500 hover:bg-brand-600">Go to wizard</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="comments" className="mt-6">
