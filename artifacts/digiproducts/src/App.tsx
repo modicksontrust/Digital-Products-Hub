@@ -23,6 +23,7 @@ import SalesPage from "@/pages/SalesPage";
 
 import CreateLeadMagnet from "@/pages/CreateLeadMagnet";
 import PromoteEbook from "@/pages/PromoteEbook";
+import ReviewQueue from "@/pages/ReviewQueue";
 
 export default function App() {
   return (
@@ -107,6 +108,13 @@ export default function App() {
           </ProtectedRoute>
         </Route>
         
+        {/* Team */}
+        <Route path="/review">
+          <ProtectedRoute>
+            <ReviewQueue />
+          </ProtectedRoute>
+        </Route>
+
         {/* Admin */}
         <Route path="/admin/users">
           <ProtectedRoute>

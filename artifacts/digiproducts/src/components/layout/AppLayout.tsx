@@ -55,7 +55,7 @@ function useNavigation() {
       name: "TEAM",
       items: [
         { name: "Review Queue", href: "/review", icon: CheckCircle, locked: isLocked },
-        { name: "Team Products", href: "/products?scope=team", icon: Users, locked: isLocked },
+        { name: "Team Products", href: "/products", icon: Users, locked: isLocked },
       ]
     }] : []),
     ...(user?.role === 'admin' ? [{
