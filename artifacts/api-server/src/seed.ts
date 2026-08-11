@@ -13,7 +13,21 @@ import {
 } from "@workspace/db";
 import { logger } from "./lib/logger";
 
+const CREDIT_COSTS = [
+  { actionKey: "outline", cost: 1, label: "Generate outline" },
+  { actionKey: "chapter", cost: 1, label: "Generate chapter" },
+  { actionKey: "rewrite", cost: 1, label: "Rewrite chapter" },
+  { actionKey: "sales_copy", cost: 2, label: "Generate sales copy" },
+  { actionKey: "lead_magnet", cost: 3, label: "Generate lead magnet" },
+  { actionKey: "ad_copy", cost: 2, label: "Generate ad copy" },
+];
+
 export async function seed(): Promise<void> {
+  // Always upsert credit costs so new action keys are added to existing databases.
+  for (const c of CREDIT_COSTS) {
+    await db.insert(creditCostsTable).values(c).onConflictDoNothing();
+  }
+
   const [existingAdmin] = await db
     .select()
     .from(usersTable)
@@ -41,17 +55,6 @@ export async function seed(): Promise<void> {
     actionKey: "grant",
     note: "Initial admin allocation",
   });
-
-  const costs = [
-    { actionKey: "outline", cost: 1, label: "Generate outline" },
-    { actionKey: "chapter", cost: 1, label: "Generate chapter" },
-    { actionKey: "rewrite", cost: 1, label: "Rewrite chapter" },
-    { actionKey: "sales_copy", cost: 2, label: "Generate sales copy" },
-    { actionKey: "lead_magnet", cost: 3, label: "Generate lead magnet" },
-  ];
-  for (const c of costs) {
-    await db.insert(creditCostsTable).values(c).onConflictDoNothing();
-  }
 
   await db
     .insert(brandKitTable)

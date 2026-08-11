@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useGetProducts, getGetProductsQueryKey } from "@workspace/api-client-react";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,56 +84,6 @@ function loadCampaigns(): Campaign[] {
   try { return JSON.parse(localStorage.getItem("poki_ad_campaigns") || "[]"); } catch { return []; }
 }
 
-function generateResults(details: BookDetails, adType: AdType, _platforms: Platform[], objective: Objective): GeneratedResults {
-  const t = details.title || "Your eBook";
-  const pain = details.painPoint || "your biggest challenge";
-  const aud = details.audience || "your audience";
-  const ctaMap: Record<Objective, string> = { traffic: "Get it now →", engagement: "Save this for later!", conversions: "Grab your copy today" };
-  const cta = ctaMap[objective];
-  const price = details.price ? `Only $${details.price}` : "";
-
-  const adCopy: AdCopyVariation[] = [
-    { hook: `Are you tired of ${pain}?`, body: `${t} gives ${aud} a proven system to finally change that. ${details.benefits[0] || "Real results, fast."} ${price}`, cta },
-    { hook: `What if you could solve ${pain} in 30 days?`, body: `Thousands of ${aud} are already using "${t}" to do exactly that. ${details.benefits[1] || ""}`, cta },
-    { hook: `Nobody talks about this...`, body: `"${t}" exposes the real reason ${aud} struggles with ${pain} — and exactly what to do instead. ${price}`, cta },
-    { hook: `Stop wasting time on things that don't work.`, body: `"${t}" is the only guide built specifically for ${aud}. ${details.benefits[2] || ""} ${price}`, cta },
-    { hook: `Here's the honest truth about ${pain}:`, body: `It's not your fault — you just need the right system. "${t}" is that system. ${price}`, cta },
-  ];
-
-  const imageAds: ImageAdConcept[] = [
-    { headline: `Finally — a fix for ${pain}`, subtext: `"${t}" — the ultimate guide for ${aud}. ${price}`, visual: "Bold text on brand-color background, book mockup right side" },
-    { headline: `Before & After: ${aud}`, subtext: `See what changes when you read "${t}"`, visual: "Split-screen before/after transformation visual" },
-    { headline: `${details.benefits[0] || "Real results"}`, subtext: `Inside "${t}" — now available. ${price}`, visual: "Lifestyle photo with text overlay, book mockup lower-right" },
-    { headline: `The guide ${aud} needed`, subtext: `"${t}" — proven system, real results`, visual: "Clean white background, large book cover center, stars rating" },
-    { headline: `Stop struggling with ${pain}`, subtext: `"${t}" changes everything. ${price}`, visual: "Dark gradient background, bold headline, CTA button" },
-  ];
-
-  const videoScripts: VideoScript[] = [
-    {
-      title: "Talking Head", type: "15s",
-      hook: `"I used to struggle with ${pain} every single day…"`,
-      body: `"Until I discovered the exact method inside '${t}'. Now I help ${aud} do the same thing."`,
-      cta: `"Click the link and grab your copy — ${price}."`
-    },
-    {
-      title: "Story Format", type: "30s",
-      hook: `"Here's what nobody tells ${aud} about ${pain}…"`,
-      body: `[Cut to screen recording or slides showing 3 key points from the book] "Inside '${t}', you'll get: ${details.benefits.slice(0,3).join(", ")}."`,
-      cta: `"Link in bio. ${price}. Grab it now."`
-    },
-    {
-      title: "Listicle", type: "45s",
-      hook: `"5 reasons ${aud} can't solve ${pain} (and how '${t}' fixes each one):"`,
-      body: `[Fast-cut list: reason 1, 2, 3… with short fixes] "All of this is inside the book."`,
-      cta: `"${price} — tap the link. ${cta}"`
-    },
-  ];
-
-  if (adType === "ad_copy")      return { adCopy };
-  if (adType === "image_ads")    return { imageAds };
-  if (adType === "video_scripts") return { videoScripts };
-  return { adCopy, imageAds, videoScripts };
-}
 
 const WIZARD_STEPS: WizardStep[] = ["select", "ad-type", "details", "platforms", "objective"];
 const STEP_LABELS = ["Select eBook", "Ad Type", "Book Details", "Platforms", "Objective"];
@@ -178,26 +129,51 @@ export default function PromoteEbook() {
 
   const handleGenerate = async () => {
     setStep("generating");
-    await new Promise(r => setTimeout(r, 3500));
-    const gen = generateResults(bookDetails, adType!, [...platforms], objective!);
-    setResults(gen);
-    const campaign: Campaign = {
-      id: Date.now().toString(),
-      productId: selectedProduct!.id,
-      productTitle: bookDetails.title || selectedProduct!.title,
-      adType: adType!,
-      adTypeLabel: AD_TYPES.find(a => a.value === adType)?.label ?? adType!,
-      platforms: [...platforms],
-      objective: objective!,
-      bookDetails,
-      results: gen,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [campaign, ...campaigns];
-    setCampaigns(updated);
-    storeCampaigns(updated);
-    setActiveCampaign(campaign);
-    setStep("results");
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}api/generate/ad-copy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          bookTitle: bookDetails.title,
+          painPoint: bookDetails.painPoint || undefined,
+          audience: bookDetails.audience || undefined,
+          country: bookDetails.country || undefined,
+          price: bookDetails.price || undefined,
+          benefits: bookDetails.benefits.length > 0 ? bookDetails.benefits : undefined,
+          adType: adType!,
+          platforms: [...platforms],
+          objective: objective!,
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `Request failed (${response.status})`);
+      }
+      const gen: GeneratedResults = await response.json();
+      setResults(gen);
+      const campaign: Campaign = {
+        id: Date.now().toString(),
+        productId: selectedProduct!.id,
+        productTitle: bookDetails.title || selectedProduct!.title,
+        adType: adType!,
+        adTypeLabel: AD_TYPES.find(a => a.value === adType)?.label ?? adType!,
+        platforms: [...platforms],
+        objective: objective!,
+        bookDetails,
+        results: gen,
+        createdAt: new Date().toISOString(),
+      };
+      const updated = [campaign, ...campaigns];
+      setCampaigns(updated);
+      storeCampaigns(updated);
+      setActiveCampaign(campaign);
+      setStep("results");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Generation failed. Please try again.";
+      toast({ title: "Generation failed", description: message, variant: "destructive" });
+      setStep("objective");
+    }
   };
 
   const addBenefit = () => {

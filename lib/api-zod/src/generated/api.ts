@@ -1007,6 +1007,38 @@ export const GenerateSubtopicSuggestionsResponse = zod.object({
 })
 
 
+export const GenerateAdCopyBody = zod.object({
+  "bookTitle": zod.string(),
+  "painPoint": zod.string().optional(),
+  "audience": zod.string().optional(),
+  "country": zod.string().optional(),
+  "price": zod.string().optional(),
+  "benefits": zod.array(zod.string()).optional(),
+  "adType": zod.enum(['ad_copy', 'image_ads', 'video_scripts', 'full_package']),
+  "platforms": zod.array(zod.enum(['facebook', 'instagram', 'tiktok', 'twitter'])),
+  "objective": zod.enum(['traffic', 'engagement', 'conversions']),
+})
+
+export const GenerateAdCopyResponse = zod.object({
+  "adCopy": zod.array(zod.object({
+    "hook": zod.string(),
+    "body": zod.string(),
+    "cta": zod.string(),
+  })).optional(),
+  "imageAds": zod.array(zod.object({
+    "headline": zod.string(),
+    "subtext": zod.string(),
+    "visual": zod.string(),
+  })).optional(),
+  "videoScripts": zod.array(zod.object({
+    "title": zod.string(),
+    "type": zod.string(),
+    "hook": zod.string(),
+    "body": zod.string(),
+    "cta": zod.string(),
+  })).optional(),
+})
+
 export const GenerateOutlineBody = zod.object({
   "productId": zod.string()
 })

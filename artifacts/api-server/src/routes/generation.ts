@@ -27,6 +27,8 @@ import {
   GenerateNicheSuggestionsResponse,
   GenerateSubtopicSuggestionsBody,
   GenerateSubtopicSuggestionsResponse,
+  GenerateAdCopyBody,
+  GenerateAdCopyResponse,
   GetJobResponse,
   ExportProductBody,
   ExportProductResponse,
@@ -173,6 +175,86 @@ Order the list with the highest "sellabilityScore" first. Respond as a JSON arra
       subNiches,
     }),
   );
+});
+
+router.post("/generate/ad-copy", async (req, res): Promise<void> => {
+  const parsed = GenerateAdCopyBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { bookTitle, painPoint, audience, country, price, benefits, adType, platforms, objective } = parsed.data;
+
+  const benefitsList = benefits?.length
+    ? `Key benefits:\n${benefits.map((b, i) => `${i + 1}. ${b}`).join("\n")}`
+    : "";
+  const priceStr = price ? `Price: $${price}` : "";
+  const platformStr = platforms.join(", ");
+  const objectiveDescriptions: Record<string, string> = {
+    traffic: "driving clicks to the sales page",
+    engagement: "maximizing likes, comments, and shares",
+    conversions: "optimizing for direct purchases",
+  };
+  const objectiveDesc = objectiveDescriptions[objective] ?? objective;
+  const countryStr = country && country !== "Global" ? `Target market: ${country}` : "Target market: Global";
+
+  const systemPrompt = `You are an expert digital-product ad copywriter who creates high-converting social media ad creatives for self-published eBooks. Your copy is punchy, benefit-driven, and tailored to the specified platforms and objectives.`;
+
+  const needsAdCopy = adType === "ad_copy" || adType === "full_package";
+  const needsImageAds = adType === "image_ads" || adType === "full_package";
+  const needsVideoScripts = adType === "video_scripts" || adType === "full_package";
+
+  const sections: string[] = [];
+  if (needsAdCopy) {
+    sections.push(`"adCopy": array of exactly 5 objects, each with:
+  - "hook": a scroll-stopping opening line (1-2 sentences)
+  - "body": the main ad body copy (2-4 sentences, benefit-focused)
+  - "cta": a short call-to-action phrase`);
+  }
+  if (needsImageAds) {
+    sections.push(`"imageAds": array of exactly 5 objects, each with:
+  - "headline": bold headline for the image (5-10 words)
+  - "subtext": supporting subtext below the headline (1-2 short sentences)
+  - "visual": a concise description of the ideal visual/design concept for this ad`);
+  }
+  if (needsVideoScripts) {
+    sections.push(`"videoScripts": array of exactly 3 objects, one each for: "Talking Head" (15s), "Story Format" (30s), "Listicle" (45s). Each with:
+  - "title": the script type name (e.g. "Talking Head")
+  - "type": duration (e.g. "15s")
+  - "hook": the opening line/visual hook
+  - "body": the main script body with scene directions in [brackets]
+  - "cta": the closing call-to-action line`);
+  }
+
+  const prompt = `Create high-converting ${adType.replace("_", " ")} ad creatives for the following eBook:
+
+Book title: "${bookTitle}"
+Pain point this book solves: ${painPoint || "not specified"}
+Target audience: ${audience || "general audience"}
+${countryStr}
+${priceStr}
+${benefitsList}
+
+Platforms: ${platformStr}
+Campaign objective: ${objectiveDesc}
+
+Return a JSON object with the following field(s):
+${sections.join("\n")}
+
+Write copy that:
+- Speaks directly to the target audience's pain points and desires
+- Uses proven ad copywriting formulas (AIDA, PAS, hook-story-offer, etc.)
+- Varies hooks and angles significantly across variations
+- Feels native to the specified platforms
+- Drives the stated objective (${objectiveDesc})
+
+Respond ONLY with valid JSON matching the schema above. No prose, no markdown fences.`;
+
+  const charged = await chargeOr402(req, res, "ad_copy");
+  if (charged === null) return;
+
+  const result = await aiJson<Record<string, unknown>>(systemPrompt, prompt, 4096);
+  res.json(GenerateAdCopyResponse.parse(result));
 });
 
 router.post("/generate/outline", async (req, res): Promise<void> => {
