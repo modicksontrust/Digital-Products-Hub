@@ -10,7 +10,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
-              D
+              P
             </div>
             <span className="font-display font-bold text-xl tracking-tight text-ink-900">PokiPoki</span>
           </div>
