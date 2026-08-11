@@ -6,12 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import {
   Megaphone, Plus, Sparkles, Image, Video, FileText, Package,
   Globe, Music2, Twitter, Instagram, MousePointerClick, Heart, ShoppingCart,
-  ChevronLeft, Check, X, ArrowRight, Clock,
+  ChevronLeft, Check, X, ArrowRight, Clock, MoreVertical, Trash2, RefreshCw,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -44,6 +49,7 @@ interface Campaign {
   id: string;
   productId: string;
   productTitle: string;
+  coverImageUrl?: string;
   adType: AdType;
   adTypeLabel: string;
   platforms: Platform[];
@@ -96,7 +102,7 @@ export default function PromoteEbook() {
 
   // wizard state
   const [step, setStep] = useState<WizardStep>("select");
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; title: string; topic?: string | null } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; title: string; topic?: string | null; coverImageUrl?: string } | null>(null);
   const [adType, setAdType] = useState<AdType | null>(null);
   const [bookDetails, setBookDetails] = useState<BookDetails>({ title: "", painPoint: "", audience: "", country: "Global", price: "", benefits: [] });
   const [benefitInput, setBenefitInput] = useState("");
@@ -108,6 +114,26 @@ export default function PromoteEbook() {
 
   const { data: products } = useGetProducts({}, { query: { queryKey: getGetProductsQueryKey() } });
   const ebookProducts = products?.filter(p => p.type === "ebook" && p.status !== "archived") ?? [];
+
+  const deleteCampaign = (id: string) => {
+    const updated = campaigns.filter(c => c.id !== id);
+    setCampaigns(updated);
+    storeCampaigns(updated);
+  };
+
+  const editCampaign = (c: Campaign) => {
+    // Re-open wizard pre-filled with campaign settings
+    setSelectedProduct({ id: c.productId, title: c.productTitle, coverImageUrl: c.coverImageUrl });
+    setAdType(c.adType);
+    setBookDetails(c.bookDetails);
+    setPlatforms(new Set(c.platforms));
+    setObjective(c.objective);
+    setResults(null);
+    setBenefitInput("");
+    setDetailsLoading(false);
+    setStep("ad-type");
+    setMode("wizard");
+  };
 
   const prefillBookDetails = async (product: { id: string; title: string; topic?: string | null; audience?: string | null; priceCents?: number | null }) => {
     // Immediately fill known fields from product data
@@ -191,6 +217,7 @@ export default function PromoteEbook() {
         id: Date.now().toString(),
         productId: selectedProduct!.id,
         productTitle: bookDetails.title || selectedProduct!.title,
+        coverImageUrl: selectedProduct!.coverImageUrl,
         adType: adType!,
         adTypeLabel: AD_TYPES.find(a => a.value === adType)?.label ?? adType!,
         platforms: [...platforms],
@@ -269,22 +296,67 @@ export default function PromoteEbook() {
               {campaigns.map(c => (
                 <div
                   key={c.id}
-                  className="bg-white border border-ink-200 rounded-2xl shadow-sm p-5 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer group"
-                  onClick={() => { setActiveCampaign(c); setResults(c.results); setStep("results"); setMode("wizard"); }}
+                  className="bg-white border border-ink-200 rounded-2xl shadow-sm overflow-hidden hover:border-brand-300 hover:shadow-md transition-all group"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-500 shrink-0">
-                      {AD_TYPES.find(a => a.value === c.adType)?.icon}
+                  {/* Cover strip */}
+                  <div
+                    className="relative h-32 bg-ink-100 cursor-pointer"
+                    onClick={() => { setActiveCampaign(c); setResults(c.results); setStep("results"); setMode("wizard"); }}
+                  >
+                    {c.coverImageUrl ? (
+                      <img src={c.coverImageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center text-brand-400">
+                          {AD_TYPES.find(a => a.value === c.adType)?.icon}
+                        </div>
+                      </div>
+                    )}
+                    {/* overlay gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    <div className="absolute bottom-2 left-3 right-3">
+                      <div className="flex flex-wrap gap-1">
+                        {c.platforms.map(p => (
+                          <span key={p} className="bg-white/20 backdrop-blur text-white text-[10px] font-medium px-2 py-0.5 rounded-full capitalize">{p}</span>
+                        ))}
+                      </div>
                     </div>
-                    <Badge variant="secondary" className="bg-ink-100 text-ink-600 rounded-full text-xs font-medium capitalize">
-                      {c.platforms.join(", ")}
-                    </Badge>
                   </div>
-                  <p className="font-semibold text-ink-900 group-hover:text-brand-600 transition-colors line-clamp-2 mb-1">{c.bookDetails.title || c.productTitle}</p>
-                  <p className="text-sm text-ink-500 mb-3 capitalize">{c.adTypeLabel} · {c.objective}</p>
-                  <div className="flex items-center gap-2 text-xs text-ink-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
+
+                  {/* Card body */}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <p
+                        className="font-semibold text-ink-900 group-hover:text-brand-600 transition-colors line-clamp-2 cursor-pointer flex-1"
+                        onClick={() => { setActiveCampaign(c); setResults(c.results); setStep("results"); setMode("wizard"); }}
+                      >
+                        {c.bookDetails.title || c.productTitle}
+                      </p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg shrink-0 -mr-1 -mt-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44 rounded-xl" onClick={e => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => editCampaign(c)}>
+                            <RefreshCw className="w-4 h-4 mr-2" /> Regenerate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => { if (confirm("Delete this campaign?")) deleteCampaign(c.id); }}
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <p className="text-xs text-ink-500 mt-1 capitalize">{c.adTypeLabel} · {c.objective}</p>
+                    <div className="flex items-center gap-1.5 text-xs text-ink-400 mt-3">
+                      <Clock className="w-3.5 h-3.5" />
+                      {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -342,7 +414,10 @@ export default function PromoteEbook() {
                       <button
                         key={p.id}
                         onClick={() => {
-                          const prod = { id: p.id, title: p.title, topic: p.topic, audience: (p as { audience?: string | null }).audience, priceCents: (p as { priceCents?: number | null }).priceCents };
+                          const coverUrl = (p.coverConfig as { imageUrl?: string } | null)?.imageUrl
+                            ? `${import.meta.env.BASE_URL}api/storage${(p.coverConfig as { imageUrl: string }).imageUrl.replace(/^\/api\/storage/, "")}`
+                            : undefined;
+                          const prod = { id: p.id, title: p.title, topic: p.topic, audience: (p as { audience?: string | null }).audience, priceCents: (p as { priceCents?: number | null }).priceCents, coverImageUrl: coverUrl };
                           setSelectedProduct(prod);
                           prefillBookDetails(prod);
                         }}
@@ -563,72 +638,85 @@ export default function PromoteEbook() {
                   </Button>
                 </div>
 
-                <div className="space-y-6">
+                {/* Tabbed results */}
+                <Tabs defaultValue={results.adCopy ? "ad-copy" : results.imageAds ? "image-ads" : "video-scripts"}>
+                  <TabsList className="bg-ink-100 mb-4">
+                    {results.adCopy && (
+                      <TabsTrigger value="ad-copy" className="gap-1.5">
+                        <FileText className="w-3.5 h-3.5" /> Ad Copy
+                        <span className="text-[10px] opacity-60">({results.adCopy.length})</span>
+                      </TabsTrigger>
+                    )}
+                    {results.imageAds && (
+                      <TabsTrigger value="image-ads" className="gap-1.5">
+                        <Image className="w-3.5 h-3.5" /> Image Ads
+                        <span className="text-[10px] opacity-60">({results.imageAds.length})</span>
+                      </TabsTrigger>
+                    )}
+                    {results.videoScripts && (
+                      <TabsTrigger value="video-scripts" className="gap-1.5">
+                        <Video className="w-3.5 h-3.5" /> Video Scripts
+                        <span className="text-[10px] opacity-60">({results.videoScripts.length})</span>
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+
                   {results.adCopy && (
-                    <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden">
-                      <div className="px-6 py-4 border-b border-ink-100 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-brand-500" />
-                        <span className="font-semibold text-ink-900">Ad Copy Variations</span>
-                        <span className="ml-auto text-xs text-ink-400">{results.adCopy.length} variations</span>
+                    <TabsContent value="ad-copy">
+                      <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden">
+                        <div className="divide-y divide-ink-100">
+                          {results.adCopy.map((copy, i) => (
+                            <div key={i} className="px-6 py-5">
+                              <p className="text-xs font-semibold text-brand-500 uppercase tracking-wide mb-2">Hook {i + 1}</p>
+                              <p className="font-semibold text-ink-900 mb-1">{copy.hook}</p>
+                              <p className="text-ink-600 text-sm mb-3">{copy.body}</p>
+                              <span className="inline-block bg-brand-500 text-white text-xs font-semibold px-3 py-1 rounded-full">{copy.cta}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="divide-y divide-ink-100">
-                        {results.adCopy.map((copy, i) => (
-                          <div key={i} className="px-6 py-5">
-                            <p className="text-xs font-semibold text-brand-500 uppercase tracking-wide mb-2">Hook {i + 1}</p>
-                            <p className="font-semibold text-ink-900 mb-1">{copy.hook}</p>
-                            <p className="text-ink-600 text-sm mb-2">{copy.body}</p>
-                            <span className="inline-block bg-brand-500 text-white text-xs font-semibold px-3 py-1 rounded-full">{copy.cta}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    </TabsContent>
                   )}
 
                   {results.imageAds && (
-                    <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden">
-                      <div className="px-6 py-4 border-b border-ink-100 flex items-center gap-2">
-                        <Image className="w-4 h-4 text-brand-500" />
-                        <span className="font-semibold text-ink-900">Image Ad Concepts</span>
-                        <span className="ml-auto text-xs text-ink-400">{results.imageAds.length} concepts</span>
+                    <TabsContent value="image-ads">
+                      <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden">
+                        <div className="divide-y divide-ink-100">
+                          {results.imageAds.map((img, i) => (
+                            <div key={i} className="px-6 py-5">
+                              <p className="text-xs font-semibold text-brand-500 uppercase tracking-wide mb-2">Concept {i + 1}</p>
+                              <p className="font-bold text-ink-900 mb-1">{img.headline}</p>
+                              <p className="text-ink-600 text-sm mb-2">{img.subtext}</p>
+                              <div className="bg-ink-50 rounded-xl px-4 py-3 text-xs text-ink-500 italic">Visual: {img.visual}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="divide-y divide-ink-100">
-                        {results.imageAds.map((img, i) => (
-                          <div key={i} className="px-6 py-5">
-                            <p className="text-xs font-semibold text-brand-500 uppercase tracking-wide mb-2">Concept {i + 1}</p>
-                            <p className="font-bold text-ink-900 mb-1">{img.headline}</p>
-                            <p className="text-ink-600 text-sm mb-2">{img.subtext}</p>
-                            <div className="bg-ink-50 rounded-xl px-4 py-3 text-xs text-ink-500 italic">Visual: {img.visual}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    </TabsContent>
                   )}
 
                   {results.videoScripts && (
-                    <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden">
-                      <div className="px-6 py-4 border-b border-ink-100 flex items-center gap-2">
-                        <Video className="w-4 h-4 text-brand-500" />
-                        <span className="font-semibold text-ink-900">Video Scripts</span>
-                        <span className="ml-auto text-xs text-ink-400">{results.videoScripts.length} scripts</span>
-                      </div>
-                      <div className="divide-y divide-ink-100">
-                        {results.videoScripts.map((vs, i) => (
-                          <div key={i} className="px-6 py-5">
-                            <div className="flex items-center gap-2 mb-3">
-                              <span className="font-bold text-ink-900">{vs.title}</span>
-                              <Badge variant="secondary" className="bg-ink-100 text-ink-600 rounded-full text-xs">{vs.type}</Badge>
+                    <TabsContent value="video-scripts">
+                      <div className="bg-white border border-ink-200 rounded-2xl overflow-hidden">
+                        <div className="divide-y divide-ink-100">
+                          {results.videoScripts.map((vs, i) => (
+                            <div key={i} className="px-6 py-5">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="font-bold text-ink-900">{vs.title}</span>
+                                <Badge variant="secondary" className="bg-ink-100 text-ink-600 rounded-full text-xs">{vs.type}</Badge>
+                              </div>
+                              <div className="space-y-2 text-sm">
+                                <div><span className="font-semibold text-ink-500">Hook: </span><span className="text-ink-700">{vs.hook}</span></div>
+                                <div><span className="font-semibold text-ink-500">Body: </span><span className="text-ink-700">{vs.body}</span></div>
+                                <div><span className="font-semibold text-ink-500">CTA: </span><span className="text-ink-700">{vs.cta}</span></div>
+                              </div>
                             </div>
-                            <div className="space-y-2 text-sm">
-                              <div><span className="font-semibold text-ink-500">Hook: </span><span className="text-ink-700">{vs.hook}</span></div>
-                              <div><span className="font-semibold text-ink-500">Body: </span><span className="text-ink-700">{vs.body}</span></div>
-                              <div><span className="font-semibold text-ink-500">CTA: </span><span className="text-ink-700">{vs.cta}</span></div>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    </TabsContent>
                   )}
-                </div>
+                </Tabs>
 
                 <div className="mt-8 flex justify-center">
                   <Button onClick={startWizard} className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold gap-2">
