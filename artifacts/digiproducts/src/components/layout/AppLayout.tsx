@@ -170,7 +170,7 @@ export function Sidebar() {
   );
 }
 
-export function Topbar({ variant = "default", actions }: { variant?: "default" | "transparent"; actions?: React.ReactNode }) {
+export function Topbar({ variant = "default", actions, titleHref }: { variant?: "default" | "transparent"; actions?: React.ReactNode; titleHref?: string }) {
   const { data: user } = useGetMe();
   const logout = useLogout();
   const { toast } = useToast();
@@ -231,12 +231,23 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
             <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
           </SheetContent>
         </Sheet>
-        <h1 className={cn(
-          "font-display font-semibold text-lg truncate",
-          (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
-        )}>
-          {pageTitle}
-        </h1>
+        {titleHref ? (
+          <Link href={titleHref}>
+            <h1 className={cn(
+              "font-display font-semibold text-lg truncate hover:opacity-70 transition-opacity cursor-pointer",
+              (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
+            )}>
+              {pageTitle}
+            </h1>
+          </Link>
+        ) : (
+          <h1 className={cn(
+            "font-display font-semibold text-lg truncate",
+            (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
+          )}>
+            {pageTitle}
+          </h1>
+        )}
       </div>
       
       <div className="flex items-center gap-4">
@@ -347,16 +358,18 @@ export function AppLayout({
   children,
   headerVariant = "default",
   headerActions,
+  headerTitleHref,
 }: {
   children: React.ReactNode;
   headerVariant?: "default" | "transparent";
   headerActions?: React.ReactNode;
+  headerTitleHref?: string;
 }) {
   return (
     <div className="min-h-[100dvh] bg-paper">
       <Sidebar />
       <div className="flex flex-col min-h-[100dvh] md:pl-64 relative">
-        <Topbar variant={headerVariant} actions={headerActions} />
+        <Topbar variant={headerVariant} actions={headerActions} titleHref={headerTitleHref} />
         <main className={cn("flex-1 flex flex-col relative z-0", headerVariant === "default" && "pt-16")}>
           {children}
         </main>

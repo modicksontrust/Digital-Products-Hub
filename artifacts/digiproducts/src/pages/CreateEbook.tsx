@@ -779,7 +779,7 @@ export default function CreateEbook() {
   ) : null;
 
   return (
-    <AppLayout headerActions={saveDraftButton}>
+    <AppLayout headerActions={saveDraftButton} headerTitleHref="/create/ebook">
       <div className="flex flex-col h-full bg-paper">
         {/* Wizard Header */}
         <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
