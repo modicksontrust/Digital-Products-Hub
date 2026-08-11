@@ -52,17 +52,15 @@ export default function CreateEbook() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const steps = [
-    { num: 1, title: "Setup", icon: Search },
-    { num: 1.3, title: "Subtopic", icon: Layout },
-    { num: 1.6, title: "Topic", icon: Flame },
-    { num: 2, title: "Brief", icon: FileText },
-    { num: 3, title: "Outline", icon: Layout },
-    { num: 4, title: "Generate", icon: Sparkles },
-    { num: 5, title: "Editor", icon: PenTool },
-    { num: 6, title: "Cover", icon: Settings },
-    { num: 7, title: "Export", icon: Download },
-    { num: 8, title: "Publish", icon: DollarSign },
+  // 5-step display bar — each entry covers a range of internal step numbers.
+  // Internal steps (0, 1, 1.3, 1.5, 1.6, 2, 3, 3.5, 4, 5, 6, 7, 8) don't change;
+  // only how progress is counted and shown in the bar changes.
+  const displaySteps = [
+    { label: "Setup",   navStep: 1,   active: step >= 1 && step < 3,  complete: step >= 3 },
+    { label: "Outline", navStep: 3.5, active: step >= 3 && step < 4,  complete: step >= 4 },
+    { label: "Write",   navStep: 5,   active: step >= 4 && step < 6,  complete: step >= 6 },
+    { label: "Cover",   navStep: 6,   active: step >= 6 && step < 7,  complete: step >= 7 },
+    { label: "Publish", navStep: 8,   active: step >= 7,              complete: false     },
   ];
 
   // Simulated percentage progress for the outline-generation loading screen.
@@ -785,25 +783,44 @@ export default function CreateEbook() {
         <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
           <div className="max-w-5xl mx-auto flex items-center justify-center">
             {step > 0 && (
-            <div className="flex items-center gap-2">
-              {steps.map((s, i) => (
-                <div key={s.num} className="flex items-center">
-                  <div className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
-                    (step === s.num || (step === 3.5 && s.num === 3)) ? "bg-brand-100 text-brand-700" :
-                    step > s.num ? "text-brand-500 hover:bg-brand-50" : "text-ink-400"
-                  )}
-                  onClick={() => {
-                    // Allow jumping back if product exists
-                    if (urlProductId && s.num <= step) setStep(s.num);
-                  }}>
-                    <s.icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{s.title}</span>
-                  </div>
-                  {i < steps.length - 1 && <ChevronRight className="w-4 h-4 text-ink-300 mx-1" />}
-                </div>
-              ))}
-            </div>
+              <div className="flex items-center">
+                {displaySteps.map((ds, i) => {
+                  const clickable = !!urlProductId && ds.complete;
+                  const nextReached = i < displaySteps.length - 1 &&
+                    (displaySteps[i + 1].active || displaySteps[i + 1].complete);
+                  return (
+                    <div key={ds.label} className="flex items-center">
+                      <div
+                        className={cn("flex items-center gap-2", clickable ? "cursor-pointer group" : "cursor-default")}
+                        onClick={() => { if (clickable) setStep(ds.navStep); }}
+                      >
+                        <div className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all shrink-0",
+                          ds.complete ? "bg-brand-500 border-brand-500 text-white" :
+                          ds.active   ? "bg-brand-50 border-brand-500 text-brand-600" :
+                                        "bg-white border-ink-200 text-ink-400"
+                        )}>
+                          {ds.complete ? <Check className="w-3.5 h-3.5" /> : <span>{i + 1}</span>}
+                        </div>
+                        <span className={cn(
+                          "text-sm font-semibold hidden sm:inline",
+                          ds.active   ? "text-ink-900" :
+                          ds.complete ? "text-brand-500 group-hover:text-brand-600" :
+                                        "text-ink-400"
+                        )}>
+                          {ds.label}
+                        </span>
+                      </div>
+                      {i < displaySteps.length - 1 && (
+                        <div className={cn(
+                          "h-0.5 w-10 lg:w-20 mx-3 rounded-full transition-colors",
+                          nextReached ? "bg-brand-400" : "bg-ink-200"
+                        )} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
