@@ -253,8 +253,16 @@ Respond ONLY with valid JSON matching the schema above. No prose, no markdown fe
   const charged = await chargeOr402(req, res, "ad_copy");
   if (charged === null) return;
 
-  const result = await aiJson<Record<string, unknown>>(systemPrompt, prompt, 4096);
-  res.json(GenerateAdCopyResponse.parse(result));
+  try {
+    const result = await aiJson<Record<string, unknown>>(systemPrompt, prompt, 4096);
+    res.json(GenerateAdCopyResponse.parse(result));
+  } catch (err) {
+    console.error("[ad-copy] AI generation error:", err);
+    res.status(502).json({
+      error: "The AI returned an unexpected response. Please try again.",
+      code: "AI_GENERATION_FAILED",
+    });
+  }
 });
 
 router.post("/generate/outline", async (req, res): Promise<void> => {
