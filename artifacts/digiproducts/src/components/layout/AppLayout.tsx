@@ -5,7 +5,7 @@ import {
   CreditCard, History, PenTool, LayoutTemplate,
   LogOut, User, Bell, ChevronDown, CheckCircle, Menu
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -193,12 +193,25 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
   };
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const pageTitle = usePageTitle();
+
+  useEffect(() => {
+    if (variant !== "transparent") return;
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [variant]);
+
+  const isScrolledTransparent = variant === "transparent" && scrolled;
 
   return (
     <header className={cn(
-      "h-16 flex items-center justify-between px-4 sm:px-6 z-30 fixed top-0 inset-x-0 md:left-64 transition-colors",
-      variant === "transparent" ? "bg-transparent" : "border-b bg-white"
+      "h-16 flex items-center justify-between px-4 sm:px-6 z-30 fixed top-0 inset-x-0 md:left-64 transition-all duration-200",
+      variant === "default" && "border-b bg-white",
+      variant === "transparent" && !scrolled && "bg-transparent",
+      variant === "transparent" && scrolled && "bg-white/95 backdrop-blur border-b border-ink-100 shadow-sm"
     )}>
       <div className="flex items-center gap-3 min-w-0">
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -207,7 +220,7 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
             size="icon"
             className={cn(
               "md:hidden rounded-full h-10 w-10 shrink-0",
-              variant === "transparent" ? "text-white/90 hover:text-white hover:bg-white/10" : "text-ink-500 hover:text-ink-900"
+              (variant === "transparent" && !scrolled) ? "text-white/90 hover:text-white hover:bg-white/10" : "text-ink-500 hover:text-ink-900"
             )}
             onClick={() => setMobileNavOpen(true)}
           >
@@ -220,7 +233,7 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
         </Sheet>
         <h1 className={cn(
           "font-display font-semibold text-lg truncate",
-          variant === "transparent" ? "text-white" : "text-ink-900"
+          (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
         )}>
           {pageTitle}
         </h1>
@@ -231,15 +244,15 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
         {/* Credits Chip */}
         <div className={cn(
           "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border",
-          variant === "transparent"
+          (variant === "transparent" && !scrolled)
             ? "bg-white/15 border-white/25 backdrop-blur-sm"
             : "bg-gradient-to-r from-gold-300/20 to-gold-400/20 border-gold-300/30"
         )}>
           <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gold-400 to-gold-500 shadow-sm flex items-center justify-center">
             <span className="text-[10px] text-white font-bold">✨</span>
           </div>
-          <span className={cn("text-sm font-semibold", variant === "transparent" ? "text-white" : "text-gold-500")}>{user?.creditsBalance || 0}</span>
-          <span className={cn("text-xs font-medium uppercase tracking-wide", variant === "transparent" ? "text-white/80" : "text-gold-500/80")}>Credits</span>
+          <span className={cn("text-sm font-semibold", (variant === "transparent" && !scrolled) ? "text-white" : "text-gold-500")}>{user?.creditsBalance || 0}</span>
+          <span className={cn("text-xs font-medium uppercase tracking-wide", (variant === "transparent" && !scrolled) ? "text-white/80" : "text-gold-500/80")}>Credits</span>
         </div>
 
         {/* Notifications */}
@@ -247,7 +260,7 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className={cn(
               "relative rounded-full h-10 w-10",
-              variant === "transparent" ? "text-white/90 hover:text-white hover:bg-white/10" : "text-ink-500 hover:text-ink-900"
+              (variant === "transparent" && !scrolled) ? "text-white/90 hover:text-white hover:bg-white/10" : "text-ink-500 hover:text-ink-900"
             )}>
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -295,13 +308,13 @@ export function Topbar({ variant = "default", actions }: { variant?: "default" |
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className={cn(
               "pl-2 pr-4 h-10 rounded-full flex items-center gap-2",
-              variant === "transparent" ? "hover:bg-white/10" : "hover:bg-ink-100/50"
+              (variant === "transparent" && !scrolled) ? "hover:bg-white/10" : "hover:bg-ink-100/50"
             )}>
               <Avatar className="h-7 w-7">
                 <AvatarImage src={user?.avatarUrl || undefined} />
                 <AvatarFallback className="bg-brand-100 text-brand-700 text-xs font-bold">{user?.fullName.charAt(0)}</AvatarFallback>
               </Avatar>
-              <ChevronDown className={cn("w-4 h-4", variant === "transparent" ? "text-white/90" : "text-ink-500")} />
+              <ChevronDown className={cn("w-4 h-4", (variant === "transparent" && !scrolled) ? "text-white/90" : "text-ink-500")} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
