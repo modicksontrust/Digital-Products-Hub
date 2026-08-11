@@ -88,14 +88,13 @@ export default function CreateEbook() {
     return () => clearInterval(interval);
   }, [step]);
 
-  // Resume state if URL params are present
+  // Resume state if URL params are present.
+  // Only handle the job-resume case — do NOT force step 5 when step <= 2, because
+  // that overwrites the user clicking "Setup" in the nav bar to go back.
+  // Initial step placement is handled by the ?step= URL param instead.
   useEffect(() => {
-    if (urlProductId) {
-      if (urlJobId && step <= 2) {
-        setStep(3); // Waiting for outline job
-      } else if (!urlJobId && step <= 2) {
-        setStep(5); // Default to editor if just productId is given
-      }
+    if (urlProductId && urlJobId && step <= 2) {
+      setStep(3); // Resume outline job polling
     }
   }, [urlProductId, urlJobId, step]);
 
@@ -373,7 +372,11 @@ export default function CreateEbook() {
     generateChapters.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => {
         setLocation(`/create/ebook?productId=${urlProductId}&jobId=${job.id}`);
-      }
+      },
+      onError: () => {
+        setStep(3.5);
+        toast({ title: "Could not start chapter generation", description: "Please try again.", variant: "destructive" });
+      },
     });
   };
 
@@ -1664,6 +1667,16 @@ export default function CreateEbook() {
                     </div>
                   )}
                 </div>
+
+                {/* Escape hatch — shown when generation hasn't started (no jobId yet) */}
+                {!urlJobId && (
+                  <div className="mt-6 flex flex-col items-center gap-2">
+                    <p className="text-sm text-ink-400">Taking longer than expected?</p>
+                    <Button variant="outline" className="rounded-xl" onClick={() => setStep(3.5)}>
+                      ← Back to outline
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -131,14 +131,16 @@ export default function ProductDetail() {
 
   // Compute which wizard step to resume at based on what's already done.
   const ebookResumeStep = (() => {
-    if (!chapters || chapters.length === 0) return 5; // editor
+    if (!chapters || chapters.length === 0) return 2;   // no outline yet → brief/setup
+    const hasContent = chapters.some((c: { wordCount: number }) => c.wordCount > 0);
+    if (!hasContent) return 3.5;                         // outline exists, content not written → outline review
     const allReady = chapters.every((c: { status: string }) => c.status === 'ready');
-    if (!allReady) return 5; // still generating
+    if (!allReady) return 5;                             // writing in progress → editor
     const hasCover = !!(product.coverConfig as { imageUrl?: string } | null)?.imageUrl;
-    if (!hasCover) return 6; // cover picker
+    if (!hasCover) return 6;                             // cover picker
     const hasExport = exports && exports.length > 0;
-    if (!hasExport) return 7; // export
-    return 8; // publish / sales copy
+    if (!hasExport) return 7;                            // export
+    return 8;                                            // publish / sales copy
   })();
 
   const editPath = isEbook
