@@ -115,6 +115,15 @@ export default function PromoteEbook() {
   const { data: products } = useGetProducts({}, { query: { queryKey: getGetProductsQueryKey() } });
   const ebookProducts = products?.filter(p => p.type === "ebook" && p.status !== "archived") ?? [];
 
+  const getCoverUrl = (campaign: Campaign): string | undefined => {
+    if (campaign.coverImageUrl) return campaign.coverImageUrl;
+    // Fallback: look up from the live products list (handles campaigns saved before coverImageUrl was persisted)
+    const product = products?.find(p => p.id === campaign.productId);
+    const imageUrl = (product?.coverConfig as { imageUrl?: string } | null)?.imageUrl;
+    if (!imageUrl) return undefined;
+    return `${import.meta.env.BASE_URL}api/storage${imageUrl.replace(/^\/api\/storage/, "")}`;
+  };
+
   const deleteCampaign = (id: string) => {
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
@@ -303,8 +312,8 @@ export default function PromoteEbook() {
                     className="relative h-32 bg-ink-100 cursor-pointer"
                     onClick={() => { setActiveCampaign(c); setResults(c.results); setStep("results"); setMode("wizard"); }}
                   >
-                    {c.coverImageUrl ? (
-                      <img src={c.coverImageUrl} alt="" className="w-full h-full object-cover" />
+                    {getCoverUrl(c) ? (
+                      <img src={getCoverUrl(c)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center text-brand-400">
