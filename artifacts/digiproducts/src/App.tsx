@@ -13,8 +13,12 @@ import LearnComplete from "@/pages/LearnComplete";
 import Products from "@/pages/Products";
 // Placeholders for others
 import CreateEbook from "@/pages/CreateEbook"; 
-import AdminUsers from "@/pages/AdminUsers"; 
+import AdminUsers from "@/pages/AdminUsers";
 import AdminCurriculum from "@/pages/AdminCurriculum";
+import AdminCredits from "@/pages/AdminCredits";
+import AdminBrandKit from "@/pages/AdminBrandKit";
+import AdminSettings from "@/pages/AdminSettings";
+import AdminAudit from "@/pages/AdminAudit";
 import ProductDetail from "@/pages/ProductDetail";
 import Account from "@/pages/Account";
 import AcceptInvite from "@/pages/AcceptInvite";
@@ -124,6 +128,26 @@ export default function App() {
         <Route path="/admin/curriculum">
           <ProtectedRoute adminOnly>
             <AdminCurriculum />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/credits">
+          <ProtectedRoute>
+            <AdminCredits />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/brand">
+          <ProtectedRoute>
+            <AdminBrandKit />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/settings">
+          <ProtectedRoute>
+            <AdminSettings />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/audit">
+          <ProtectedRoute>
+            <AdminAudit />
           </ProtectedRoute>
         </Route>
 
