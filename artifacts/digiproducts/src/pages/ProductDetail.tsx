@@ -149,8 +149,12 @@ export default function ProductDetail() {
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
           <div className="flex items-start gap-6">
             <div className="w-32 h-48 rounded-xl bg-ink-100 border border-ink-200 shadow-sm flex items-center justify-center shrink-0 overflow-hidden relative">
-              {product.coverConfig ? (
-                <div className="absolute inset-0 bg-brand-500" />
+              {(product.coverConfig as { imageUrl?: string } | null)?.imageUrl ? (
+                <img
+                  src={`${import.meta.env.BASE_URL}api/storage${(product.coverConfig as { imageUrl: string }).imageUrl.replace(/^\/api\/storage/, "")}`}
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <FileText className="w-10 h-10 text-ink-300" />
               )}
