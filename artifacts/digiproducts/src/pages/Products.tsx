@@ -22,6 +22,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { 
   Search, SlidersHorizontal, MoreVertical, Copy, 
   Archive, FileText, Download, Edit3, CheckCircle, Clock 
@@ -34,6 +41,7 @@ type StatusFilter = "all" | "draft" | "in_progress" | "ready";
 export default function Products() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set());
   const { data: products, isLoading } = useGetProducts({}, { query: { queryKey: getGetProductsQueryKey() } });
   const duplicate = useDuplicateProduct();
   const archive = useArchiveProduct();
@@ -79,7 +87,20 @@ export default function Products() {
     return "in_progress";
   };
 
-  const filteredProducts = products?.filter((p) => statusFilter === "all" || statusGroup(p.status) === statusFilter);
+  const toggleType = (type: string) => {
+    setTypeFilter(prev => {
+      const next = new Set(prev);
+      next.has(type) ? next.delete(type) : next.add(type);
+      return next;
+    });
+  };
+
+  const filteredProducts = products?.filter((p) => {
+    if (statusFilter !== "all" && statusGroup(p.status) !== statusFilter) return false;
+    if (typeFilter.size > 0 && !typeFilter.has(p.type)) return false;
+    if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
   const counts = {
     all: products?.length ?? 0,
     draft: products?.filter((p) => statusGroup(p.status) === "draft").length ?? 0,
@@ -106,9 +127,37 @@ export default function Products() {
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="rounded-xl border-ink-200">
-              <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("rounded-xl border-ink-200", typeFilter.size > 0 && "border-brand-400 text-brand-600 bg-brand-50")}>
+                  <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters
+                  {typeFilter.size > 0 && <span className="ml-1 bg-brand-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center">{typeFilter.size}</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-52 rounded-xl p-4">
+                <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-3">Product Type</p>
+                <div className="space-y-2">
+                  {[
+                    { value: "ebook", label: "eBook" },
+                    { value: "lead_magnet", label: "Lead Magnet" },
+                  ].map(({ value, label }) => (
+                    <div key={value} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`type-${value}`}
+                        checked={typeFilter.has(value)}
+                        onCheckedChange={() => toggleType(value)}
+                      />
+                      <Label htmlFor={`type-${value}`} className="cursor-pointer text-sm font-normal">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                {typeFilter.size > 0 && (
+                  <button onClick={() => setTypeFilter(new Set())} className="mt-3 text-xs text-brand-600 hover:text-brand-700 font-medium">
+                    Clear filters
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
             <Link href="/create/ebook">
               <Button className="rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold">
                 New Product
