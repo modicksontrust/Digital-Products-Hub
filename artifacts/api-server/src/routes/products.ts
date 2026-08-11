@@ -284,13 +284,22 @@ router.get("/products/:productId", async (req, res): Promise<void> => {
     .from(productChaptersTable)
     .where(eq(productChaptersTable.productId, product.id))
     .orderBy(asc(productChaptersTable.orderIndex));
-  const [latestReview] = await db
+  const allReviews = await db
     .select({ review: reviewsTable, reviewerName: usersTable.fullName })
     .from(reviewsTable)
     .leftJoin(usersTable, eq(usersTable.id, reviewsTable.reviewerId))
     .where(eq(reviewsTable.productId, product.id))
-    .orderBy(desc(reviewsTable.createdAt))
-    .limit(1);
+    .orderBy(desc(reviewsTable.createdAt));
+  const serializeReview = (r: typeof allReviews[number]) => ({
+    id: r.review.id,
+    productId: product.id,
+    reviewerName: r.reviewerName,
+    decision: r.review.decision,
+    comment: r.review.comment,
+    decidedAt: r.review.createdAt.toISOString(),
+    createdAt: r.review.createdAt.toISOString(),
+  });
+  const latestReview = allReviews[0];
   res.json(
     GetProductResponse.parse({
       product: await serializeProduct(
@@ -299,17 +308,8 @@ router.get("/products/:productId", async (req, res): Promise<void> => {
         chapters,
       ),
       chapters: chapters.map(serializeChapter),
-      latestReview: latestReview
-        ? {
-            id: latestReview.review.id,
-            productId: product.id,
-            reviewerName: latestReview.reviewerName,
-            decision: latestReview.review.decision,
-            comment: latestReview.review.comment,
-            decidedAt: latestReview.review.createdAt.toISOString(),
-            createdAt: latestReview.review.createdAt.toISOString(),
-          }
-        : undefined,
+      latestReview: latestReview ? serializeReview(latestReview) : undefined,
+      reviewHistory: allReviews.map(serializeReview),
     }),
   );
 });

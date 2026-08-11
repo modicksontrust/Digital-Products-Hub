@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import {
@@ -68,6 +68,8 @@ export default function ProductDetail() {
   // Inline review dialog state
   const [reviewDecision, setReviewDecision] = useState<"approved" | "changes_requested" | null>(null);
   const [reviewComment, setReviewComment] = useState("");
+  const [activeTab, setActiveTab] = useState("chapters");
+  const commentsTabRef = useRef<HTMLButtonElement>(null);
 
   const reviewMutation = useMutation({
     mutationFn: () => submitReviewFn(base, productId!, reviewDecision!, reviewComment),
@@ -83,6 +85,9 @@ export default function ProductDetail() {
       queryClient.invalidateQueries({ queryKey: ["review-queue"] });
       setReviewDecision(null);
       setReviewComment("");
+      // Scroll to comments tab to show the new review entry
+      setActiveTab("comments");
+      setTimeout(() => commentsTabRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -114,7 +119,7 @@ export default function ProductDetail() {
     return <AppLayout><div className="p-8">Product not found</div></AppLayout>;
   }
 
-  const { product, chapters, latestReview } = detail;
+  const { product, chapters, latestReview, reviewHistory } = detail;
   const isEbook = product.type === 'ebook';
   const editPath = `/create/${isEbook ? 'ebook' : 'lead-magnet'}?productId=${product.id}`;
 
@@ -223,12 +228,12 @@ export default function ProductDetail() {
         )}
 
         {/* Content Tabs */}
-        <Tabs defaultValue="chapters">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-ink-50/50 border border-ink-100 p-1 rounded-xl h-auto">
             <TabsTrigger value="chapters" className="rounded-lg py-2 px-6">Chapters</TabsTrigger>
             <TabsTrigger value="exports" className="rounded-lg py-2 px-6">Exports</TabsTrigger>
             <TabsTrigger value="sales" className="rounded-lg py-2 px-6">Sales Copy</TabsTrigger>
-            <TabsTrigger value="comments" className="rounded-lg py-2 px-6">Comments</TabsTrigger>
+            <TabsTrigger value="comments" className="rounded-lg py-2 px-6" ref={commentsTabRef}>Comments</TabsTrigger>
           </TabsList>
           
           <TabsContent value="chapters" className="mt-6">
@@ -370,24 +375,54 @@ export default function ProductDetail() {
           <TabsContent value="comments" className="mt-6">
             <Card className="border-ink-100 shadow-sm">
               <CardHeader className="border-b border-ink-100">
-                <CardTitle className="text-lg font-semibold">Review & Feedback</CardTitle>
+                <CardTitle className="text-lg font-semibold">Review History</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                {latestReview && (
-                  <div className="mb-6 p-4 rounded-xl border bg-ink-50/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-ink-900">{latestReview.reviewerName}</span>
-                      <Badge className={latestReview.decision === 'approved' ? 'bg-lime-500' : 'bg-rose-500'}>
-                        {latestReview.decision.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    {latestReview.comment && <p className="text-sm text-ink-700">{latestReview.comment}</p>}
+                {reviewHistory && reviewHistory.length > 0 ? (
+                  <ol className="relative border-l border-ink-200 space-y-0">
+                    {reviewHistory.map((review, idx) => (
+                      <li key={review.id} className="mb-8 ml-6 last:mb-0">
+                        <span className={cn(
+                          "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-white",
+                          review.decision === 'approved' ? "bg-lime-500" : "bg-rose-500"
+                        )}>
+                          {review.decision === 'approved'
+                            ? <CheckCircle className="w-3.5 h-3.5 text-white" />
+                            : <XCircle className="w-3.5 h-3.5 text-white" />}
+                        </span>
+                        <div className={cn(
+                          "rounded-xl border p-4",
+                          idx === 0 ? "bg-ink-50/70 border-ink-200" : "bg-white border-ink-100"
+                        )}>
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-ink-900">{review.reviewerName ?? "Reviewer"}</span>
+                              {idx === 0 && (
+                                <span className="text-[10px] uppercase tracking-wide text-ink-400 font-medium bg-ink-100 px-2 py-0.5 rounded-full">Latest</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={cn("capitalize text-xs", review.decision === 'approved' ? 'bg-lime-500 hover:bg-lime-500' : 'bg-rose-500 hover:bg-rose-500')}>
+                                {review.decision.replace('_', ' ')}
+                              </Badge>
+                              <span className="text-xs text-ink-400">
+                                {formatDistanceToNow(new Date(review.createdAt))} ago
+                              </span>
+                            </div>
+                          </div>
+                          {review.comment
+                            ? <p className="text-sm text-ink-700 mt-2">{review.comment}</p>
+                            : <p className="text-sm text-ink-400 italic mt-2">No comment left.</p>}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="text-center py-8 text-ink-500">
+                    <MessageSquare className="w-12 h-12 text-ink-300 mx-auto mb-4" />
+                    <p>No reviews yet.</p>
                   </div>
                 )}
-                <div className="text-center py-8 text-ink-500">
-                  <MessageSquare className="w-12 h-12 text-ink-300 mx-auto mb-4" />
-                  <p>No comments yet.</p>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
