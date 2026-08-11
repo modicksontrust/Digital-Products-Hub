@@ -25,7 +25,6 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
-
       {/* Hero */}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 grad-hero opacity-[0.03] z-0" />
@@ -50,7 +49,7 @@ export default function LandingPage() {
                   Team Login <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 rounded-xl border-ink-200 text-ink-700 hover:bg-ink-50 text-lg font-semibold">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 rounded-xl border-ink-200 text-ink-700 hover:bg-ink-50 text-lg font-semibold mt-[0px] mb-[0px]">
                 Request Access
               </Button>
             </div>
@@ -91,7 +90,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Value Props */}
       <section className="py-24 bg-white border-y border-ink-100 relative z-20">
         <div className="max-w-7xl mx-auto px-6">
@@ -109,7 +107,7 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-lime-50 text-lime-600 flex items-center justify-center mb-6">
                 <span className="text-2xl">🎨</span>
               </div>
-              <h3 className="text-xl font-display font-bold text-ink-900 mb-3">Print-Ready Exports</h3>
+              <h3 className="text-xl font-display font-bold text-ink-900 mb-3">Print-Ready Exports </h3>
               <p className="text-ink-600 leading-relaxed">
                 Beautiful, templated PDFs generated on the fly. No more wrestling with InDesign or waiting for external designers.
               </p>
@@ -126,7 +124,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="bg-ink-900 text-ink-400 py-12 text-center">
         <div className="flex items-center justify-center gap-2 mb-6">
