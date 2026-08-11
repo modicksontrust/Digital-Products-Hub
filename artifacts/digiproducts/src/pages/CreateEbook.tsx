@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+// hint: Structural and logic conflict. Both design and behavior differ.
+import { useState, useEffect, useCallback, useRef } from "react";
+import { setNavigationGuard } from "@/lib/navigationGuard";
 import {
   DndContext,
   closestCenter,
@@ -134,6 +136,10 @@ function SortableChapterCard({
   );
 }
 
+// hint: Logic changed on both sides. Requires understanding intent of each change.
+// hint: Logic changed on both sides. Requires understanding intent of each change.
+// hint: Logic changed on both sides. Requires understanding intent of each change.
+// hint: Logic changed on both sides. Requires understanding intent of each change.
 export default function CreateEbook() {
   const searchParams = new URLSearchParams(useSearch());
   const urlProductId = searchParams.get("productId");
@@ -396,7 +402,21 @@ export default function CreateEbook() {
   // Lets the user save whatever they've picked so far (niche, subtopic, topic,
   // or brief details) as a draft product at any point before generation starts,
   // so it shows up in the Products library instead of being lost on navigation.
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    // When leaving step 3.5, flush unsaved chapter edits first so they're not
+    // lost if the creator navigates to the Products library via Save Draft.
+    if (step === 3.5) {
+      setIsSavingOutline(true);
+      try {
+        await flushOutlineEditsAsync();
+      } catch {
+        toast({ title: "Couldn't save chapter edits — please try again", variant: "destructive" });
+        setIsSavingOutline(false);
+        return;
+      }
+      setIsSavingOutline(false);
+    }
+
     const tier = LENGTH_TIERS.find((t) => t.key === selectedLengthTier);
     const topic = brief.topic || selectedSubNiche?.suggestedTopic || selectedSubtopic?.title
       || NICHES.find((n) => n.key === selectedNiche)?.label || "Untitled draft";
@@ -484,6 +504,9 @@ export default function CreateEbook() {
     }
   }, [job?.status, step]);
 
+  // Declared before STEP 3.5 so flushOutlineEditsAsync can reference mutateAsync.
+  const updateChapter = useUpdateChapter();
+
   // ==========================================
   // STEP 3.5: Outline Review Actions
   // ==========================================
@@ -492,8 +515,174 @@ export default function CreateEbook() {
   const [isAddingChapter, setIsAddingChapter] = useState(false);
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [newChapterSummary, setNewChapterSummary] = useState("");
-  // Local edits for existing chapter title/summary before saving on blur
+  // Local edits for existing chapter title/summary — flushed on navigation, not on blur.
   const [outlineEdits, setOutlineEdits] = useState<Record<string, { title: string; summary: string }>>({});
+
+  // ---- Task-72: durable outline edit protection ----
+  //
+  // localStorage key: a per-product slot that backs up in-progress edits on
+  // every keystroke and is flushed to the server on the next product load (any
+  // step). This ensures edits survive sidebar/topbar navigation that unmounts
+  // the component, in addition to the flush-on-navigation described below.
+  const outlineEditsStorageKey = urlProductId ? `outline_edits_${urlProductId}` : null;
+
+  // Refs keep the latest values accessible from unmount callbacks and effects
+  // that capture stale closure values.
+  const outlineEditsRef = useRef(outlineEdits);
+  const detailRef = useRef(detail);
+  const urlProductIdRef = useRef(urlProductId);
+  const stepRef = useRef(step);
+  const updateChapterMutateAsyncRef = useRef(updateChapter.mutateAsync);
+
+  useEffect(() => { outlineEditsRef.current = outlineEdits; }, [outlineEdits]);
+  useEffect(() => { detailRef.current = detail; }, [detail]);
+  useEffect(() => { urlProductIdRef.current = urlProductId; }, [urlProductId]);
+  useEffect(() => { stepRef.current = step; }, [step]);
+  useEffect(() => { updateChapterMutateAsyncRef.current = updateChapter.mutateAsync; }, [updateChapter.mutateAsync]);
+
+  // Note: localStorage backup is written synchronously inside handleOutlineEdit's
+  // state updater (see below) so the backup is committed before any navigation
+  // can unmount the component. No separate useEffect is needed for this.
+
+  // When a product first loads (any step), flush any localStorage backup to the
+  // server. This covers the case where the user navigated away via the sidebar
+  // or top bar before the flush-on-navigation could complete.
+  const backupFlushedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!urlProductId || !detail?.chapters || !outlineEditsStorageKey) return;
+    if (backupFlushedRef.current === urlProductId) return; // already flushed this session
+    const raw = (() => { try { return localStorage.getItem(outlineEditsStorageKey); } catch { return null; } })();
+    if (!raw) return;
+    backupFlushedRef.current = urlProductId;
+    let backup: Record<string, { title: string; summary: string }>;
+    try { backup = JSON.parse(raw); } catch { return; }
+
+    // Build the list of dirty chapters up front (synchronously).
+    const dirty: { chapterId: string; title: string; summary: string }[] = [];
+    for (const chapter of detail.chapters) {
+      const edits = backup[chapter.id];
+      if (!edits) continue;
+      if (edits.title !== chapter.title || edits.summary !== (chapter.summary ?? '')) {
+        dirty.push({ chapterId: chapter.id, title: edits.title, summary: edits.summary });
+      }
+    }
+    if (dirty.length === 0) {
+      // Nothing to flush — drop the backup.
+      try { localStorage.removeItem(outlineEditsStorageKey); } catch { /* ignore */ }
+      return;
+    }
+
+    // Await every save via Promise.all; only remove the backup on full success.
+    // If any save fails the backup is retained so the user's edits aren't silently lost.
+    const mutateAsync = updateChapterMutateAsyncRef.current;
+    const pid = urlProductId;
+    const key = outlineEditsStorageKey;
+    void (async () => {
+      try {
+        await Promise.all(
+          dirty.map(({ chapterId, title, summary }) =>
+            mutateAsync({ productId: pid, chapterId, data: { title, summary } })
+          )
+        );
+        try { localStorage.removeItem(key); } catch { /* ignore */ }
+      } catch {
+        toast({ title: "Couldn't save chapter edits from last session", variant: "destructive" });
+        // Do NOT remove the backup — it's retained for the next retry.
+        // Reset the guard flag so the flush can be re-attempted in the same session
+        // (e.g. when the user re-enters step 3.5 or the component remounts).
+        backupFlushedRef.current = null;
+      }
+    })();
+  }, [urlProductId, detail?.chapters, outlineEditsStorageKey]);
+
+  // When entering step 3.5, restore any localStorage backup into outlineEdits
+  // (in case the component was remounted, e.g. after a layout navigation).
+  useEffect(() => {
+    if (step !== 3.5 || !outlineEditsStorageKey) return;
+    try {
+      const raw = localStorage.getItem(outlineEditsStorageKey);
+      if (raw) setOutlineEdits(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [step, outlineEditsStorageKey]);
+
+  // Async flush: saves all dirty chapters to the server and clears the localStorage
+  // backup on success. Throws on first mutation failure so callers can abort.
+  const flushOutlineEditsAsync = useCallback(async (
+    productId = urlProductIdRef.current,
+    chapters = detailRef.current?.chapters,
+    edits = outlineEditsRef.current,
+    mutateAsync = updateChapterMutateAsyncRef.current,
+  ) => {
+    if (!productId || !chapters) return;
+    const dirty = chapters.filter((c) => {
+      const e = edits[c.id];
+      if (!e) return false;
+      return e.title !== c.title || e.summary !== (c.summary ?? '');
+    });
+    for (const chapter of dirty) {
+      const e = edits[chapter.id];
+      await mutateAsync({ productId, chapterId: chapter.id, data: { title: e.title, summary: e.summary } });
+    }
+    // Clear backup on success
+    if (outlineEditsStorageKey) {
+      try { localStorage.removeItem(outlineEditsStorageKey); } catch { /* ignore */ }
+    }
+    setOutlineEdits({});
+  }, [outlineEditsStorageKey]);
+
+  // Tracks whether an outline flush is in progress (disables navigation buttons).
+  const [isSavingOutline, setIsSavingOutline] = useState(false);
+
+  // Navigate away from step 3.5, flushing any unsaved edits first.
+  // If the flush fails the user stays on step 3.5 with an error toast.
+  const navigateFromOutline = useCallback(async (targetStep: number) => {
+    setIsSavingOutline(true);
+    try {
+      await flushOutlineEditsAsync();
+      setStep(targetStep);
+    } catch {
+      toast({ title: "Couldn't save chapter edits — please try again", variant: "destructive" });
+    } finally {
+      setIsSavingOutline(false);
+    }
+  }, [flushOutlineEditsAsync, toast]);
+
+  // Register a navigation guard while at step 3.5 so that sidebar/topbar route
+  // transitions are intercepted and the outline flush runs before navigation
+  // is allowed. The guard is cleared when leaving step 3.5 or on unmount.
+  useEffect(() => {
+    if (step !== 3.5) {
+      setNavigationGuard(null);
+      return;
+    }
+    setNavigationGuard(async () => {
+      if (Object.keys(outlineEditsRef.current).length === 0) return true;
+      try {
+        await flushOutlineEditsAsync();
+        return true;
+      } catch {
+        toast({ title: "Couldn't save chapter edits — please try again", variant: "destructive" });
+        return false;
+      }
+    });
+    return () => setNavigationGuard(null);
+  }, [step, flushOutlineEditsAsync, toast]);
+
+  // Best-effort flush on component unmount (covers unhandled navigation paths).
+  useEffect(() => {
+    return () => {
+      setNavigationGuard(null); // always unregister on unmount
+      if (stepRef.current !== 3.5) return;
+      const edits = outlineEditsRef.current;
+      const chapters = detailRef.current?.chapters;
+      const productId = urlProductIdRef.current;
+      const mutateAsync = updateChapterMutateAsyncRef.current;
+      if (!productId || !chapters) return;
+      // fire-and-forget; we cannot await in a cleanup function
+      void flushOutlineEditsAsync(productId, chapters, edits, mutateAsync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAddChapter = () => {
     if (!urlProductId || !newChapterTitle.trim()) {
@@ -527,19 +716,10 @@ export default function CreateEbook() {
     );
   };
 
-  const handleChapterFieldBlur = (chapterId: string, serverTitle: string, serverSummary: string) => {
-    if (!urlProductId) return;
-    const edits = outlineEdits[chapterId];
-    if (!edits) return;
-    const titleChanged = edits.title !== serverTitle;
-    const summaryChanged = edits.summary !== serverSummary;
-    if (titleChanged || summaryChanged) {
-      updateChapter.mutate(
-        { productId: urlProductId, chapterId, data: { title: edits.title, summary: edits.summary } },
-        { onError: () => toast({ title: "Couldn't save chapter edit", variant: "destructive" }) }
-      );
-    }
-  };
+  // Blur saves are intentionally removed (task-72) to eliminate the race
+  // condition where an in-flight blur mutation could overwrite a concurrent
+  // navigation flush with a stale payload. All saves now go through
+  // flushOutlineEditsAsync on navigation.
 
   // Drag-and-drop reorder state
   const reorderChaptersMutation = useReorderChapters();
@@ -586,30 +766,41 @@ export default function CreateEbook() {
 
   const handleOutlineEdit = useCallback(
     (id: string, field: "title" | "summary", value: string) => {
-      setOutlineEdits((prev) => ({
-        ...prev,
-        [id]: {
-          title: prev[id]?.title ?? (detail?.chapters.find((c) => c.id === id)?.title ?? ""),
-          summary: prev[id]?.summary ?? (detail?.chapters.find((c) => c.id === id)?.summary ?? ""),
-          [field]: value,
-        },
-      }));
+      setOutlineEdits((prev) => {
+        const next = {
+          ...prev,
+          [id]: {
+            title: prev[id]?.title ?? (detail?.chapters.find((c) => c.id === id)?.title ?? ""),
+            summary: prev[id]?.summary ?? (detail?.chapters.find((c) => c.id === id)?.summary ?? ""),
+            [field]: value,
+          },
+        };
+        // Write synchronously inside the state updater so the localStorage backup
+        // is committed before React can unmount the component (e.g. sidebar nav).
+        if (outlineEditsStorageKey) {
+          try { localStorage.setItem(outlineEditsStorageKey, JSON.stringify(next)); } catch { /* ignore */ }
+        }
+        return next;
+      });
     },
-    [detail?.chapters],
+    [detail?.chapters, outlineEditsStorageKey],
   );
 
-  const handleOutlineBlur = useCallback(
-    (chapterId: string) => {
-      const chapter = detail?.chapters.find((c) => c.id === chapterId);
-      if (!chapter) return;
-      handleChapterFieldBlur(chapterId, chapter.title, chapter.summary || "");
-    },
-    [detail?.chapters, handleChapterFieldBlur],
-  );
+  // No-op: blur saves removed (see comment above). onBlur on SortableChapterCard
+  // kept to avoid changing the component interface, but does nothing here.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleOutlineBlur = useCallback((_chapterId: string) => {/* no-op */}, []);
 
   const generateChapters = useGenerateChapters();
-  const handleStartGeneration = () => {
+  const handleStartGeneration = async () => {
     if (!urlProductId) return;
+    // Flush unsaved chapter edits before starting generation so no edits are lost.
+    try {
+      await flushOutlineEditsAsync();
+    } catch {
+      toast({ title: "Couldn't save chapter edits — please try again", variant: "destructive" });
+      return;
+    }
     setStep(4);
     generateChapters.mutate({ data: { productId: urlProductId } }, {
       onSuccess: (job) => {
@@ -627,7 +818,7 @@ export default function CreateEbook() {
   // ==========================================
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const selectedChapter = detail?.chapters.find(c => c.id === selectedChapterId);
-  const updateChapter = useUpdateChapter();
+  // updateChapter declared before STEP 3.5 (see above) so flushOutlineEditsAsync can reference it.
 
   useEffect(() => {
     if (step === 5 && detail?.chapters && detail.chapters.length > 0 && !selectedChapterId) {
@@ -1016,9 +1207,9 @@ export default function CreateEbook() {
       size="sm"
       className="rounded-xl border-ink-200 text-ink-600"
       onClick={handleSaveDraft}
-      disabled={createProduct.isPending || updateProduct.isPending}
+      disabled={createProduct.isPending || updateProduct.isPending || isSavingOutline}
     >
-      {(createProduct.isPending || updateProduct.isPending) ? (
+      {(createProduct.isPending || updateProduct.isPending || isSavingOutline) ? (
         <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
       ) : (
         "Save Draft"
@@ -1027,7 +1218,11 @@ export default function CreateEbook() {
   ) : null;
 
   return (
-    <AppLayout headerActions={saveDraftButton} headerTitleHref="/create/ebook" headerTitleOnClick={() => setStep(0)}>
+    <AppLayout
+      headerActions={saveDraftButton}
+      headerTitleHref={step !== 3.5 ? "/create/ebook" : undefined}
+      headerTitleOnClick={() => { if (step === 3.5) { void navigateFromOutline(0); } else { setStep(0); } }}
+    >
       <div className="flex flex-col h-full bg-paper">
         {/* Wizard Header — only shown once the user is past the landing step */}
         {step > 0 && (
@@ -1042,7 +1237,7 @@ export default function CreateEbook() {
                     <div key={ds.label} className="flex items-center">
                       <div
                         className={cn("flex items-center gap-2", clickable ? "cursor-pointer group" : "cursor-default")}
-                        onClick={() => { if (clickable) setStep(ds.navStep); }}
+                        onClick={() => { if (clickable) { if (step === 3.5) { void navigateFromOutline(ds.navStep); } else { setStep(ds.navStep); } } }}
                       >
                         <div className={cn(
                           "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all shrink-0",
@@ -1814,9 +2009,10 @@ export default function CreateEbook() {
                     <Button
                       size="lg"
                       className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                      onClick={() => setStep(5)}
+                      onClick={() => void navigateFromOutline(5)}
+                      disabled={isSavingOutline}
                     >
-                      Chapters look correct <ChevronRight className="w-5 h-5 ml-2" />
+                      {isSavingOutline ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Saving…</> : <>Chapters look correct <ChevronRight className="w-5 h-5 ml-2" /></>}
                     </Button>
                   ) : (
                     <div className="flex items-center gap-3">
@@ -1827,9 +2023,10 @@ export default function CreateEbook() {
                       <Button
                         size="lg"
                         className="h-12 px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-base shadow-soft"
-                        onClick={handleStartGeneration}
+                        onClick={() => void handleStartGeneration()}
+                        disabled={isSavingOutline}
                       >
-                        Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" />
+                        {isSavingOutline ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Saving…</> : <>Approve & Write Chapters <ChevronRight className="w-5 h-5 ml-2" /></>}
                       </Button>
                     </div>
                   )}

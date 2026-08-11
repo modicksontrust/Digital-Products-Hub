@@ -24,9 +24,9 @@ export const GenerateAdCopyBody = zod.object({
   painPoint: zod.string().optional(),
   audience: zod.string().optional(),
   country: zod.string().optional(),
-  price: zod.number().optional(),
+  price: zod.string().optional(),
   benefits: zod.array(zod.string()).optional(),
-  adType: zod.enum(["ad_copy", "image_ads", "full_package"]),
+  adType: zod.enum(["ad_copy", "image_ads", "video_scripts", "full_package"]),
   platforms: zod.array(zod.string()),
   objective: zod.enum(["traffic", "engagement", "conversions"]),
 });

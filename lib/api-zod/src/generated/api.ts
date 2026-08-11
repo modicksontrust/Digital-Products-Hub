@@ -509,7 +509,16 @@ export const GetProductResponse = zod.object({
   "comment": zod.string().nullish(),
   "decidedAt": zod.string().nullish(),
   "createdAt": zod.string()
-}).optional()
+}).optional(),
+  "reviewHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.string(),
+  "reviewerName": zod.string().nullish(),
+  "decision": zod.string(),
+  "comment": zod.string().nullish(),
+  "decidedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})).optional()
 })
 
 
@@ -1006,6 +1015,8 @@ export const GenerateSubtopicSuggestionsResponse = zod.object({
 }))
 })
 
+
+// GenerateAdCopyBody and GenerateAdCopyResponse live in manual.ts — not duplicated here.
 
 export const GenerateOutlineBody = zod.object({
   "productId": zod.string()
@@ -1893,5 +1904,7 @@ export const GetStorageObjectParams = zod.object({
 })
 
 export const GetStorageObjectResponse = zod.unknown()
+
+// GeneratePreviewTokenParams and GeneratePreviewTokenResponse live in manual.ts — not duplicated here.
 
 

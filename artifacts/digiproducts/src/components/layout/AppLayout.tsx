@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { checkNavigationGuard } from "@/lib/navigationGuard";
 import { useGetMe, useLogout, useGetNotifications, useMarkNotificationRead, getGetNotificationsQueryKey } from "@workspace/api-client-react";
 import { 
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
@@ -87,13 +88,27 @@ export function usePageTitle(): string {
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { navigation, isLocked, user } = useNavigation();
+
+  // Build a guarded click handler: check the navigation guard (e.g. outline-edit
+  // flush), prevent the Link's default navigation, then navigate programmatically
+  // only if the guard allows it.
+  const makeGuardedClick = (href: string) => async (e: React.MouseEvent) => {
+    e.preventDefault();
+    onNavigate?.();
+    const canNavigate = await checkNavigationGuard();
+    if (canNavigate) navigate(href);
+  };
 
   return (
     <>
       <div className="p-6">
-        <Link href={isLocked ? "/learn" : "/dashboard"} className="flex items-center gap-2" onClick={onNavigate}>
+        <Link
+          href={isLocked ? "/learn" : "/dashboard"}
+          className="flex items-center gap-2"
+          onClick={makeGuardedClick(isLocked ? "/learn" : "/dashboard")}
+        >
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-lime-500 flex items-center justify-center text-brand-950 font-bold text-lg">
             P
           </div>
@@ -113,12 +128,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               
               <ul className="space-y-1">
                 {(section.items || [section]).map((item) => {
+                  const href = item.locked ? "/learn" : item.href;
                   const active = location === item.href || location.startsWith(item.href + '/');
                   return (
                     <li key={item.name}>
                       <Link 
-                        href={item.locked ? "/learn" : item.href}
-                        onClick={onNavigate}
+                        href={href}
+                        onClick={makeGuardedClick(href)}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group",
                           active 
@@ -241,6 +257,17 @@ export function Topbar({ variant = "default", actions, titleHref, titleOnClick }
               {pageTitle}
             </h1>
           </Link>
+        ) : titleOnClick ? (
+          /* No href — title acts as a clickable label (e.g. during outline flush) */
+          <h1
+            onClick={titleOnClick}
+            className={cn(
+              "font-display font-semibold text-lg truncate hover:opacity-70 transition-opacity cursor-pointer select-none",
+              (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
+            )}
+          >
+            {pageTitle}
+          </h1>
         ) : (
           <h1 className={cn(
             "font-display font-semibold text-lg truncate",
