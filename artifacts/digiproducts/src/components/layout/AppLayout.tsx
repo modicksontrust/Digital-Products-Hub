@@ -39,8 +39,8 @@ function useNavigation() {
       name: "CREATE",
       items: [
         { name: "eBook / PDF Generator", href: "/create/ebook", icon: PenTool, locked: isLocked },
-        { name: "Lead Magnet", href: "/create/lead-magnet", icon: LayoutTemplate, locked: isLocked },
         { name: "Promote eBook", href: "/create/promote-ebook", icon: Megaphone, locked: isLocked },
+        { name: "Lead Magnet", href: "/create/lead-magnet", icon: LayoutTemplate, locked: isLocked },
       ]
     },
     {
