@@ -85,6 +85,9 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@uppy/core": "^5.2.0",
     "@workspace/object-storage-web": "workspace:*",
     "canvas-confetti": "^1.9.4"

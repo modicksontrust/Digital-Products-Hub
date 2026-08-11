@@ -2434,7 +2434,7 @@ export const getReorderChaptersUrl = (productId: string,) => {
 
 
 
-  return `/api/products/${productId}/chapters-reorder`
+  return `/api/products/${productId}/chapters/reorder`
 }
 
 export const reorderChapters = async (productId: string,

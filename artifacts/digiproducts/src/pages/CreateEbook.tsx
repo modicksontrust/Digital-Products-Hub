@@ -1,4 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -20,7 +37,7 @@ import {
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   useGetProductCovers, useGenerateProductCover, useRegisterUploadedCover, useSelectProductCover,
   useGetSalesCopy, useGenerateSalesCopy, useUpdateSalesCopy, usePublishProduct, useUnpublishProduct,
-  useGeneratePreviewToken,
+  useGeneratePreviewToken, useReorderChapters,
   getGetJobQueryKey, getGetProductQueryKey, getGetProductCoversQueryKey, getGetSalesCopyQueryKey,
   type NicheSuggestionsResponseSubNichesItem,
   type SubtopicSuggestionsResponseSubtopicsItem,
@@ -40,6 +57,82 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { COVER_STYLE_OPTIONS } from "@/lib/coverStyles";
 import { SalesPagePreview } from "@/components/SalesPagePreview";
+
+// ---------------------------------------------------------------------------
+// Sortable chapter card — used by the outline review drag-and-drop list
+// ---------------------------------------------------------------------------
+function SortableChapterCard({
+  chapter,
+  index,
+  edits,
+  onEdit,
+  onBlur,
+  onDelete,
+  isDeleting,
+}: {
+  chapter: { id: string; title: string; summary?: string | null };
+  index: number;
+  edits: { title: string; summary: string } | undefined;
+  onEdit: (id: string, field: "title" | "summary", value: string) => void;
+  onBlur: (id: string) => void;
+  onDelete: (id: string) => void;
+  isDeleting: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: chapter.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  const titleVal = edits?.title ?? chapter.title;
+  const summaryVal = edits?.summary ?? (chapter.summary || "");
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className="border-ink-200 shadow-sm group">
+        <CardContent className="p-4 flex gap-4">
+          {/* Drag handle — listeners only on the grip icon so text fields remain focusable */}
+          <div
+            className="cursor-grab active:cursor-grabbing pt-1 text-ink-300 hover:text-ink-500 touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-5 h-5" />
+          </div>
+          <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 font-bold flex items-center justify-center shrink-0">
+            {index + 1}
+          </div>
+          <div className="flex-1">
+            <Input
+              value={titleVal}
+              onChange={(e) => onEdit(chapter.id, "title", e.target.value)}
+              onBlur={() => onBlur(chapter.id)}
+              className="font-semibold text-lg border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 h-8 mb-1 bg-transparent"
+            />
+            <Textarea
+              value={summaryVal}
+              onChange={(e) => onEdit(chapter.id, "summary", e.target.value)}
+              onBlur={() => onBlur(chapter.id)}
+              className="text-ink-600 text-sm border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 min-h-0 h-auto resize-none bg-transparent"
+            />
+          </div>
+          <button
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-ink-300 hover:text-red-500 hover:bg-red-50 shrink-0 self-start mt-1"
+            title="Remove chapter"
+            onClick={() => onDelete(chapter.id)}
+            disabled={isDeleting}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function CreateEbook() {
   const searchParams = new URLSearchParams(useSearch());
@@ -254,6 +347,22 @@ export default function CreateEbook() {
   };
 
   // ==========================================
+  // STEP 3 & 4: Polling Jobs & Product Data
+  // (declared early so they are available to the brief pre-fill effect below)
+  // ==========================================
+  const { data: job } = useGetJob(urlJobId || '', {
+    query: {
+      enabled: !!urlJobId && (step === 3 || step === 4),
+      refetchInterval: (data) => (data?.state?.data?.status === 'queued' || data?.state?.data?.status === 'running') ? 2000 : false,
+      queryKey: getGetJobQueryKey(urlJobId || '')
+    }
+  });
+
+  const { data: detail, refetch: refetchProduct } = useGetProduct(urlProductId || '', {
+    query: { enabled: !!urlProductId, queryKey: getGetProductQueryKey(urlProductId || '') }
+  });
+
+  // ==========================================
   // STEP 2: Brief State
   // ==========================================
   const [brief, setBrief] = useState({
@@ -348,21 +457,6 @@ export default function CreateEbook() {
     }
   };
 
-  // ==========================================
-  // STEP 3 & 4: Polling Jobs & Product Data
-  // ==========================================
-  const { data: job } = useGetJob(urlJobId || '', {
-    query: {
-      enabled: !!urlJobId && (step === 3 || step === 4),
-      refetchInterval: (data) => (data?.state?.data?.status === 'queued' || data?.state?.data?.status === 'running') ? 2000 : false,
-      queryKey: getGetJobQueryKey(urlJobId || '')
-    }
-  });
-
-  const { data: detail, refetch: refetchProduct } = useGetProduct(urlProductId || '', {
-    query: { enabled: !!urlProductId, queryKey: getGetProductQueryKey(urlProductId || '') }
-  });
-
   useEffect(() => {
     if (!job) return;
     
@@ -446,6 +540,72 @@ export default function CreateEbook() {
       );
     }
   };
+
+  // Drag-and-drop reorder state
+  const reorderChaptersMutation = useReorderChapters();
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Ordered chapter IDs — kept in local state for optimistic updates.
+  // Synced from the server whenever `detail.chapters` changes (e.g. after add/delete/refetch).
+  const serverChapterIds = (detail?.chapters ?? [])
+    .slice()
+    .sort((a, b) => a.orderIndex - b.orderIndex)
+    .map((c) => c.id);
+  const [orderedChapterIds, setOrderedChapterIds] = useState<string[]>(serverChapterIds);
+
+  // Keep local order in sync with server data (add, delete, initial load)
+  useEffect(() => {
+    setOrderedChapterIds(serverChapterIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(serverChapterIds)]);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id || !urlProductId) return;
+      setOrderedChapterIds((ids) => {
+        const oldIndex = ids.indexOf(String(active.id));
+        const newIndex = ids.indexOf(String(over.id));
+        const reordered = arrayMove(ids, oldIndex, newIndex);
+        reorderChaptersMutation.mutate(
+          { productId: urlProductId, data: { chapterIds: reordered } },
+          { onError: () => {
+              toast({ title: "Couldn't save new order", variant: "destructive" });
+              setOrderedChapterIds(ids); // roll back
+            },
+          },
+        );
+        return reordered;
+      });
+    },
+    [urlProductId, reorderChaptersMutation, toast],
+  );
+
+  const handleOutlineEdit = useCallback(
+    (id: string, field: "title" | "summary", value: string) => {
+      setOutlineEdits((prev) => ({
+        ...prev,
+        [id]: {
+          title: prev[id]?.title ?? (detail?.chapters.find((c) => c.id === id)?.title ?? ""),
+          summary: prev[id]?.summary ?? (detail?.chapters.find((c) => c.id === id)?.summary ?? ""),
+          [field]: value,
+        },
+      }));
+    },
+    [detail?.chapters],
+  );
+
+  const handleOutlineBlur = useCallback(
+    (chapterId: string) => {
+      const chapter = detail?.chapters.find((c) => c.id === chapterId);
+      if (!chapter) return;
+      handleChapterFieldBlur(chapterId, chapter.title, chapter.summary || "");
+    },
+    [detail?.chapters, handleChapterFieldBlur],
+  );
 
   const generateChapters = useGenerateChapters();
   const handleStartGeneration = () => {
@@ -1676,51 +1836,32 @@ export default function CreateEbook() {
                 </div>
 
                 <div className="space-y-3">
-                  {detail.chapters.sort((a,b) => a.orderIndex - b.orderIndex).map((chapter, i) => {
-                    const edits = outlineEdits[chapter.id];
-                    const titleVal = edits?.title ?? chapter.title;
-                    const summaryVal = edits?.summary ?? (chapter.summary || '');
-                    return (
-                    <Card key={chapter.id} className="border-ink-200 shadow-sm group">
-                      <CardContent className="p-4 flex gap-4">
-                        <div className="cursor-grab pt-1 text-ink-300 hover:text-ink-500">
-                          <GripVertical className="w-5 h-5" />
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 font-bold flex items-center justify-center shrink-0">
-                          {i + 1}
-                        </div>
-                        <div className="flex-1">
-                          <Input 
-                            value={titleVal}
-                            onChange={(e) => setOutlineEdits(prev => ({
-                              ...prev,
-                              [chapter.id]: { title: e.target.value, summary: prev[chapter.id]?.summary ?? (chapter.summary || '') }
-                            }))}
-                            onBlur={() => handleChapterFieldBlur(chapter.id, chapter.title, chapter.summary || '')}
-                            className="font-semibold text-lg border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 h-8 mb-1 bg-transparent"
-                          />
-                          <Textarea 
-                            value={summaryVal}
-                            onChange={(e) => setOutlineEdits(prev => ({
-                              ...prev,
-                              [chapter.id]: { title: prev[chapter.id]?.title ?? chapter.title, summary: e.target.value }
-                            }))}
-                            onBlur={() => handleChapterFieldBlur(chapter.id, chapter.title, chapter.summary || '')}
-                            className="text-ink-600 text-sm border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 min-h-0 h-auto resize-none bg-transparent"
-                          />
-                        </div>
-                        <button
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-ink-300 hover:text-red-500 hover:bg-red-50 shrink-0 self-start mt-1"
-                          title="Remove chapter"
-                          onClick={() => handleDeleteChapter(chapter.id)}
-                          disabled={deleteChapterMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </CardContent>
-                    </Card>
-                    );
-                  })}
+                  <DndContext
+                    sensors={dndSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext items={orderedChapterIds} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-3">
+                        {orderedChapterIds.map((id, i) => {
+                          const chapter = detail.chapters.find((c) => c.id === id);
+                          if (!chapter) return null;
+                          return (
+                            <SortableChapterCard
+                              key={chapter.id}
+                              chapter={chapter}
+                              index={i}
+                              edits={outlineEdits[chapter.id]}
+                              onEdit={handleOutlineEdit}
+                              onBlur={handleOutlineBlur}
+                              onDelete={handleDeleteChapter}
+                              isDeleting={deleteChapterMutation.isPending}
+                            />
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
 
                   {/* Inline new-chapter form */}
                   {isAddingChapter && (

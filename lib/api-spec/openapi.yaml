@@ -617,7 +617,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OkResponse"
-  /products/{productId}/chapters-reorder:
+  /products/{productId}/chapters/reorder:
     post:
       operationId: reorderChapters
       tags: [products]

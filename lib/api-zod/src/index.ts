@@ -5,3 +5,4 @@ export * from "./generated/api";
 // ambiguous-export error the moment both are star-exported. Nothing in this
 // monorepo imports the plain interfaces (zod schema values + z.infer are used
 // throughout), so we only export the zod barrel.
+export * from './generated/types';
