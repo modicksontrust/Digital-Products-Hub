@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "DigiProducts"
+title = "PokiPoki"
 description = "A single-tenant internal platform where a company team creates AI-generated digital products (eBooks, PDF guides, lead magnets) from a central dashboard. Invite-only accounts with five roles, a gated video onboarding curriculum (Learn module), an AI eBook generator wizard, product library with review workflow, credit quota system, admin console, and a public marketing landing page. Green design system (deep pine → emerald → lime with gold accents) modeled on vardlinks.co."
 version = "1.0.0"
 id = "artifacts/digiproducts"
