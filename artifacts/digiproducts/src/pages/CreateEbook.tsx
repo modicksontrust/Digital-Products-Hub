@@ -1644,18 +1644,25 @@ export default function CreateEbook() {
                 />
 
                 <div className="mt-8 text-left border rounded-xl p-4 bg-white shadow-sm space-y-2 h-48 overflow-auto">
-                  {job?.chapterStatuses?.map(cs => (
-                    <div key={cs.chapterId} className="flex justify-between items-center text-sm">
-                      <span className="truncate pr-4 font-medium text-ink-700">{cs.title}</span>
-                      <Badge variant="outline" className={cn(
-                        cs.status === 'succeeded' || cs.status === 'ready' ? "bg-lime-50 text-lime-700 border-lime-200" :
-                        cs.status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
-                        "bg-brand-50 text-brand-700 border-brand-200"
-                      )}>
-                        {cs.status}
-                      </Badge>
+                  {job?.chapterStatuses && job.chapterStatuses.length > 0 ? (
+                    job.chapterStatuses.map(cs => (
+                      <div key={cs.chapterId} className="flex justify-between items-center text-sm">
+                        <span className="truncate pr-4 font-medium text-ink-700">{cs.title}</span>
+                        <Badge variant="outline" className={cn(
+                          cs.status === 'succeeded' || cs.status === 'ready' ? "bg-lime-50 text-lime-700 border-lime-200" :
+                          cs.status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
+                          "bg-brand-50 text-brand-700 border-brand-200"
+                        )}>
+                          {cs.status}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center gap-2 text-ink-400">
+                      <Loader2 className="w-5 h-5 animate-spin text-brand-400" />
+                      <p className="text-sm">Chapters will appear here as they're written…</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
