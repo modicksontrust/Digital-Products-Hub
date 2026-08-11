@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { 
   useCreateProduct, useUpdateProduct, useGenerateOutline, useGetJob, useGetProduct, 
-  useGenerateChapters, useUpdateChapter, useExportProduct,
+  useGenerateChapters, useUpdateChapter, useAddChapter, useDeleteChapter, useExportProduct,
   useGenerateNicheSuggestions, useGenerateSubtopicSuggestions, useImportManuscript,
   useGetProductCovers, useGenerateProductCover, useRegisterUploadedCover, useSelectProductCover,
   useGetSalesCopy, useGenerateSalesCopy, useUpdateSalesCopy, usePublishProduct, useUnpublishProduct,
@@ -393,6 +393,60 @@ export default function CreateEbook() {
   // ==========================================
   // STEP 3.5: Outline Review Actions
   // ==========================================
+  const addChapterMutation = useAddChapter();
+  const deleteChapterMutation = useDeleteChapter();
+  const [isAddingChapter, setIsAddingChapter] = useState(false);
+  const [newChapterTitle, setNewChapterTitle] = useState("");
+  const [newChapterSummary, setNewChapterSummary] = useState("");
+  // Local edits for existing chapter title/summary before saving on blur
+  const [outlineEdits, setOutlineEdits] = useState<Record<string, { title: string; summary: string }>>({});
+
+  const handleAddChapter = () => {
+    if (!urlProductId || !newChapterTitle.trim()) {
+      toast({ title: "Give the chapter a title first", variant: "destructive" });
+      return;
+    }
+    addChapterMutation.mutate(
+      { productId: urlProductId, data: { title: newChapterTitle.trim(), summary: newChapterSummary.trim() || undefined } },
+      {
+        onSuccess: () => {
+          refetchProduct();
+          setIsAddingChapter(false);
+          setNewChapterTitle("");
+          setNewChapterSummary("");
+        },
+        onError: () => {
+          toast({ title: "Couldn't add chapter", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleDeleteChapter = (chapterId: string) => {
+    if (!urlProductId) return;
+    deleteChapterMutation.mutate(
+      { productId: urlProductId, chapterId },
+      {
+        onSuccess: () => refetchProduct(),
+        onError: () => toast({ title: "Couldn't remove chapter", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleChapterFieldBlur = (chapterId: string, serverTitle: string, serverSummary: string) => {
+    if (!urlProductId) return;
+    const edits = outlineEdits[chapterId];
+    if (!edits) return;
+    const titleChanged = edits.title !== serverTitle;
+    const summaryChanged = edits.summary !== serverSummary;
+    if (titleChanged || summaryChanged) {
+      updateChapter.mutate(
+        { productId: urlProductId, chapterId, data: { title: edits.title, summary: edits.summary } },
+        { onError: () => toast({ title: "Couldn't save chapter edit", variant: "destructive" }) }
+      );
+    }
+  };
+
   const generateChapters = useGenerateChapters();
   const handleStartGeneration = () => {
     if (!urlProductId) return;
@@ -1616,7 +1670,11 @@ export default function CreateEbook() {
                 </div>
 
                 <div className="space-y-3">
-                  {detail.chapters.sort((a,b) => a.orderIndex - b.orderIndex).map((chapter, i) => (
+                  {detail.chapters.sort((a,b) => a.orderIndex - b.orderIndex).map((chapter, i) => {
+                    const edits = outlineEdits[chapter.id];
+                    const titleVal = edits?.title ?? chapter.title;
+                    const summaryVal = edits?.summary ?? (chapter.summary || '');
+                    return (
                     <Card key={chapter.id} className="border-ink-200 shadow-sm group">
                       <CardContent className="p-4 flex gap-4">
                         <div className="cursor-grab pt-1 text-ink-300 hover:text-ink-500">
@@ -1627,24 +1685,93 @@ export default function CreateEbook() {
                         </div>
                         <div className="flex-1">
                           <Input 
-                            value={chapter.title} 
+                            value={titleVal}
+                            onChange={(e) => setOutlineEdits(prev => ({
+                              ...prev,
+                              [chapter.id]: { title: e.target.value, summary: prev[chapter.id]?.summary ?? (chapter.summary || '') }
+                            }))}
+                            onBlur={() => handleChapterFieldBlur(chapter.id, chapter.title, chapter.summary || '')}
                             className="font-semibold text-lg border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 h-8 mb-1 bg-transparent"
-                            readOnly
                           />
                           <Textarea 
-                            value={chapter.summary || ''} 
+                            value={summaryVal}
+                            onChange={(e) => setOutlineEdits(prev => ({
+                              ...prev,
+                              [chapter.id]: { title: prev[chapter.id]?.title ?? chapter.title, summary: e.target.value }
+                            }))}
+                            onBlur={() => handleChapterFieldBlur(chapter.id, chapter.title, chapter.summary || '')}
                             className="text-ink-600 text-sm border-transparent hover:border-ink-200 focus:border-brand-500 px-2 -ml-2 min-h-0 h-auto resize-none bg-transparent"
-                            readOnly
                           />
+                        </div>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-ink-300 hover:text-red-500 hover:bg-red-50 shrink-0 self-start mt-1"
+                          title="Remove chapter"
+                          onClick={() => handleDeleteChapter(chapter.id)}
+                          disabled={deleteChapterMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </CardContent>
+                    </Card>
+                    );
+                  })}
+
+                  {/* Inline new-chapter form */}
+                  {isAddingChapter && (
+                    <Card className="border-brand-300 shadow-sm ring-1 ring-brand-200">
+                      <CardContent className="p-4 flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 font-bold flex items-center justify-center shrink-0">
+                          {detail.chapters.length + 1}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            autoFocus
+                            placeholder="Chapter title"
+                            value={newChapterTitle}
+                            onChange={(e) => setNewChapterTitle(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleAddChapter(); if (e.key === "Escape") { setIsAddingChapter(false); setNewChapterTitle(""); setNewChapterSummary(""); } }}
+                            className="font-semibold text-lg border-ink-200 focus:border-brand-500 px-2 -ml-2 h-8"
+                          />
+                          <Textarea
+                            placeholder="Brief summary (optional)"
+                            value={newChapterSummary}
+                            onChange={(e) => setNewChapterSummary(e.target.value)}
+                            className="text-ink-600 text-sm border-ink-200 focus:border-brand-500 px-2 -ml-2 min-h-0 resize-none"
+                            rows={2}
+                          />
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              className="rounded-lg bg-brand-500 hover:bg-brand-600 text-white"
+                              onClick={handleAddChapter}
+                              disabled={addChapterMutation.isPending || !newChapterTitle.trim()}
+                            >
+                              {addChapterMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                              <span className="ml-1">Save Chapter</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="rounded-lg"
+                              onClick={() => { setIsAddingChapter(false); setNewChapterTitle(""); setNewChapterSummary(""); }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  )}
                 </div>
                 
                 <div className="flex justify-center pt-4">
-                  <Button variant="outline" className="rounded-xl border-dashed border-ink-300 text-ink-500 hover:text-brand-600 hover:border-brand-300">
-                    + Add Chapter Manually
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-dashed border-ink-300 text-ink-500 hover:text-brand-600 hover:border-brand-300"
+                    onClick={() => { setIsAddingChapter(true); setNewChapterTitle(""); setNewChapterSummary(""); }}
+                    disabled={isAddingChapter}
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Chapter Manually
                   </Button>
                 </div>
                 </>
