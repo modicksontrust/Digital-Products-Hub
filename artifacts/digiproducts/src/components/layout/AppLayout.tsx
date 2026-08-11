@@ -62,7 +62,7 @@ function useNavigation() {
       name: "ADMIN",
       items: [
         { name: "Users", href: "/admin/users", icon: Users, locked: false },
-        { name: "Credits", href: "/admin/credits", icon: CreditCard, locked: false },
+        { name: "AI Usage", href: "/admin/credits", icon: CreditCard, locked: false },
         { name: "Brand Kit", href: "/admin/brand", icon: PenTool, locked: false },
         { name: "Settings", href: "/admin/settings", icon: Settings, locked: false },
         { name: "Audit Log", href: "/admin/audit", icon: History, locked: false },
