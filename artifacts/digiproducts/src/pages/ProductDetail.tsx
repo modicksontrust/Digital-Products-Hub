@@ -19,10 +19,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FileText, Download, Eye, CheckCircle, XCircle, Clock, Edit3, MessageSquare, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { FileText, Download, Eye, CheckCircle, XCircle, Clock, Edit3, MessageSquare, Loader2, Info } from "lucide-react";
 
 function toAppUrl(apiUrl: string) {
   return apiUrl.startsWith("/api") ? import.meta.env.BASE_URL + apiUrl.slice(1) : apiUrl;
@@ -69,10 +69,12 @@ export default function ProductDetail() {
     query: { enabled: !!productId, queryKey: getGetSalesCopyQueryKey(productId || '') }
   });
 
+  // Tab state (controlled so the creator banner can navigate to Comments)
+  const [activeTab, setActiveTab] = useState("chapters");
+
   // Inline review dialog state
   const [reviewDecision, setReviewDecision] = useState<"approved" | "changes_requested" | null>(null);
   const [reviewComment, setReviewComment] = useState("");
-  const [activeTab, setActiveTab] = useState("chapters");
   const [historyFilter, setHistoryFilter] = useState<"all" | "approved" | "changes_requested">("all");
   const commentsTabRef = useRef<HTMLButtonElement>(null);
 
@@ -131,6 +133,8 @@ export default function ProductDetail() {
   const isOwner = me?.id === product.ownerId;
   const canReview = (me?.role === 'admin' || me?.role === 'manager') && !isOwner;
   const showReviewBanner = product.status === 'in_review' && canReview;
+  // Show to any product owner while in review, regardless of role
+  const showCreatorWaitingBanner = product.status === 'in_review' && isOwner;
 
   const handleSubmitReview = () => {
     if (!productId) return;
@@ -206,6 +210,27 @@ export default function ProductDetail() {
             </Link>
           </div>
         </div>
+
+        {/* Creator Waiting Banner — visible to the product owner when status is in_review */}
+        {showCreatorWaitingBanner && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-blue-50 border border-blue-200 rounded-2xl px-6 py-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-blue-900">Submitted for review — awaiting approval</p>
+                <p className="text-sm text-blue-700 mt-0.5">
+                  Submitted {formatDistanceToNow(new Date(product.updatedAt))} ago. A reviewer will approve or request changes shortly.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab("comments")}
+              className="shrink-0 text-sm font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2 transition-colors"
+            >
+              View past feedback
+            </button>
+          </div>
+        )}
 
         {/* Inline Review Banner — visible to managers/admins when product is in review */}
         {showReviewBanner && (
