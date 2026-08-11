@@ -232,7 +232,7 @@ export function Topbar({ variant = "default", actions, titleHref }: { variant?: 
           </SheetContent>
         </Sheet>
         {titleHref ? (
-          <Link href={titleHref}>
+          <Link to={titleHref}>
             <h1 className={cn(
               "font-display font-semibold text-lg truncate hover:opacity-70 transition-opacity cursor-pointer",
               (variant === "transparent" && !scrolled) ? "text-white" : "text-ink-900"
