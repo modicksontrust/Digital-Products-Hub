@@ -275,6 +275,24 @@ router.delete(
   },
 );
 
+// POST alias used by the generated client (POST /:id/revoke)
+router.post(
+  "/admin/invitations/:invitationId/revoke",
+  requirePermission("canManageUsers"),
+  async (req, res): Promise<void> => {
+    const [updated] = await db
+      .update(invitationsTable)
+      .set({ status: "revoked" })
+      .where(eq(invitationsTable.id, String(req.params["invitationId"])))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Invitation not found" });
+      return;
+    }
+    res.json(RevokeInvitationResponse.parse({ ok: true }));
+  },
+);
+
 // ---- Access requests ----
 
 router.get(

@@ -128,8 +128,9 @@ export default function ProductDetail() {
   const isEbook = product.type === 'ebook';
   const editPath = `/create/${isEbook ? 'ebook' : 'lead-magnet'}?productId=${product.id}`;
 
-  const canReview = me?.role === 'admin' || me?.role === 'manager';
-  const showReviewBanner = product.status === 'in_review' && canReview && product.ownerId !== me?.id;
+  const isOwner = me?.id === product.ownerId;
+  const canReview = (me?.role === 'admin' || me?.role === 'manager') && !isOwner;
+  const showReviewBanner = product.status === 'in_review' && canReview;
 
   const handleSubmitReview = () => {
     if (!productId) return;

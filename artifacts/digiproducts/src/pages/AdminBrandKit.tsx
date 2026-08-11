@@ -21,7 +21,7 @@ export default function AdminBrandKit() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: brand, isLoading } = useGetBrandKit({}, { query: { queryKey: getGetBrandKitQueryKey() } });
+  const { data: brand, isLoading } = useGetBrandKit({ query: { queryKey: getGetBrandKitQueryKey() } });
   const update = useUpdateBrandKit();
 
   const [form, setForm] = useState({

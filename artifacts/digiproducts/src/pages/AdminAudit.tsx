@@ -28,7 +28,7 @@ export default function AdminAudit() {
   const [actorFilter, setActorFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const { data: users } = useGetUsers({}, { query: { queryKey: getGetUsersQueryKey() } });
+  const { data: users } = useGetUsers({ query: { queryKey: getGetUsersQueryKey() } });
   const { data: logs, isLoading, refetch } = useGetAuditLogs(
     {
       action: actionFilter.trim() || undefined,
