@@ -779,10 +779,10 @@ export default function CreateEbook() {
   return (
     <AppLayout headerActions={saveDraftButton} headerTitleHref="/create/ebook" headerTitleOnClick={() => setStep(0)}>
       <div className="flex flex-col h-full bg-paper">
-        {/* Wizard Header */}
-        <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-center">
-            {step > 0 && (
+        {/* Wizard Header — only shown once the user is past the landing step */}
+        {step > 0 && (
+          <div className="bg-white border-b sticky top-16 z-20 px-8 py-4">
+            <div className="max-w-5xl mx-auto flex items-center justify-center">
               <div className="flex items-center">
                 {displaySteps.map((ds, i) => {
                   const clickable = !!urlProductId && ds.complete;
@@ -821,9 +821,9 @@ export default function CreateEbook() {
                   );
                 })}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Wizard Content */}
         <div className="flex-1 overflow-auto p-8">
