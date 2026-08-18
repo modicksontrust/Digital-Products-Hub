@@ -618,7 +618,7 @@ function StepReview({
   onUnpublish: () => void;
   publishing: boolean;
 }) {
-  const published = product.published as boolean;
+  const published = (product as Record<string, unknown> | undefined)?.published as boolean ?? false;
   const title = product.title as string;
   const pricingOk = pricingMode === "free" || priceCents > 0;
   const deliveryOk = !!deliveryMethod;
@@ -907,7 +907,7 @@ export default function SellProductSetup() {
           {saving && (
             <Badge variant="secondary" className="ml-auto text-xs text-gray-500">Saving...</Badge>
           )}
-          {(product as Record<string, unknown>).published && (
+          {(product as Record<string, unknown> | undefined)?.published && (
             <Badge className="ml-auto bg-green-100 text-green-700 border-green-200 text-xs">● Published</Badge>
           )}
         </div>
