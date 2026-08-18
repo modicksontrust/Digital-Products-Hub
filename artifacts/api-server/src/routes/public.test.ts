@@ -196,3 +196,26 @@ describe("GET /public/sales-page/:slug", () => {
     expect(res.body).toMatchObject({ error: "Not found" });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cover proxy route
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("GET /public/sales-page/:slug/cover", () => {
+  let app: express.Express;
+
+  beforeEach(() => {
+    selectQueue.length = 0;
+    vi.clearAllMocks();
+    app = buildApp();
+  });
+
+  it("returns 404 when the product has been deleted (no DB row)", async () => {
+    // The product row is gone — loadPublishedProductByslug returns null.
+    selectQueue.push([]); // product query → empty (hard-deleted)
+
+    const res = await request(app).get("/public/sales-page/my-ebook/cover");
+
+    expect(res.status).toBe(404);
+  });
+});
