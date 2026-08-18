@@ -115,7 +115,8 @@ export default function SellDiscounts() {
 
   return (
     <AppLayout>
-    <div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-gray-500">{(codes ?? []).length} discount code{(codes ?? []).length !== 1 ? "s" : ""}</p>
         <Button
@@ -299,6 +300,7 @@ export default function SellDiscounts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
     </div>
     </AppLayout>
   );
