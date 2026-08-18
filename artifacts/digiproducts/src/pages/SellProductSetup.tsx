@@ -817,7 +817,7 @@ export default function SellProductSetup() {
   }, [productId, isNew, productSaleType, detailsForm, pricingForm, deliveryForm, extrasForm, updateSell, qc, toast]);
 
   const handleNext = async () => {
-    if (isNew && step === 0) {
+    if (isNew && step === 1) {
       if (!newTitle.trim()) {
         toast({ title: "Please enter a product name", variant: "destructive" });
         return;
@@ -827,7 +827,7 @@ export default function SellProductSetup() {
         const created = await createProduct.mutateAsync({
           data: { type: productSaleType as "ebook", title: newTitle.trim(), topic: newTitle.trim() },
         });
-        navigate(`/sell/products/${created.id}/setup?start=1`, { replace: true });
+        navigate(`/sell/products/${created.id}/setup?start=2`, { replace: true });
       } catch {
         toast({ title: "Failed to create product", variant: "destructive" });
         setSaving(false);
@@ -932,6 +932,9 @@ export default function SellProductSetup() {
         {/* Left: step content */}
         <div>
           {step === 0 && (
+            <StepProductType value={productSaleType} onChange={setProductSaleType} />
+          )}
+          {step === 1 && (
             <>
               {isNew && (
                 <div className="mb-6">
@@ -946,14 +949,11 @@ export default function SellProductSetup() {
                     className="text-base"
                     autoFocus
                   />
-                  <p className="text-xs text-gray-400 mt-1">You can update this any time in the Details step.</p>
+                  <p className="text-xs text-gray-400 mt-1">This becomes your product's title.</p>
                 </div>
               )}
-              <StepProductType value={productSaleType} onChange={setProductSaleType} />
+              <StepDetails form={detailsForm} onChange={(f) => setDetailsForm((p) => ({ ...p, ...f }))} />
             </>
-          )}
-          {step === 1 && (
-            <StepDetails form={detailsForm} onChange={(f) => setDetailsForm((p) => ({ ...p, ...f }))} />
           )}
           {step === 2 && (
             <StepPricing form={pricingForm} onChange={(f) => setPricingForm((p) => ({ ...p, ...f }))} />
