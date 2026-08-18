@@ -121,11 +121,6 @@ export default function App() {
             <SellProducts />
           </ProtectedRoute>
         </Route>
-        <Route path="/sell/products/new">
-          <ProtectedRoute>
-            <SellProductSetup />
-          </ProtectedRoute>
-        </Route>
         <Route path="/sell/products/:productId/setup">
           <ProtectedRoute>
             <SellProductSetup />

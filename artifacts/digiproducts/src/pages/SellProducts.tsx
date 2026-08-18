@@ -247,7 +247,7 @@ export default function SellProducts() {
               <TabsTrigger value="bundles" className="text-sm">Bundles</TabsTrigger>
             </TabsList>
             <Button
-              onClick={() => navigate("/sell/products/new")}
+              onClick={() => navigate("/sell/products/new/setup")}
               className="bg-brand-700 hover:bg-brand-800 text-white gap-2"
             >
               <Plus className="w-4 h-4" /> Create Product
@@ -277,7 +277,7 @@ export default function SellProducts() {
                   Create an eBook in the Create section, then come here to set it up for sale.
                 </p>
                 <Button
-                  onClick={() => navigate("/sell/products/new")}
+                  onClick={() => navigate("/sell/products/new/setup")}
                   className="bg-brand-700 hover:bg-brand-800 text-white gap-2"
                 >
                   <Plus className="w-4 h-4" /> Create Product
