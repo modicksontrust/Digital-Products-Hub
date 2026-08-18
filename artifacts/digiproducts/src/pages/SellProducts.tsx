@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 const BASE_URL = import.meta.env.BASE_URL as string;
 import {
   Plus, Pencil, Eye, ExternalLink, Copy, Trash2,
-  ShoppingBag, Package, Loader2, Tag,
+  ShoppingBag, Package, Loader2, Tag, BarChart2,
 } from "lucide-react";
 import {
   AlertDialog,
