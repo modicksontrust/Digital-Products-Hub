@@ -45,6 +45,7 @@ import {
   UpdateSalesCopyResponse,
   GetReviewQueueResponse,
   GeneratePreviewTokenResponse,
+  UpdateSellSettingsBody,
 } from "@workspace/api-zod";
 import {
   requireAuth,
@@ -497,6 +498,54 @@ router.post(
         await serializeProduct(updated, await ownerName(updated.ownerId)),
       ),
     );
+  },
+);
+
+router.put(
+  "/products/:productId/sell-settings",
+  async (req, res): Promise<void> => {
+    const product = await loadAccessible(req, String(req.params["productId"]));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const parsed = UpdateSellSettingsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const d = parsed.data;
+    const slug = d.slug !== undefined
+      ? (d.slug || product.slug || (await generateUniqueSlug(product.title)))
+      : (product.slug ?? await generateUniqueSlug(product.title));
+    const [updated] = await db
+      .update(productsTable)
+      .set({
+        productSaleType: d.productSaleType ?? product.productSaleType,
+        pricingMode: d.pricingMode ?? product.pricingMode,
+        priceCents: d.pricingMode === "free" ? 0 : (d.priceCents !== undefined ? d.priceCents : product.priceCents),
+        currency: d.currency ?? product.currency,
+        saleShortDescription: d.saleShortDescription !== undefined ? d.saleShortDescription : product.saleShortDescription,
+        saleFullDescription: d.saleFullDescription !== undefined ? d.saleFullDescription : product.saleFullDescription,
+        saleTheme: d.saleTheme ?? product.saleTheme,
+        deliveryMethod: d.deliveryMethod !== undefined ? d.deliveryMethod : product.deliveryMethod,
+        deliveryUrl: d.deliveryUrl !== undefined ? d.deliveryUrl : product.deliveryUrl,
+        deliveryWhatsappNumber: d.deliveryWhatsappNumber !== undefined ? d.deliveryWhatsappNumber : product.deliveryWhatsappNumber,
+        deliveryWhatsappMessage: d.deliveryWhatsappMessage !== undefined ? d.deliveryWhatsappMessage : product.deliveryWhatsappMessage,
+        deliveryAccessKeys: d.deliveryAccessKeys !== undefined ? d.deliveryAccessKeys : product.deliveryAccessKeys,
+        deliveryDuration: d.deliveryDuration ?? product.deliveryDuration,
+        deliveryDurationDays: d.deliveryDurationDays !== undefined ? d.deliveryDurationDays : product.deliveryDurationDays,
+        limitedQuantityEnabled: d.limitedQuantityEnabled !== undefined ? d.limitedQuantityEnabled : product.limitedQuantityEnabled,
+        limitedQuantity: d.limitedQuantity !== undefined ? d.limitedQuantity : product.limitedQuantity,
+        earlyBirdEnabled: d.earlyBirdEnabled !== undefined ? d.earlyBirdEnabled : product.earlyBirdEnabled,
+        testimonials: d.testimonials !== undefined ? d.testimonials : (product.testimonials as unknown),
+        contractEnabled: d.contractEnabled !== undefined ? d.contractEnabled : product.contractEnabled,
+        showOnBio: d.showOnBio !== undefined ? d.showOnBio : product.showOnBio,
+        slug,
+      })
+      .where(eq(productsTable.id, product.id))
+      .returning();
+    res.json(await serializeProduct(updated, await ownerName(updated.ownerId)));
   },
 );
 

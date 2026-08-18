@@ -4,7 +4,8 @@ import { useGetMe, useLogout, useGetNotifications, useMarkNotificationRead, getG
 import { 
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
   CreditCard, History, PenTool, LayoutTemplate, Megaphone,
-  LogOut, User, Bell, ChevronDown, CheckCircle, Menu
+  LogOut, User, Bell, ChevronDown, CheckCircle, Menu,
+  ShoppingBag, Tag,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,13 @@ function useNavigation() {
         { name: "eBook / PDF Generator", href: "/create/ebook", icon: PenTool, locked: isLocked },
         { name: "Promote eBook", href: "/create/promote-ebook", icon: Megaphone, locked: isLocked },
         { name: "Lead Magnet", href: "/create/lead-magnet", icon: LayoutTemplate, locked: isLocked },
+      ]
+    },
+    {
+      name: "SELL",
+      items: [
+        { name: "Products", href: "/sell/products", icon: ShoppingBag, locked: isLocked },
+        { name: "Discount Codes", href: "/sell/discounts", icon: Tag, locked: isLocked },
       ]
     },
     {
@@ -84,6 +92,8 @@ export function usePageTitle(): string {
   if (location.startsWith('/account')) return 'Account Settings';
   if (location.startsWith('/products/')) return 'Product Detail';
   if (location.startsWith('/learn/')) return 'Academy';
+  if (location.startsWith('/sell/products/') && location.includes('/setup')) return 'Edit Product';
+  if (location.startsWith('/sell/')) return 'Sell';
   return 'PokiPoki';
 }
 

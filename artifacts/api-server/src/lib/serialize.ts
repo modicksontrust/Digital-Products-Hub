@@ -65,6 +65,27 @@ export async function serializeProduct(
     wordCount: chs.reduce((sum, c) => sum + wordCount(c.contentMd), 0),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
+    // Sell settings
+    productSaleType: product.productSaleType ?? "ebook",
+    pricingMode: product.pricingMode ?? "fixed",
+    currency: product.currency ?? "USD",
+    saleShortDescription: product.saleShortDescription ?? null,
+    saleFullDescription: product.saleFullDescription ?? null,
+    saleTheme: product.saleTheme ?? "dark",
+    deliveryMethod: product.deliveryMethod ?? null,
+    deliveryUrl: product.deliveryUrl ?? null,
+    deliveryWhatsappNumber: product.deliveryWhatsappNumber ?? null,
+    deliveryWhatsappMessage: product.deliveryWhatsappMessage ?? null,
+    deliveryAccessKeys: product.deliveryAccessKeys ?? null,
+    deliveryDuration: product.deliveryDuration ?? "lifetime",
+    deliveryDurationDays: product.deliveryDurationDays ?? null,
+    limitedQuantityEnabled: product.limitedQuantityEnabled,
+    limitedQuantity: product.limitedQuantity ?? null,
+    earlyBirdEnabled: product.earlyBirdEnabled,
+    testimonials: (product.testimonials as Array<{name:string;text:string;rating:number}> | null) ?? null,
+    contractEnabled: product.contractEnabled,
+    orderCount: product.orderCount,
+    showOnBio: product.showOnBio,
   };
 }
 

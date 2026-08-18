@@ -28,6 +28,9 @@ import SalesPage from "@/pages/SalesPage";
 import CreateLeadMagnet from "@/pages/CreateLeadMagnet";
 import PromoteEbook from "@/pages/PromoteEbook";
 import ReviewQueue from "@/pages/ReviewQueue";
+import SellProducts from "@/pages/SellProducts";
+import SellProductSetup from "@/pages/SellProductSetup";
+import SellDiscounts from "@/pages/SellDiscounts";
 
 export default function App() {
   return (
@@ -112,6 +115,23 @@ export default function App() {
           </ProtectedRoute>
         </Route>
         
+        {/* Sell */}
+        <Route path="/sell/products">
+          <ProtectedRoute>
+            <SellProducts />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/sell/products/:productId/setup">
+          <ProtectedRoute>
+            <SellProductSetup />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/sell/discounts">
+          <ProtectedRoute>
+            <SellDiscounts />
+          </ProtectedRoute>
+        </Route>
+
         {/* Team */}
         <Route path="/review">
           <ProtectedRoute>

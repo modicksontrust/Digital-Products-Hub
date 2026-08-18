@@ -36,6 +36,27 @@ export const productsTable = pgTable("products", {
   requestedChapterCount: integer("requested_chapter_count")
     .notNull()
     .default(8),
+  // --- Sell settings ---
+  productSaleType: text("product_sale_type").default("ebook"), // ebook|digital_download|course|template|membership|service|license|exclusive_link
+  pricingMode: text("pricing_mode").default("fixed"), // free|fixed|pwyw|tiered
+  currency: text("currency").default("USD"),
+  saleShortDescription: text("sale_short_description"),
+  saleFullDescription: text("sale_full_description"),
+  saleTheme: text("sale_theme").default("dark"), // dark|light
+  deliveryMethod: text("delivery_method"), // link|whatsapp|access_key
+  deliveryUrl: text("delivery_url"),
+  deliveryWhatsappNumber: text("delivery_whatsapp_number"),
+  deliveryWhatsappMessage: text("delivery_whatsapp_message"),
+  deliveryAccessKeys: text("delivery_access_keys"), // newline-separated keys
+  deliveryDuration: text("delivery_duration").default("lifetime"), // lifetime|limited
+  deliveryDurationDays: integer("delivery_duration_days"),
+  limitedQuantityEnabled: boolean("limited_quantity_enabled").notNull().default(false),
+  limitedQuantity: integer("limited_quantity"),
+  earlyBirdEnabled: boolean("early_bird_enabled").notNull().default(false),
+  testimonials: jsonb("testimonials"),
+  contractEnabled: boolean("contract_enabled").notNull().default(false),
+  orderCount: integer("order_count").notNull().default(0),
+  showOnBio: boolean("show_on_bio").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -171,6 +192,32 @@ export const generationJobsTable = pgTable("generation_jobs", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export const discountCodesTable = pgTable("discount_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => usersTable.id),
+  productId: uuid("product_id").references(() => productsTable.id, {
+    onDelete: "cascade",
+  }),
+  code: text("code").notNull(),
+  discountType: text("discount_type").notNull().default("percent"), // percent|fixed_cents
+  discountValue: integer("discount_value").notNull(), // % or cents
+  maxUses: integer("max_uses"),
+  useCount: integer("use_count").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type DiscountCode = typeof discountCodesTable.$inferSelect;
 
 export const previewTokensTable = pgTable("preview_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
