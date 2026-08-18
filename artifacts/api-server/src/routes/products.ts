@@ -338,6 +338,30 @@ router.patch("/products/:productId", async (req, res): Promise<void> => {
   );
 });
 
+router.delete("/products/:productId", async (req, res): Promise<void> => {
+  const product = await loadAccessible(req, String(req.params["productId"]));
+  if (!product) {
+    res.status(404).json({ error: "Product not found" });
+    return;
+  }
+  const user = req.user!;
+  // Only the owner or an admin may permanently delete a product
+  if (product.ownerId !== user.id && !hasPermission(user.role, "canViewAllProducts")) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  await db.delete(productsTable).where(eq(productsTable.id, product.id));
+  await audit({
+    actorId: user.id,
+    actorName: user.fullName,
+    action: "product.deleted",
+    entityType: "product",
+    entityId: product.id,
+    detail: `Deleted "${product.title}"`,
+  });
+  res.json({ ok: true });
+});
+
 router.post(
   "/products/:productId/duplicate",
   async (req, res): Promise<void> => {

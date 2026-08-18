@@ -6,6 +6,7 @@ import {
   useUnpublishProduct,
   useUpdateSellSettings,
   useCreateProduct,
+  useDeleteProduct,
   getGetProductsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -281,15 +282,22 @@ export default function SellProducts() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState("products");
+  const deleteProduct = useDeleteProduct();
 
   const sellableProducts = (products ?? []).filter(
     (p) => p.type === "ebook" && (p.status === "ready" || p.status === "approved" || p.status === "draft" || p.published)
   );
 
   const handleDelete = async () => {
-    // Deletion not yet implemented — close dialog
-    setDeleteId(null);
-    toast({ title: "Delete coming soon", description: "Use the Products Library to archive this product." });
+    if (!deleteId) return;
+    try {
+      await deleteProduct.mutateAsync({ productId: deleteId });
+      setDeleteId(null);
+      qc.invalidateQueries({ queryKey: getGetProductsQueryKey() });
+      toast({ title: "Product deleted" });
+    } catch {
+      toast({ title: "Error", description: "Could not delete the product.", variant: "destructive" });
+    }
   };
 
   return (
@@ -402,9 +410,13 @@ export default function SellProducts() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogCancel disabled={deleteProduct.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteProduct.isPending}
+            >
+              {deleteProduct.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting…</> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
