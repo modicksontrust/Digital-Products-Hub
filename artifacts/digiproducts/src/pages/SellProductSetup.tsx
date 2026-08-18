@@ -185,16 +185,6 @@ function StepDetails({
   return (
     <div className="space-y-5">
       <div>
-        <Label className="text-sm font-medium">Title</Label>
-        <Input
-          placeholder="e.g., The Ultimate Instagram Growth Guide"
-          value={form.title}
-          onChange={(e) => onChange({ title: e.target.value })}
-          className="mt-1"
-        />
-        <p className="text-xs text-gray-400 mt-1">Keep it short and compelling. This is the first thing buyers see.</p>
-      </div>
-      <div>
         <Label className="text-sm font-medium">Short Description</Label>
         <Input
           placeholder="e.g., Learn the exact strategy I used to grow from 0 to 100K followers"
