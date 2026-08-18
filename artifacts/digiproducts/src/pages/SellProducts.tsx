@@ -401,26 +401,44 @@ export default function SellProducts() {
       {/* Delete confirmation */}
       <NewProductDialog open={showNewDialog} onClose={() => setShowNewDialog(false)} />
 
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this product?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the product and its sell settings. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProduct.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteProduct.isPending}
-            >
-              {deleteProduct.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting…</> : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {(() => {
+        const deletingProduct = deleteId ? sellableProducts.find((p) => p.id === deleteId) : null;
+        const isPublished = deletingProduct?.published ?? false;
+        return (
+          <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this product?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2">
+                    {isPublished && (
+                      <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-red-700 text-sm">
+                        <span className="mt-0.5 text-red-500">⚠</span>
+                        <span>
+                          <strong>This product is currently published.</strong> Deleting it will immediately take down its live sales page — any buyers who have shared or bookmarked the link will see a 404. Consider unpublishing it first.
+                        </span>
+                      </div>
+                    )}
+                    <p>
+                      This will permanently delete the product and its sell settings. This cannot be undone.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteProduct.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={deleteProduct.isPending}
+                >
+                  {deleteProduct.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting…</> : isPublished ? "Delete anyway" : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </div>
   );
 }
