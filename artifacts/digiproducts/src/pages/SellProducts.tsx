@@ -56,7 +56,7 @@ function formatPrice(product: Product) {
 function CoverImage({ product }: { product: Product }) {
   const imageUrl = (product.coverConfig as { imageUrl?: string } | null)?.imageUrl;
   const src = imageUrl
-    ? `${BASE_URL}api/storage/${imageUrl.replace(/^\//, "")}`
+    ? `${BASE_URL}api/storage${imageUrl.startsWith("/api/storage") ? imageUrl.replace(/^\/api\/storage/, "") : "/" + imageUrl.replace(/^\//, "")}`
     : null;
   return src ? (
     <img src={src} alt={product.title} className="w-full h-full object-cover" />
