@@ -5,7 +5,6 @@ import {
   usePublishProduct,
   useUnpublishProduct,
   useUpdateSellSettings,
-  useCreateProduct,
   useDeleteProduct,
   getGetProductsQueryKey,
 } from "@workspace/api-client-react";
@@ -15,13 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 const BASE_URL = import.meta.env.BASE_URL as string;
 import {
   Plus, Pencil, Eye, ExternalLink, Copy, Trash2,
-  ShoppingBag, Package, Loader2, Tag, BarChart2,
+  ShoppingBag, Package, Tag, BarChart2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -33,13 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import SellDiscounts from "./SellDiscounts";
 
 type Product = {
@@ -208,77 +198,10 @@ function ProductCard({ product, onDelete }: { product: Product; onDelete: (id: s
   );
 }
 
-function NewProductDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const createProduct = useCreateProduct();
-  const [title, setTitle] = useState("");
-  const [topic, setTopic] = useState("");
-
-  const handleCreate = async () => {
-    if (!title.trim() || !topic.trim()) return;
-    try {
-      const newProduct = await createProduct.mutateAsync({
-        data: { type: "ebook", title: title.trim(), topic: topic.trim() },
-      });
-      onClose();
-      setTitle("");
-      setTopic("");
-      navigate(`/sell/products/${newProduct.id}/setup`);
-    } catch {
-      toast({ title: "Failed to create product", variant: "destructive" });
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create a new product</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="np-title">Product title</Label>
-            <Input
-              id="np-title"
-              placeholder="e.g. The Ultimate Skincare Guide"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="np-topic">Topic / subject</Label>
-            <Input
-              id="np-topic"
-              placeholder="e.g. skincare routines for beginners"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
-            <p className="text-xs text-gray-400">Used to pre-fill the setup wizard. You can change it later.</p>
-          </div>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={createProduct.isPending}>Cancel</Button>
-          <Button
-            className="bg-brand-700 hover:bg-brand-800 text-white"
-            onClick={handleCreate}
-            disabled={!title.trim() || !topic.trim() || createProduct.isPending}
-          >
-            {createProduct.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating…</> : "Create & Set Up"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function SellProducts() {
   const [, navigate] = useLocation();
   const { data: products, isLoading } = useGetProducts();
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showNewDialog, setShowNewDialog] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState("products");
@@ -324,7 +247,7 @@ export default function SellProducts() {
               <TabsTrigger value="bundles" className="text-sm">Bundles</TabsTrigger>
             </TabsList>
             <Button
-              onClick={() => setShowNewDialog(true)}
+              onClick={() => navigate("/sell/products/new")}
               className="bg-brand-700 hover:bg-brand-800 text-white gap-2"
             >
               <Plus className="w-4 h-4" /> Create Product
@@ -354,7 +277,7 @@ export default function SellProducts() {
                   Create an eBook in the Create section, then come here to set it up for sale.
                 </p>
                 <Button
-                  onClick={() => setShowNewDialog(true)}
+                  onClick={() => navigate("/sell/products/new")}
                   className="bg-brand-700 hover:bg-brand-800 text-white gap-2"
                 >
                   <Plus className="w-4 h-4" /> Create Product
@@ -399,8 +322,6 @@ export default function SellProducts() {
       </div>
 
       {/* Delete confirmation */}
-      <NewProductDialog open={showNewDialog} onClose={() => setShowNewDialog(false)} />
-
       {(() => {
         const deletingProduct = deleteId ? sellableProducts.find((p) => p.id === deleteId) : null;
         const isPublished = deletingProduct?.published ?? false;

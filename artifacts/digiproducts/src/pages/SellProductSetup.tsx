@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useParams, useSearch } from "wouter";
 import {
   useGetProduct,
+  useCreateProduct,
   useUpdateSellSettings,
   usePublishProduct,
   useUnpublishProduct,
@@ -706,18 +707,22 @@ export default function SellProductSetup() {
   const qc = useQueryClient();
   const productId = params.productId;
   const isNew = productId === "new";
+  const search = useSearch();
+  const startStep = parseInt(new URLSearchParams(search).get("start") ?? "0", 10);
 
   const { data: product, isLoading } = useGetProduct(productId ?? "", {
     query: { enabled: !isNew && !!productId },
   });
 
   const updateSell = useUpdateSellSettings();
+  const createProduct = useCreateProduct();
   const publish = usePublishProduct();
   const unpublish = useUnpublishProduct();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(startStep);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
 
   // Form state — each step synced from product on load
   const [productSaleType, setProductSaleType] = useState("ebook");
@@ -812,6 +817,23 @@ export default function SellProductSetup() {
   }, [productId, isNew, productSaleType, detailsForm, pricingForm, deliveryForm, extrasForm, updateSell, qc, toast]);
 
   const handleNext = async () => {
+    if (isNew && step === 0) {
+      if (!newTitle.trim()) {
+        toast({ title: "Please enter a product name", variant: "destructive" });
+        return;
+      }
+      setSaving(true);
+      try {
+        const created = await createProduct.mutateAsync({
+          data: { type: productSaleType as "ebook", title: newTitle.trim(), topic: newTitle.trim() },
+        });
+        navigate(`/sell/products/${created.id}/setup?start=1`, { replace: true });
+      } catch {
+        toast({ title: "Failed to create product", variant: "destructive" });
+        setSaving(false);
+      }
+      return;
+    }
     await saveCurrentStep();
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
@@ -851,32 +873,7 @@ export default function SellProductSetup() {
 
   const productData = (product as Record<string, unknown> | undefined) ?? {};
 
-  // For "new", redirect to products page to pick an existing product
-  if (isNew) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-          <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Package className="w-8 h-8 text-brand-400" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Set Up a Product for Sale</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            First, create your eBook using the eBook Generator. Then come back here to set up pricing, delivery, and publish it.
-          </p>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => navigate("/sell/products")}>
-              Back to Products
-            </Button>
-            <Button className="flex-1 bg-brand-700 hover:bg-brand-800 text-white" onClick={() => navigate("/create/ebook")}>
-              Create eBook
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
+  if (!isNew && isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-600 border-t-transparent" />
@@ -884,7 +881,7 @@ export default function SellProductSetup() {
     );
   }
 
-  if (!product) {
+  if (!isNew && !product) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -935,7 +932,25 @@ export default function SellProductSetup() {
         {/* Left: step content */}
         <div>
           {step === 0 && (
-            <StepProductType value={productSaleType} onChange={setProductSaleType} />
+            <>
+              {isNew && (
+                <div className="mb-6">
+                  <Label htmlFor="new-product-title" className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    Product name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="new-product-title"
+                    placeholder="e.g. The Ultimate Skincare Guide"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    className="text-base"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-400 mt-1">You can update this any time in the Details step.</p>
+                </div>
+              )}
+              <StepProductType value={productSaleType} onChange={setProductSaleType} />
+            </>
           )}
           {step === 1 && (
             <StepDetails form={detailsForm} onChange={(f) => setDetailsForm((p) => ({ ...p, ...f }))} />
