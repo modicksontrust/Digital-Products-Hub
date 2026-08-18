@@ -15,7 +15,39 @@ import type {
   DiscountCodeItem,
   CreateDiscountCodeBody,
   UpdateDiscountCodeBody,
+  GeneratePreviewTokenResponse,
 } from "@workspace/api-zod";
+
+export type GeneratePreviewTokenResult = z.infer<typeof GeneratePreviewTokenResponse>;
+
+// ---------------------------------------------------------------------------
+// Generate preview token
+// ---------------------------------------------------------------------------
+
+export const generatePreviewToken = (
+  productId: string,
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<GeneratePreviewTokenResult>(
+    `/api/products/${productId}/preview-token`,
+    { method: "POST", ...options },
+  );
+
+export const useGeneratePreviewToken = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      GeneratePreviewTokenResult,
+      TError,
+      { productId: string },
+      TContext
+    >;
+  },
+) =>
+  useMutation({
+    mutationFn: ({ productId }: { productId: string }) =>
+      generatePreviewToken(productId),
+    ...options?.mutation,
+  });
 
 export type SellSettingsUpdate = z.infer<typeof UpdateSellSettingsBody>;
 export type DiscountCode = z.infer<typeof DiscountCodeItem>;
