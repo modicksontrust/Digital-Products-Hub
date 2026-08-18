@@ -817,9 +817,11 @@ export default function SellProductSetup() {
         const created = await createProduct.mutateAsync({
           data: { type: productSaleType as "ebook", title: newTitle.trim(), topic: newTitle.trim() },
         });
-        navigate(`/sell/products/${created.id}/setup?start=2`, { replace: true });
+        navigate(`/sell/products/${created.id}/setup`, { replace: true });
+        setStep(2);
       } catch {
         toast({ title: "Failed to create product", variant: "destructive" });
+      } finally {
         setSaving(false);
       }
       return;
