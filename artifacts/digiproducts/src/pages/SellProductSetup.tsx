@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
+import { AppLayout } from "@/components/layout/AppLayout";
 import {
   useGetProduct,
   useCreateProduct,
@@ -885,6 +886,7 @@ export default function SellProductSetup() {
   }
 
   return (
+    <AppLayout>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -1008,5 +1010,6 @@ export default function SellProductSetup() {
         />
       </div>
     </div>
+    </AppLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { AppLayout } from "@/components/layout/AppLayout";
 import {
   useGetProducts,
   usePublishProduct,
@@ -224,6 +225,7 @@ export default function SellProducts() {
   };
 
   return (
+    <AppLayout>
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
@@ -361,5 +363,6 @@ export default function SellProducts() {
         );
       })()}
     </div>
+    </AppLayout>
   );
 }

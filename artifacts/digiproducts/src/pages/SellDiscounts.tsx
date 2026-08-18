@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppLayout } from "@/components/layout/AppLayout";
 import {
   useGetDiscountCodes,
   useCreateDiscountCode,
@@ -113,6 +114,7 @@ export default function SellDiscounts() {
   };
 
   return (
+    <AppLayout>
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-gray-500">{(codes ?? []).length} discount code{(codes ?? []).length !== 1 ? "s" : ""}</p>
@@ -298,5 +300,6 @@ export default function SellDiscounts() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </AppLayout>
   );
 }

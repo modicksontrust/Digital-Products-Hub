@@ -32,20 +32,23 @@ export const SellSettingsFields = {
   showOnBio: zod.boolean().optional(),
 };
 
+const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
+const emptyToNull = (v: unknown) => (v === "" ? null : v);
+
 export const UpdateSellSettingsBody = zod.object({
   productSaleType: zod.string().optional(),
-  pricingMode: zod.enum(["free", "fixed", "pwyw", "tiered"]).optional(),
+  pricingMode: zod.preprocess(emptyToUndefined, zod.enum(["free", "fixed", "pwyw", "tiered"]).optional()),
   priceCents: zod.number().int().nullish(),
   currency: zod.string().optional(),
   saleShortDescription: zod.string().nullish(),
   saleFullDescription: zod.string().nullish(),
-  saleTheme: zod.enum(["dark", "light"]).optional(),
-  deliveryMethod: zod.enum(["link", "whatsapp", "access_key"]).nullish(),
+  saleTheme: zod.preprocess(emptyToUndefined, zod.enum(["dark", "light"]).optional()),
+  deliveryMethod: zod.preprocess(emptyToNull, zod.enum(["link", "whatsapp", "access_key"]).nullish()),
   deliveryUrl: zod.string().nullish(),
   deliveryWhatsappNumber: zod.string().nullish(),
   deliveryWhatsappMessage: zod.string().nullish(),
   deliveryAccessKeys: zod.string().nullish(),
-  deliveryDuration: zod.enum(["lifetime", "limited"]).optional(),
+  deliveryDuration: zod.preprocess(emptyToUndefined, zod.enum(["lifetime", "limited"]).optional()),
   deliveryDurationDays: zod.number().int().nullish(),
   limitedQuantityEnabled: zod.boolean().optional(),
   limitedQuantity: zod.number().int().nullish(),
