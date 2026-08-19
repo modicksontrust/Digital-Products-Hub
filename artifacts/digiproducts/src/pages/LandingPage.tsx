@@ -210,6 +210,15 @@ function FaqAccordion({ q, a }: { q: string; a: string }) {
   );
 }
 
+/** Return a short badge label from a topic string.
+ *  If it's already a known category key, use it as-is.
+ *  Otherwise take text before the first colon/dash and cap at 25 chars. */
+function shortLabel(topic: string): string {
+  if (CATEGORY_COLORS[topic]) return topic;
+  const trimmed = topic.split(/[:\-–]/)[0].trim();
+  return trimmed.length <= 25 ? trimmed : trimmed.slice(0, 22) + "…";
+}
+
 function ProductCard({ product }: { product: PublicProduct }) {
   const cat = CATEGORY_COLORS[product.topic ?? ""];
   const gradient = cat?.gradient ?? "from-brand-400 to-brand-600";
@@ -240,7 +249,7 @@ function ProductCard({ product }: { product: PublicProduct }) {
         )}
         {product.topic && (
           <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-0.5 text-[11px] font-semibold text-ink-700 shadow-sm backdrop-blur-sm">
-            {product.topic}
+            {shortLabel(product.topic)}
           </span>
         )}
       </div>
@@ -669,7 +678,7 @@ export default function LandingPage() {
             <Sparkles className="h-3.5 w-3.5" />
             Over 13,000 downloads and counting
           </div>
-          <h2 className="font-display text-4xl font-extrabold leading-tight md:text-5xl">
+          <h2 className="font-display text-4xl font-extrabold leading-tight md:text-5xl text-[#ffffff]">
             Ready to invest in yourself?
           </h2>
           <p className="mt-4 text-base text-white/75 max-w-xl mx-auto md:text-lg">
@@ -678,7 +687,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link href="/shop">
-              <button className="rounded-xl bg-white px-8 py-4 text-sm font-extrabold text-brand-700 shadow-xl transition hover:bg-ink-50">
+              <button className="rounded-xl bg-white px-8 py-4 text-sm text-brand-700 shadow-xl transition hover:bg-ink-50 font-bold">
                 Browse the Shop →
               </button>
             </Link>
