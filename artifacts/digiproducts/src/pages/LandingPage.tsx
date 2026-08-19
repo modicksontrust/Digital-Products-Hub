@@ -390,7 +390,7 @@ export default function LandingPage() {
                     <span className="text-xs text-white/60 ml-1">5.0</span>
                   </div>
                 </div>
-                <div className="h-44 rounded-xl overflow-hidden bg-black">
+                <div className="h-72 rounded-xl overflow-hidden bg-black">
                   <iframe
                     src="https://www.youtube.com/embed/35VzPlY1-kI?autoplay=1&mute=1&loop=1&playlist=35VzPlY1-kI&controls=0&modestbranding=1&rel=0"
                     title="PokiPoki preview"
