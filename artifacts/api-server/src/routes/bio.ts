@@ -5,6 +5,7 @@ import {
   bioAnalyticsEventsTable,
   bioSettingsTable,
   bioLinksTable,
+  bioAvatarUploadsTable,
 } from "@workspace/db";
 import {
   GetBioAnalyticsResponse,
@@ -14,11 +15,22 @@ import {
   UpdateBioLinkBody,
   ReorderBioLinksBody,
   BioLinkItem,
+  RequestUploadUrlBody,
+  RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { requireAuth, requireOnboarding } from "../middlewares/auth";
-
+import {
+  ObjectNotFoundError,
+  ObjectStorageService,
+} from "../lib/objectStorage";
+import {
+  isAllowedAvatarContentType,
+  MAX_AVATAR_SIZE_BYTES,
+  verifyAvatarImage,
+} from "../lib/avatarImage";
 const router: IRouter = Router();
 router.use(requireAuth, requireOnboarding);
+const objectStorageService = new ObjectStorageService();
 
 function slugify(input: string): string {
   return (
@@ -28,6 +40,10 @@ function slugify(input: string): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 40) || "creator"
   );
+}
+
+function uploadedAvatarObjectPath(value: string | null | undefined): string | null {
+  return value && /^\/objects\/uploads\/[^/?#\s]+$/.test(value) ? value : null;
 }
 
 async function ensureSettings(userId: string, fullName: string) {
@@ -146,6 +162,49 @@ router.get("/bio/analytics", async (req, res): Promise<void> => {
   );
 });
 
+router.post(
+  "/bio/avatar/uploads/request-url",
+  async (req, res): Promise<void> => {
+  const parsed = RequestUploadUrlBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Missing or invalid required fields" });
+      return;
+    }
+
+    const { name, size, contentType } = parsed.data;
+    if (!isAllowedAvatarContentType(contentType)) {
+      res.status(400).json({
+        error: "Avatar uploads must be JPEG, PNG, or WebP images",
+      });
+      return;
+    }
+    if (size > MAX_AVATAR_SIZE_BYTES) {
+      res.status(400).json({ error: "Avatar images must be 5 MB or smaller" });
+      return;
+    }
+
+    try {
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      await db.insert(bioAvatarUploadsTable).values({
+        userId: req.user!.id,
+        objectPath,
+        contentType,
+      });
+      res.json(
+        RequestUploadUrlResponse.parse({
+          uploadURL,
+          objectPath,
+          metadata: { name, size, contentType },
+        }),
+      );
+    } catch (error) {
+      req.log.error({ err: error }, "Error creating avatar upload");
+      res.status(500).json({ error: "Failed to create avatar upload" });
+    }
+  },
+);
+
 router.put("/bio/settings", async (req, res): Promise<void> => {
   const user = req.user!;
   const parsed = UpdateBioSettingsBody.safeParse(req.body);
@@ -154,6 +213,49 @@ router.put("/bio/settings", async (req, res): Promise<void> => {
     return;
   }
   await ensureSettings(user.id, user.fullName);
+
+  const uploadedAvatarPath = uploadedAvatarObjectPath(parsed.data.avatarUrl);
+  if (uploadedAvatarPath) {
+    const [avatarUpload] = await db
+      .select({ id: bioAvatarUploadsTable.id })
+      .from(bioAvatarUploadsTable)
+      .where(
+        and(
+          eq(bioAvatarUploadsTable.userId, user.id),
+          eq(bioAvatarUploadsTable.objectPath, uploadedAvatarPath),
+        ),
+      );
+    if (!avatarUpload) {
+      res.status(403).json({ error: "That uploaded avatar doesn't belong to you" });
+      return;
+    }
+
+    try {
+      const objectFile =
+        await objectStorageService.getObjectEntityFile(uploadedAvatarPath);
+      const verifiedImage = await verifyAvatarImage(
+        await objectStorageService.downloadObject(objectFile),
+      );
+      if (!verifiedImage) {
+        res.status(400).json({
+          error: "Upload a JPEG, PNG, or WebP image no larger than 5 MB",
+        });
+        return;
+      }
+      await db
+        .update(bioAvatarUploadsTable)
+        .set({ contentType: verifiedImage.contentType })
+        .where(eq(bioAvatarUploadsTable.id, avatarUpload.id));
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(400).json({ error: "Uploaded avatar was not found" });
+        return;
+      }
+      req.log.error({ err: error }, "Error validating uploaded avatar");
+      res.status(500).json({ error: "Failed to validate uploaded avatar" });
+      return;
+    }
+  }
 
   if (parsed.data.slug) {
     const [taken] = await db

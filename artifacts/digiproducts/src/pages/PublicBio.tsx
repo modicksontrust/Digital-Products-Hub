@@ -48,6 +48,9 @@ export default function PublicBio() {
       <BioPreview
         data={{
           ...data,
+          avatarUrl: data.avatarUrl?.startsWith("/")
+            ? `${import.meta.env.BASE_URL}api${data.avatarUrl}`
+            : data.avatarUrl,
           products: data.products.map((p) => ({
             ...p,
             coverImageUrl: p.coverImageUrl

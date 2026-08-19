@@ -41,9 +41,10 @@ import {
   Link2,
   Eye,
   MousePointerClick,
+  Upload,
 } from "lucide-react";
 import { socialIconFor } from "@/components/BioPreview";
-
+import { useUpload } from "@workspace/object-storage-web";
 const SOCIAL_PLATFORMS = [
   "instagram",
   "twitter",
@@ -94,6 +95,7 @@ export default function LinkInBio() {
   const [socialLinks, setSocialLinks] = useState<{ platform: string; url: string }[]>([]);
   const [dirty, setDirty] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // New link form
   const [newTitle, setNewTitle] = useState("");
@@ -115,6 +117,9 @@ export default function LinkInBio() {
   }, [data, loaded]);
 
   const markDirty = () => setDirty(true);
+  const { uploadFile: uploadAvatarFile, isUploading: isUploadingAvatar } = useUpload({
+    basePath: `${import.meta.env.BASE_URL}api/bio/avatar`,
+  });
 
   // Protect unsaved settings from being lost via tab close or in-app navigation.
   const dirtyRef = useRef(dirty);
@@ -152,10 +157,14 @@ export default function LinkInBio() {
     [analytics],
   );
 
+  const avatarPreviewUrl = avatarUrl.startsWith("/objects/")
+    ? `${import.meta.env.BASE_URL}api/storage${avatarUrl}`
+    : avatarUrl;
+
   const previewData: BioPreviewData = {
     displayName,
     bio,
-    avatarUrl: avatarUrl || null,
+    avatarUrl: avatarPreviewUrl || null,
     theme,
     socialLinks: socialLinks.filter((s) => s.url.trim()),
     links: (data?.links ?? []).filter((l) => l.active),
@@ -205,6 +214,39 @@ export default function LinkInBio() {
       toast({
         title: "Couldn't save",
         description: e instanceof Error ? e.message : "Please check your inputs.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Choose an image file",
+        description: "Your avatar must be a photo or other image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const upload = await uploadAvatarFile(file);
+    if (!upload) return;
+
+    try {
+      await updateSettings.mutateAsync({ avatarUrl: upload.objectPath });
+      setAvatarUrl(upload.objectPath);
+      toast({ title: "Avatar uploaded" });
+    } catch (error) {
+      toast({
+        title: "Couldn't save avatar",
+        description:
+          error instanceof Error ? error.message : "Please try uploading again.",
         variant: "destructive",
       });
     }
@@ -350,15 +392,49 @@ export default function LinkInBio() {
                     data-testid="input-bio-text"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="bio-avatar">Avatar image URL (optional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="bio-avatar">Avatar photo (optional)</Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      ref={avatarInputRef}
+                      id="bio-avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={handleAvatarUpload}
+                      data-testid="input-bio-avatar-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={isUploadingAvatar || updateSettings.isPending}
+                      data-testid="button-upload-bio-avatar"
+                    >
+                      {isUploadingAvatar ? (
+                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-1.5" />
+                      )}
+                      {isUploadingAvatar ? "Uploading…" : "Upload photo"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Upload from your device, or paste an image URL below.
+                    </p>
+                  </div>
                   <Input
                     id="bio-avatar"
-                    value={avatarUrl}
+                    value={avatarUrl.startsWith("/objects/") ? "" : avatarUrl}
                     onChange={(e) => { setAvatarUrl(e.target.value); markDirty(); }}
                     placeholder="https://..."
+                    aria-label="Avatar image URL"
                     data-testid="input-bio-avatar"
                   />
+                  {avatarUrl.startsWith("/objects/") ? (
+                    <p className="text-xs text-muted-foreground">
+                      A photo from your device is saved for this avatar. Paste a URL above to replace it.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div>

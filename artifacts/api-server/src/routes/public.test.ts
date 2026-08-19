@@ -20,6 +20,13 @@ import { db } from "@workspace/db";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const selectQueue: unknown[][] = [];
+const objectStorageMocks = vi.hoisted(() => ({
+  getObjectEntityFile: vi.fn(),
+  downloadObject: vi.fn(),
+}));
+const PNG_HEADER = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Chainable DB mock
@@ -58,6 +65,7 @@ vi.mock("@workspace/db", () => {
     bioSettingsTable: tableStub,
     bioLinksTable: tableStub,
     bioAnalyticsEventsTable: tableStub,
+    bioAvatarUploadsTable: tableStub,
   };
 });
 
@@ -73,8 +81,8 @@ vi.mock("@workspace/api-zod", async () => {
 
 vi.mock("../lib/objectStorage.js", () => ({
   ObjectStorageService: class {
-    getObjectEntityFile = vi.fn();
-    downloadObject = vi.fn();
+    getObjectEntityFile = objectStorageMocks.getObjectEntityFile;
+    downloadObject = objectStorageMocks.downloadObject;
   },
   ObjectNotFoundError: class ObjectNotFoundError extends Error {},
 }));
@@ -111,6 +119,18 @@ const PUBLISHED_PRODUCT = {
 const UNPUBLISHED_PRODUCT = {
   ...PUBLISHED_PRODUCT,
   published: false,
+};
+
+const PUBLISHED_BIO_SETTINGS = {
+  userId: "user-1",
+  slug: "alice",
+  displayName: "Alice",
+  bio: "Writing practical guides",
+  avatarUrl: "/objects/uploads/avatar-123",
+  theme: "noir",
+  published: true,
+  showProducts: false,
+  socialLinks: [],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -269,6 +289,113 @@ describe("GET /public/sales-page/:slug/cover", () => {
     selectQueue.push([]); // product query → empty (hard-deleted)
 
     const res = await request(app).get("/public/sales-page/my-ebook/cover");
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("public bio avatars", () => {
+  let app: express.Express;
+
+  beforeEach(() => {
+    selectQueue.length = 0;
+    vi.clearAllMocks();
+    app = buildApp();
+  });
+
+  it("returns a public avatar proxy URL for an uploaded avatar", async () => {
+    selectQueue.push(
+      [PUBLISHED_BIO_SETTINGS],
+      [], // active links
+      [{ id: "avatar-registration" }], // avatar ownership registration
+    );
+
+    const res = await request(app).get("/public/bio/alice");
+
+    expect(res.status).toBe(200);
+    expect(res.body.avatarUrl).toBe("/public/bio/alice/avatar");
+  });
+
+  it("keeps a previously pasted external avatar URL unchanged", async () => {
+    selectQueue.push([
+      { ...PUBLISHED_BIO_SETTINGS, avatarUrl: "https://example.com/alice.jpg" },
+    ], []); // settings, active links
+
+    const res = await request(app).get("/public/bio/alice");
+
+    expect(res.status).toBe(200);
+    expect(res.body.avatarUrl).toBe("https://example.com/alice.jpg");
+  });
+
+  it("serves an uploaded avatar from storage to anonymous visitors", async () => {
+    selectQueue.push(
+      [PUBLISHED_BIO_SETTINGS],
+      [{ id: "avatar-registration" }], // avatar ownership registration
+    );
+    objectStorageMocks.getObjectEntityFile.mockResolvedValue({});
+    objectStorageMocks.downloadObject.mockResolvedValue(
+      new Response(PNG_HEADER, {
+        headers: { "Content-Type": "image/jpeg" },
+      }),
+    );
+
+    const res = await request(app).get("/public/bio/alice/avatar");
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("image/png");
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+    expect(res.body).toEqual(PNG_HEADER);
+    expect(objectStorageMocks.getObjectEntityFile).toHaveBeenCalledWith(
+      "/objects/uploads/avatar-123",
+    );
+  });
+
+  it("does not expose an uploaded path without the creator's avatar registration", async () => {
+    selectQueue.push(
+      [PUBLISHED_BIO_SETTINGS],
+      [], // no avatar registration for this bio owner
+    );
+
+    const res = await request(app).get("/public/bio/alice/avatar");
+
+    expect(res.status).toBe(404);
+    expect(objectStorageMocks.getObjectEntityFile).not.toHaveBeenCalled();
+  });
+
+  it("rejects a forged image MIME type instead of serving active content", async () => {
+    selectQueue.push(
+      [PUBLISHED_BIO_SETTINGS],
+      [{ id: "avatar-registration" }],
+    );
+    objectStorageMocks.getObjectEntityFile.mockResolvedValue({});
+    objectStorageMocks.downloadObject.mockResolvedValue(
+      new Response("<script>window.pwned = true</script>", {
+        headers: { "Content-Type": "image/png" },
+      }),
+    );
+
+    const res = await request(app).get("/public/bio/alice/avatar");
+
+    expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toContain("application/json");
+  });
+
+  it("rejects an oversized object even when it claims to be an image", async () => {
+    selectQueue.push(
+      [PUBLISHED_BIO_SETTINGS],
+      [{ id: "avatar-registration" }],
+    );
+    objectStorageMocks.getObjectEntityFile.mockResolvedValue({});
+    objectStorageMocks.downloadObject.mockResolvedValue(
+      new Response(PNG_HEADER, {
+        headers: {
+          "Content-Type": "image/png",
+          "Content-Length": String(5 * 1024 * 1024 + 1),
+        },
+      }),
+    );
+
+    const res = await request(app).get("/public/bio/alice/avatar");
 
     expect(res.status).toBe(404);
   });

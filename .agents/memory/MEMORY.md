@@ -5,3 +5,5 @@
 - [drizzle push non-interactive fallback](drizzle-push-noninteractive-fallback.md) — `drizzle-kit push`/`push-force` can hang on a TTY prompt here; create new tables via raw `CREATE TABLE` SQL instead.
 - [esbuild external transitive deps](esbuild-external-transitive-deps.md) — a package externalized in build.mjs must also be a direct dependency of the consuming service, not just transitive.
 - [Express sub-router auth ordering](express-router-use-auth-ordering.md) — a blanket `router.use(requireAuth)` in one sub-router 401s requests meant for a public router registered after it; order matters in routes/index.ts.
+- [Public upload authorization](public-upload-authorization.md) — a public proxy must serve only objects explicitly registered to the owner for that public purpose.
+- [Public image validation](public-image-validation.md) — signed-upload metadata is untrusted; verify bounded image bytes and force safe response headers at every public boundary.

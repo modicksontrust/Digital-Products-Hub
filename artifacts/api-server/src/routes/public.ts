@@ -10,6 +10,7 @@ import {
   bioAnalyticsEventsTable,
   bioSettingsTable,
   bioLinksTable,
+  bioAvatarUploadsTable,
 } from "@workspace/db";
 import { asc } from "drizzle-orm";
 import {
@@ -18,9 +19,17 @@ import {
   PublicBioLinkClickParams,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { verifyAvatarImage } from "../lib/avatarImage";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+function uploadedObjectPath(value: string): string | null {
+  const normalizedPath = value.replace(/^\/api\/storage/, "");
+  return /^\/objects\/uploads\/[^/?#\s]+$/.test(normalizedPath)
+    ? normalizedPath
+    : null;
+}
 
 async function recordBioAnalyticsEvent(
   req: Request,
@@ -161,7 +170,11 @@ router.get(
       // coverConfig.imageUrl is stored either as "/objects/uploads/..." or
       // "/api/storage/objects/uploads/..." (client-facing form); normalize to
       // the "/objects/..." form getObjectEntityFile expects.
-      const normalizedPath = cover.imageUrl.replace(/^\/api\/storage/, "");
+      const normalizedPath = uploadedObjectPath(cover.imageUrl);
+      if (!normalizedPath) {
+        res.status(404).json({ error: "Cover not found" });
+        return;
+      }
       const objectFile = await objectStorageService.getObjectEntityFile(
         normalizedPath,
       );
@@ -169,9 +182,7 @@ router.get(
       res.status(response.status);
       response.headers.forEach((value, key) => res.setHeader(key, value));
       if (response.body) {
-        Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(
-          res,
-        );
+        Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
       } else {
         res.end();
       }
@@ -182,6 +193,64 @@ router.get(
       }
       req.log.error({ err: error }, "Error serving public cover");
       res.status(500).json({ error: "Failed to serve cover" });
+    }
+  },
+);
+
+router.get(
+  "/public/bio/:slug/avatar",
+  async (req: Request, res: Response): Promise<void> => {
+    const slug = String(req.params["slug"]);
+    const [settings] = await db
+      .select()
+      .from(bioSettingsTable)
+      .where(eq(bioSettingsTable.slug, slug));
+    const avatarPath =
+      settings?.published && settings.avatarUrl
+        ? uploadedObjectPath(settings.avatarUrl)
+        : null;
+    if (!avatarPath) {
+      res.status(404).json({ error: "Avatar not found" });
+      return;
+    }
+
+    const [avatarUpload] = await db
+      .select({ id: bioAvatarUploadsTable.id })
+      .from(bioAvatarUploadsTable)
+      .where(
+        and(
+          eq(bioAvatarUploadsTable.userId, settings.userId),
+          eq(bioAvatarUploadsTable.objectPath, avatarPath),
+        ),
+      );
+    if (!avatarUpload) {
+      res.status(404).json({ error: "Avatar not found" });
+      return;
+    }
+
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(avatarPath);
+      const verifiedImage = await verifyAvatarImage(
+        await objectStorageService.downloadObject(objectFile),
+      );
+      if (!verifiedImage) {
+        res.status(404).json({ error: "Avatar not found" });
+        return;
+      }
+      res
+        .status(200)
+        .setHeader("Content-Type", verifiedImage.contentType);
+      res.setHeader("Content-Length", String(verifiedImage.buffer.byteLength));
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.end(verifiedImage.buffer);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: "Avatar not found" });
+        return;
+      }
+      req.log.error({ err: error }, "Error serving public bio avatar");
+      res.status(500).json({ error: "Failed to serve avatar" });
     }
   },
 );
@@ -223,6 +292,21 @@ router.get("/public/bio/:slug", async (req, res): Promise<void> => {
       );
   }
 
+  let avatarUrl = settings.avatarUrl ?? null;
+  const avatarPath = avatarUrl ? uploadedObjectPath(avatarUrl) : null;
+  if (avatarPath) {
+    const [avatarUpload] = await db
+      .select({ id: bioAvatarUploadsTable.id })
+      .from(bioAvatarUploadsTable)
+      .where(
+        and(
+          eq(bioAvatarUploadsTable.userId, settings.userId),
+          eq(bioAvatarUploadsTable.objectPath, avatarPath),
+        ),
+      );
+    avatarUrl = avatarUpload ? `/public/bio/${slug}/avatar` : null;
+  }
+
   await recordBioAnalyticsEvent(req, {
     userId: settings.userId,
     eventType: "page_view",
@@ -232,7 +316,7 @@ router.get("/public/bio/:slug", async (req, res): Promise<void> => {
     GetPublicBioResponse.parse({
       displayName: settings.displayName,
       bio: settings.bio,
-      avatarUrl: settings.avatarUrl ?? null,
+      avatarUrl,
       theme: settings.theme,
       socialLinks:
         (settings.socialLinks as { platform: string; url: string }[] | null) ??
@@ -272,6 +356,7 @@ router.post(
       .select()
       .from(bioSettingsTable)
       .where(eq(bioSettingsTable.slug, params.data.slug));
+
     if (!settings || !settings.published) {
       res.status(404).json({ error: "Not found" });
       return;

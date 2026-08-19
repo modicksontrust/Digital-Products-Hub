@@ -191,6 +191,12 @@ export const BioSettingsItem = zod.object({
   socialLinks: zod.array(BioSocialLink),
 });
 
+const uploadedAvatarPath = zod
+  .string()
+  .regex(
+    /^\/objects\/uploads\/[^/?#\s]+$/,
+    "Must be an uploaded avatar image or a valid http(s) URL",
+  );
 export const GetBioResponse = zod.object({
   settings: BioSettingsItem,
   links: zod.array(BioLinkItem),
@@ -215,7 +221,7 @@ export const UpdateBioSettingsBody = zod.object({
     .optional(),
   displayName: zod.string().max(80).optional(),
   bio: zod.string().max(300).optional(),
-  avatarUrl: httpUrl.nullish(),
+  avatarUrl: zod.union([httpUrl, uploadedAvatarPath]).nullish(),
   theme: zod.enum(["noir", "cream", "ocean", "sunset"]).optional(),
   published: zod.boolean().optional(),
   showProducts: zod.boolean().optional(),

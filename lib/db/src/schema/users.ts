@@ -6,6 +6,7 @@ import {
   timestamp,
   uuid,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
@@ -154,3 +155,23 @@ export const bioLinksTable = pgTable("bio_links", {
 });
 
 export type BioLink = typeof bioLinksTable.$inferSelect;
+
+/**
+ * Storage objects registered through the avatar-specific upload endpoint.
+ * Their owner record is required before an avatar can be public.
+ */
+export const bioAvatarUploadsTable = pgTable(
+  "bio_avatar_uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    objectPath: text("object_path").notNull().unique(),
+    contentType: text("content_type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("bio_avatar_uploads_user_id_idx").on(table.userId)],
+);
