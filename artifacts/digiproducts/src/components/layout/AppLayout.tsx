@@ -36,6 +36,7 @@ function useNavigation() {
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, locked: isLocked },
+    { name: "Link in Bio", href: "/sell/bio", icon: Link2, locked: isLocked },
     { 
       name: "CREATE",
       items: [
@@ -49,7 +50,6 @@ function useNavigation() {
       name: "SELL",
       items: [
         { name: "Products", href: "/sell/products", icon: ShoppingBag, locked: isLocked },
-        { name: "Link in Bio", href: "/sell/bio", icon: Link2, locked: isLocked },
         { name: "Discount Codes", href: "/sell/discounts", icon: Tag, locked: isLocked },
       ]
     },
