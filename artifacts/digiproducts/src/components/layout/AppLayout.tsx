@@ -36,10 +36,10 @@ function useNavigation() {
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, locked: isLocked },
-    { name: "My Products", href: "/products", icon: BookOpen, locked: isLocked },
     { 
       name: "CREATE",
       items: [
+        { name: "My Products", href: "/products", icon: BookOpen, locked: isLocked },
         { name: "eBook / PDF Generator", href: "/create/ebook", icon: PenTool, locked: isLocked },
         { name: "Promote eBook", href: "/create/promote-ebook", icon: Megaphone, locked: isLocked },
         { name: "Lead Magnet", href: "/create/lead-magnet", icon: LayoutTemplate, locked: isLocked },
