@@ -150,6 +150,7 @@ export function PublicFooter() {
               </div>
               <span className="font-display text-xl font-bold text-white">PokiPoki</span>
             </div>
+            <p className="mb-4 text-xs font-medium italic text-ink-500">Poke around, Learn more.</p>
             <p className="text-sm leading-relaxed text-ink-400 max-w-xs">
               Premium digital knowledge products — eBooks, guides, and courses — curated
               to help you level up your health, wealth, and career. Made for Africa
