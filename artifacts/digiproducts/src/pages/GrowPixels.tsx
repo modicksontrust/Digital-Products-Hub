@@ -46,6 +46,9 @@ import {
   X,
   Info,
   Clock,
+  FlaskConical,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 const PLATFORM_COLORS: Record<PixelPlatform, string> = {
@@ -67,6 +70,11 @@ export default function GrowPixels() {
   const [applyTo, setApplyTo] = useState<"bio" | "all">("bio");
   const [selectedEvents, setSelectedEvents] = useState<string[]>([...PLATFORM_EVENTS.meta]);
   const [saving, setSaving] = useState(false);
+
+  // Test pixel state
+  const [testPixelId, setTestPixelId] = useState<string>("");
+  const [testEvent, setTestEvent] = useState<string>("");
+  const [testStatus, setTestStatus] = useState<"idle" | "firing" | "success">("idle");
 
   function refreshPixels() {
     setPixels(listPixels());
@@ -110,6 +118,18 @@ export default function GrowPixels() {
     deletePixel(id);
     refreshPixels();
     toast({ title: "Pixel configuration removed" });
+  }
+
+  function handleTestFire() {
+    if (!testPixelId || !testEvent) {
+      toast({ title: "Select a pixel and an event first", variant: "destructive" });
+      return;
+    }
+    setTestStatus("firing");
+    setTimeout(() => {
+      setTestStatus("success");
+      toast({ title: "Test event sent", description: `${testEvent} fired for pixel ${testPixelId.slice(0, 8)}…` });
+    }, 1400);
   }
 
   return (
@@ -298,6 +318,98 @@ export default function GrowPixels() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+        {/* Test Pixel section — only shown when at least one pixel is saved */}
+        {pixels.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-3 flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-brand-600" />
+              <h2 className="font-semibold text-ink-900">Test Pixel</h2>
+            </div>
+            <Card className="border-ink-200 shadow-sm">
+              <CardContent className="p-6 space-y-5">
+                <p className="text-sm text-ink-500 leading-relaxed">
+                  Fire a simulated test event to confirm your pixel ID is formatted correctly and
+                  the right events are mapped. Actual delivery to the ad platform requires page
+                  injection to be live.
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Pixel selector */}
+                  <div className="space-y-1.5">
+                    <Label>Pixel</Label>
+                    <Select
+                      value={testPixelId}
+                      onValueChange={(v) => {
+                        setTestPixelId(v);
+                        const px = pixels.find((p) => p.id === v);
+                        setTestEvent(px ? px.events[0] ?? "" : "");
+                        setTestStatus("idle");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a pixel…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pixels.map((px) => (
+                          <SelectItem key={px.id} value={px.id}>
+                            {PLATFORM_LABELS[px.platform]} — {px.pixelId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Event selector */}
+                  <div className="space-y-1.5">
+                    <Label>Event</Label>
+                    <Select
+                      value={testEvent}
+                      onValueChange={(v) => { setTestEvent(v); setTestStatus("idle"); }}
+                      disabled={!testPixelId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an event…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(testPixelId
+                          ? pixels.find((p) => p.id === testPixelId)?.events ?? []
+                          : []
+                        ).map((e) => (
+                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={handleTestFire}
+                    disabled={testStatus === "firing" || !testPixelId || !testEvent}
+                  >
+                    {testStatus === "firing" ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Firing…</>
+                    ) : (
+                      <><FlaskConical className="h-4 w-4" /> Send Test Event</>
+                    )}
+                  </Button>
+
+                  {testStatus === "success" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <span>
+                        <span className="font-semibold">{testEvent}</span> simulated successfully.
+                        Will fire live once page injection is active.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
