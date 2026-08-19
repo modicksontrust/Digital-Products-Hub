@@ -428,8 +428,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Wave divider */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-b from-transparent to-white" />
       </section>
       {/* ── STATS STRIP ──────────────────────────────────────────────────── */}
       <section className="border-b border-ink-100 bg-white">
