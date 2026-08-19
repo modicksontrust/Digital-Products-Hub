@@ -1930,6 +1930,10 @@ components:
             $ref: "#/components/schemas/Chapter"
         latestReview:
           $ref: "#/components/schemas/Review"
+        reviewHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
     ProductInput:
       type: object
       required: [type, title, topic]

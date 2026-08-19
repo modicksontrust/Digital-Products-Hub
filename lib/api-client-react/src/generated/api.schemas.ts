@@ -483,6 +483,7 @@ export interface ProductDetail {
   product: Product;
   chapters: Chapter[];
   latestReview?: Review;
+  reviewHistory?: Review[];
 }
 
 export type ProductInputType = typeof ProductInputType[keyof typeof ProductInputType];
