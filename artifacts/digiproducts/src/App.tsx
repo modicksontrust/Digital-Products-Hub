@@ -26,6 +26,7 @@ import NotFound from "@/pages/not-found";
 import SalesPage from "@/pages/SalesPage";
 
 import CreateLeadMagnet from "@/pages/CreateLeadMagnet";
+import LeadMagnets from "@/pages/LeadMagnets";
 import PromoteEbook from "@/pages/PromoteEbook";
 import ReviewQueue from "@/pages/ReviewQueue";
 import SellProducts from "@/pages/SellProducts";
@@ -112,6 +113,16 @@ export default function App() {
         <Route path="/create/lead-magnet">
           <ProtectedRoute>
             <CreateLeadMagnet />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/lead-magnets">
+          <ProtectedRoute>
+            <LeadMagnets />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/dashboard/lead-magnets">
+          <ProtectedRoute>
+            <LeadMagnets />
           </ProtectedRoute>
         </Route>
         <Route path="/create/promote-ebook">
