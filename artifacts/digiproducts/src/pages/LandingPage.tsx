@@ -400,8 +400,6 @@ export default function LandingPage() {
                   />
                 </div>
                 <div className="mt-4">
-                  <p className="font-bold text-white text-sm leading-snug">The GLP-1 Companion Diet</p>
-                  <p className="text-xs text-white/50 mt-1">by Dr. Sarah Mensah</p>
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-2xl font-extrabold text-white">$22.00</span>
                     <button className="rounded-xl bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-md">
