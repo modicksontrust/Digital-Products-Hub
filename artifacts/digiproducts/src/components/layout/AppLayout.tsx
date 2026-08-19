@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
   CreditCard, History, PenTool, LayoutTemplate, Megaphone,
   LogOut, User, Bell, ChevronDown, CheckCircle, Menu,
-  ShoppingBag, Tag,
+  ShoppingBag, Tag, Link2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,7 @@ function useNavigation() {
       name: "SELL",
       items: [
         { name: "Products", href: "/sell/products", icon: ShoppingBag, locked: isLocked },
+        { name: "Link in Bio", href: "/sell/bio", icon: Link2, locked: isLocked },
         { name: "Discount Codes", href: "/sell/discounts", icon: Tag, locked: isLocked },
       ]
     },

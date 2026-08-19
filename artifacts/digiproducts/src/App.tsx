@@ -31,6 +31,8 @@ import ReviewQueue from "@/pages/ReviewQueue";
 import SellProducts from "@/pages/SellProducts";
 import SellProductSetup from "@/pages/SellProductSetup";
 import SellDiscounts from "@/pages/SellDiscounts";
+import LinkInBio from "@/pages/LinkInBio";
+import PublicBio from "@/pages/PublicBio";
 
 export default function App() {
   return (
@@ -42,6 +44,9 @@ export default function App() {
         </Route>
         <Route path="/p/:slug">
           <SalesPage />
+        </Route>
+        <Route path="/b/:slug">
+          <PublicBio />
         </Route>
 
         {/* Auth Routes */}
@@ -129,6 +134,11 @@ export default function App() {
         <Route path="/sell/discounts">
           <ProtectedRoute>
             <SellDiscounts />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/sell/bio">
+          <ProtectedRoute>
+            <LinkInBio />
           </ProtectedRoute>
         </Route>
 

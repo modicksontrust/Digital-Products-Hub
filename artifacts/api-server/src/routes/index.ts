@@ -10,6 +10,7 @@ import storageRouter from "./storage";
 import coversRouter from "./covers";
 import publicRouter from "./public";
 import sellRouter from "./sell";
+import bioRouter from "./bio";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(adminRouter);
 router.use(storageRouter);
 router.use(coversRouter);
 router.use(sellRouter);
+router.use(bioRouter);
 
 export default router;

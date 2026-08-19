@@ -149,3 +149,101 @@ export const GenerateAdCopyResponse = zod.object({
   imageAds: zod.array(ImageAdItem).optional(),
   videoScripts: zod.array(VideoScriptItem).optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Link in Bio
+// ---------------------------------------------------------------------------
+
+/** Only allow http(s) URLs so published bio pages can't inject javascript: hrefs. */
+const httpUrl = zod
+  .string()
+  .max(500)
+  .refine((v) => /^https?:\/\/[^\s]+$/i.test(v.trim()), {
+    message: "Must be a valid http(s) URL",
+  });
+
+export const BioSocialLink = zod.object({
+  platform: zod.string(),
+  url: zod.string(),
+});
+
+export const BioSocialLinkInput = zod.object({
+  platform: zod.string().max(40),
+  url: httpUrl,
+});
+
+export const BioLinkItem = zod.object({
+  id: zod.string(),
+  title: zod.string(),
+  url: zod.string(),
+  active: zod.boolean(),
+  sortOrder: zod.number().int(),
+});
+
+export const BioSettingsItem = zod.object({
+  slug: zod.string(),
+  displayName: zod.string(),
+  bio: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  theme: zod.string(),
+  published: zod.boolean(),
+  showProducts: zod.boolean(),
+  socialLinks: zod.array(BioSocialLink),
+});
+
+export const GetBioResponse = zod.object({
+  settings: BioSettingsItem,
+  links: zod.array(BioLinkItem),
+});
+
+export const UpdateBioSettingsBody = zod.object({
+  slug: zod
+    .string()
+    .min(3)
+    .max(40)
+    .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and dashes only")
+    .optional(),
+  displayName: zod.string().max(80).optional(),
+  bio: zod.string().max(300).optional(),
+  avatarUrl: httpUrl.nullish(),
+  theme: zod.enum(["noir", "cream", "ocean", "sunset"]).optional(),
+  published: zod.boolean().optional(),
+  showProducts: zod.boolean().optional(),
+  socialLinks: zod.array(BioSocialLinkInput).max(8).optional(),
+});
+
+export const CreateBioLinkBody = zod.object({
+  title: zod.string().min(1).max(80),
+  url: httpUrl,
+});
+
+export const UpdateBioLinkBody = zod.object({
+  title: zod.string().min(1).max(80).optional(),
+  url: httpUrl.optional(),
+  active: zod.boolean().optional(),
+});
+
+export const ReorderBioLinksBody = zod.object({
+  ids: zod.array(zod.string()),
+});
+
+export const PublicBioProduct = zod.object({
+  id: zod.string(),
+  title: zod.string(),
+  slug: zod.string().nullish(),
+  priceCents: zod.number().int().nullish(),
+  pricingMode: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  coverImageUrl: zod.string().nullish(),
+  saleShortDescription: zod.string().nullish(),
+});
+
+export const GetPublicBioResponse = zod.object({
+  displayName: zod.string(),
+  bio: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  theme: zod.string(),
+  socialLinks: zod.array(BioSocialLink),
+  links: zod.array(BioLinkItem.omit({ active: true, sortOrder: true })),
+  products: zod.array(PublicBioProduct),
+});

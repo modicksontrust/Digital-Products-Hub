@@ -84,7 +84,12 @@ export const getUpdateSellSettingsMutationOptions = <
       TContext
     >;
   },
-) => {
+): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSellSettings>>,
+  TError,
+  { productId: string; data: SellSettingsUpdate },
+  TContext
+> => {
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateSellSettings>>,
     { productId: string; data: SellSettingsUpdate }
@@ -207,3 +212,182 @@ export const useDeleteDiscountCode = <TError = unknown, TContext = unknown>(
     ...options?.mutation,
   });
 };
+
+// ---------------------------------------------------------------------------
+// Link in Bio
+// ---------------------------------------------------------------------------
+
+import type {
+  GetBioResponse,
+  UpdateBioSettingsBody,
+  BioLinkItem,
+  CreateBioLinkBody,
+  UpdateBioLinkBody,
+  GetPublicBioResponse,
+} from "@workspace/api-zod";
+
+export type BioData = z.infer<typeof GetBioResponse>;
+export type BioSettingsUpdate = z.infer<typeof UpdateBioSettingsBody>;
+export type BioLink = z.infer<typeof BioLinkItem>;
+export type CreateBioLinkInput = z.infer<typeof CreateBioLinkBody>;
+export type UpdateBioLinkInput = z.infer<typeof UpdateBioLinkBody>;
+export type PublicBio = z.infer<typeof GetPublicBioResponse>;
+
+export const getGetBioQueryKey = () => ["/api/bio"] as const;
+
+export const getBio = (options?: Parameters<typeof customFetch>[1]) =>
+  customFetch<BioData>("/api/bio", options);
+
+export const useGetBio = <TError = unknown>(options?: {
+  query?: Partial<UseQueryOptions<BioData, TError>>;
+}) =>
+  useQuery({
+    queryKey: getGetBioQueryKey(),
+    queryFn: () => getBio(),
+    ...options?.query,
+  });
+
+export const updateBioSettings = (
+  data: BioSettingsUpdate,
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<{ settings: BioData["settings"] }>("/api/bio/settings", {
+    method: "PUT",
+    body: JSON.stringify(data),
+    ...options,
+  });
+
+export const useUpdateBioSettings = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      { settings: BioData["settings"] },
+      TError,
+      BioSettingsUpdate,
+      TContext
+    >;
+  },
+) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BioSettingsUpdate) => updateBioSettings(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getGetBioQueryKey() }),
+    ...options?.mutation,
+  });
+};
+
+export const createBioLink = (
+  data: CreateBioLinkInput,
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<BioLink>("/api/bio/links", {
+    method: "POST",
+    body: JSON.stringify(data),
+    ...options,
+  });
+
+export const useCreateBioLink = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<BioLink, TError, CreateBioLinkInput, TContext>;
+  },
+) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateBioLinkInput) => createBioLink(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getGetBioQueryKey() }),
+    ...options?.mutation,
+  });
+};
+
+export const updateBioLink = (
+  id: string,
+  data: UpdateBioLinkInput,
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<BioLink>(`/api/bio/links/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+    ...options,
+  });
+
+export const useUpdateBioLink = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      BioLink,
+      TError,
+      { id: string; data: UpdateBioLinkInput },
+      TContext
+    >;
+  },
+) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateBioLinkInput }) =>
+      updateBioLink(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getGetBioQueryKey() }),
+    ...options?.mutation,
+  });
+};
+
+export const deleteBioLink = (
+  id: string,
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<{ ok: boolean }>(`/api/bio/links/${id}`, {
+    method: "DELETE",
+    ...options,
+  });
+
+export const useDeleteBioLink = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<{ ok: boolean }, TError, string, TContext>;
+  },
+) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteBioLink(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getGetBioQueryKey() }),
+    ...options?.mutation,
+  });
+};
+
+export const reorderBioLinks = (
+  ids: string[],
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<{ links: BioLink[] }>("/api/bio/links/reorder", {
+    method: "PUT",
+    body: JSON.stringify({ ids }),
+    ...options,
+  });
+
+export const useReorderBioLinks = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<{ links: BioLink[] }, TError, string[], TContext>;
+  },
+) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => reorderBioLinks(ids),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getGetBioQueryKey() }),
+    ...options?.mutation,
+  });
+};
+
+export const getGetPublicBioQueryKey = (slug: string) =>
+  [`/api/public/bio/${slug}`] as const;
+
+export const getPublicBio = (
+  slug: string,
+  options?: Parameters<typeof customFetch>[1],
+) => customFetch<PublicBio>(`/api/public/bio/${slug}`, options);
+
+export const useGetPublicBio = <TError = unknown>(
+  slug: string,
+  options?: { query?: Partial<UseQueryOptions<PublicBio, TError>> },
+) =>
+  useQuery({
+    queryKey: getGetPublicBioQueryKey(slug),
+    queryFn: () => getPublicBio(slug),
+    retry: false,
+    ...options?.query,
+  });

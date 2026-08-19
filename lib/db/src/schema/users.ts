@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
   uuid,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
@@ -108,3 +109,48 @@ export const settingsTable = pgTable("settings", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export const bioSettingsTable = pgTable("bio_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .unique()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  slug: text("slug").notNull().unique(),
+  displayName: text("display_name").notNull().default(""),
+  bio: text("bio").notNull().default(""),
+  avatarUrl: text("avatar_url"),
+  theme: text("theme").notNull().default("noir"), // noir|cream|ocean|sunset
+  published: boolean("published").notNull().default(true),
+  showProducts: boolean("show_products").notNull().default(true),
+  socialLinks: jsonb("social_links"), // [{ platform, url }]
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type BioSettings = typeof bioSettingsTable.$inferSelect;
+
+export const bioLinksTable = pgTable("bio_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type BioLink = typeof bioLinksTable.$inferSelect;

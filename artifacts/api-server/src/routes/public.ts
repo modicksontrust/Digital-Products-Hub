@@ -7,8 +7,14 @@ import {
   productChaptersTable,
   salesCopyTable,
   previewTokensTable,
+  bioSettingsTable,
+  bioLinksTable,
 } from "@workspace/db";
-import { GetPublicSalesPageResponse } from "@workspace/api-zod";
+import { asc } from "drizzle-orm";
+import {
+  GetPublicSalesPageResponse,
+  GetPublicBioResponse,
+} from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
@@ -158,5 +164,73 @@ router.get(
     }
   },
 );
+
+router.get("/public/bio/:slug", async (req, res): Promise<void> => {
+  const slug = String(req.params["slug"]);
+  const [settings] = await db
+    .select()
+    .from(bioSettingsTable)
+    .where(eq(bioSettingsTable.slug, slug));
+
+  if (!settings || !settings.published) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const links = await db
+    .select()
+    .from(bioLinksTable)
+    .where(
+      and(
+        eq(bioLinksTable.userId, settings.userId),
+        eq(bioLinksTable.active, true),
+      ),
+    )
+    .orderBy(asc(bioLinksTable.sortOrder), asc(bioLinksTable.createdAt));
+
+  let products: (typeof productsTable.$inferSelect)[] = [];
+  if (settings.showProducts) {
+    products = await db
+      .select()
+      .from(productsTable)
+      .where(
+        and(
+          eq(productsTable.ownerId, settings.userId),
+          eq(productsTable.published, true),
+          eq(productsTable.showOnBio, true),
+        ),
+      );
+  }
+
+  res.json(
+    GetPublicBioResponse.parse({
+      displayName: settings.displayName,
+      bio: settings.bio,
+      avatarUrl: settings.avatarUrl ?? null,
+      theme: settings.theme,
+      socialLinks:
+        (settings.socialLinks as { platform: string; url: string }[] | null) ??
+        [],
+      links: links.map((l) => ({ id: l.id, title: l.title, url: l.url })),
+      products: products
+        .filter((p) => p.slug)
+        .map((p) => {
+          const cover = (p.coverConfig ?? null) as { imageUrl?: string } | null;
+          return {
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            priceCents: p.priceCents,
+            pricingMode: p.pricingMode,
+            currency: p.currency,
+            coverImageUrl: cover?.imageUrl
+              ? `/public/sales-page/${p.slug}/cover`
+              : null,
+            saleShortDescription: p.saleShortDescription ?? null,
+          };
+        }),
+    }),
+  );
+});
 
 export default router;

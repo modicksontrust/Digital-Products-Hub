@@ -6,4 +6,3 @@ export * from "./generated/api";
 // Nothing in this monorepo imports the plain interfaces (zod schema values +
 // z.infer are used throughout), so we only export the zod barrel.
 export * from "./manual";
-export * from './generated/types';
