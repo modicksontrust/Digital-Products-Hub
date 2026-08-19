@@ -10,6 +10,7 @@ import {
   useReorderBioLinks,
   useGetProducts,
   useUpdateSellSettings,
+  getGetBioQueryKey,
   getGetProductsQueryKey,
   type BioLink,
 } from "@workspace/api-client-react";
@@ -22,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -41,7 +43,14 @@ import {
   Link2,
   Eye,
   MousePointerClick,
-  Upload,
+  Camera,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  ImageIcon,
+  Palette,
+  Settings2,
 } from "lucide-react";
 import { socialIconFor } from "@/components/BioPreview";
 import { useUpload } from "@workspace/object-storage-web";
@@ -55,6 +64,31 @@ const SOCIAL_PLATFORMS = [
   "whatsapp",
   "website",
 ];
+
+const THEME_CATEGORIES = {
+  all: "All templates",
+  light: "Light",
+  dark: "Dark",
+  colorful: "Colorful",
+} as const;
+
+const THEME_CATEGORY_BY_KEY: Record<string, keyof typeof THEME_CATEGORIES> = {
+  noir: "dark",
+  cream: "light",
+  ocean: "colorful",
+  sunset: "colorful",
+};
+
+const THEME_DESCRIPTIONS: Record<string, string> = {
+  noir: "Editorial and high contrast",
+  cream: "Warm and minimal",
+  ocean: "Bright and confident",
+  sunset: "Expressive and energetic",
+};
+
+type AvatarPosition = "top" | "center" | "bottom";
+type LinkStyle = "rounded" | "pill" | "minimal";
+type LinkDraft = { title: string; url: string };
 
 interface ProductRow {
   id: string;
@@ -93,6 +127,14 @@ export default function LinkInBio() {
   const [published, setPublished] = useState(true);
   const [showProducts, setShowProducts] = useState(true);
   const [socialLinks, setSocialLinks] = useState<{ platform: string; url: string }[]>([]);
+  const [themeFilter, setThemeFilter] = useState<keyof typeof THEME_CATEGORIES>("all");
+  const [avatarPosition, setAvatarPosition] = useState<AvatarPosition>("center");
+  const [linkStyle, setLinkStyle] = useState<LinkStyle>("rounded");
+  const [linkDrafts, setLinkDrafts] = useState<Record<string, LinkDraft>>({});
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [savingLinkId, setSavingLinkId] = useState<string | null>(null);
+  const [productsExpanded, setProductsExpanded] = useState(true);
+  const [optionalExpanded, setOptionalExpanded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -100,6 +142,7 @@ export default function LinkInBio() {
   // New link form
   const [newTitle, setNewTitle] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const hasUnsavedLinkDrafts = Object.keys(linkDrafts).length > 0;
 
   useEffect(() => {
     if (data && !loaded) {
@@ -123,7 +166,7 @@ export default function LinkInBio() {
 
   // Protect unsaved settings from being lost via tab close or in-app navigation.
   const dirtyRef = useRef(dirty);
-  dirtyRef.current = dirty;
+  dirtyRef.current = dirty || hasUnsavedLinkDrafts;
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (dirtyRef.current) {
@@ -161,13 +204,71 @@ export default function LinkInBio() {
     ? `${import.meta.env.BASE_URL}api/storage${avatarUrl}`
     : avatarUrl;
 
+  const visibleThemes = Object.entries(BIO_THEMES).filter(
+    ([key]) => themeFilter === "all" || THEME_CATEGORY_BY_KEY[key] === themeFilter,
+  );
+
+  const getLinkDraft = (link: BioLink): LinkDraft =>
+    linkDrafts[link.id] ?? { title: link.title, url: link.url };
+
+  const setLinkDraft = (link: BioLink, next: Partial<LinkDraft>) => {
+    setLinkDrafts((previous) => ({
+      ...previous,
+      [link.id]: { ...getLinkDraft(link), ...next },
+    }));
+    setEditingLinkId(link.id);
+  };
+
+  const saveLink = (link: BioLink) => {
+    const draft = getLinkDraft(link);
+    if (!draft.title.trim() || !draft.url.trim()) return;
+    setSavingLinkId(link.id);
+    updateLink.mutate(
+      { id: link.id, data: { title: draft.title.trim(), url: draft.url.trim() } },
+      {
+        onSuccess: (updatedLink) => {
+          qc.setQueryData<typeof data>(getGetBioQueryKey(), (current) =>
+            current
+              ? {
+                  ...current,
+                  links: current.links.map((existingLink) =>
+                    existingLink.id === updatedLink.id ? updatedLink : existingLink,
+                  ),
+                }
+              : current,
+          );
+          setEditingLinkId(null);
+          setSavingLinkId(null);
+          setLinkDrafts((previous) => {
+            const next = { ...previous };
+            delete next[link.id];
+            return next;
+          });
+          toast({ title: "Link updated" });
+        },
+        onError: (error) => {
+          setSavingLinkId(null);
+          toast({
+            title: "Couldn't update link",
+            description: error instanceof Error ? error.message : "Please check the title and URL.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
   const previewData: BioPreviewData = {
     displayName,
     bio,
     avatarUrl: avatarPreviewUrl || null,
+    avatarPosition,
     theme,
+    linkStyle,
     socialLinks: socialLinks.filter((s) => s.url.trim()),
-    links: (data?.links ?? []).filter((l) => l.active),
+    links: (data?.links ?? [])
+      .filter((l) => l.active)
+      .map((link) => ({ ...link, ...linkDrafts[link.id] })),
     products: showProducts
       ? bioProducts.map((p) => ({
           id: p.id,
@@ -298,7 +399,7 @@ export default function LinkInBio() {
 
   return (
     <AppLayout>
-      <div className="w-full max-w-7xl mx-auto p-8">
+      <div className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
         {/* Header bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
@@ -346,7 +447,7 @@ export default function LinkInBio() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           {/* Settings column */}
           <div className="space-y-6">
             {/* Profile */}
@@ -393,34 +494,66 @@ export default function LinkInBio() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bio-avatar">Avatar photo (optional)</Label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      ref={avatarInputRef}
-                      id="bio-avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={handleAvatarUpload}
-                      data-testid="input-bio-avatar-upload"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => avatarInputRef.current?.click()}
-                      disabled={isUploadingAvatar || updateSettings.isPending}
-                      data-testid="button-upload-bio-avatar"
-                    >
-                      {isUploadingAvatar ? (
-                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4 mr-1.5" />
-                      )}
-                      {isUploadingAvatar ? "Uploading…" : "Upload photo"}
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Upload from your device, or paste an image URL below.
-                    </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="bio-avatar">Profile photo</Label>
+                    <span className="text-xs text-muted-foreground">Optional, but recommended</span>
+                  </div>
+                  <div className="flex flex-col gap-4 rounded-xl border border-dashed bg-muted/20 p-4 sm:flex-row sm:items-center">
+                    <Avatar className="h-20 w-20 shrink-0 border-4 border-background shadow-sm">
+                      {avatarPreviewUrl ? (
+                        <AvatarImage
+                          src={avatarPreviewUrl}
+                          alt={displayName || "Profile"}
+                          className="object-cover"
+                          style={{ objectPosition: avatarPosition }}
+                        />
+                      ) : null}
+                      <AvatarFallback className="bg-brand-100 text-lg font-semibold text-brand-700">
+                        {displayName
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((word) => word[0]?.toUpperCase())
+                          .join("") || "You"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">Make your page recognizable</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Use a clear headshot, logo, or image that represents your work.
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <input
+                          ref={avatarInputRef}
+                          id="bio-avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={handleAvatarUpload}
+                          data-testid="input-bio-avatar-upload"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={isUploadingAvatar || updateSettings.isPending}
+                          data-testid="button-upload-bio-avatar"
+                        >
+                          {isUploadingAvatar ? (
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Camera className="mr-1.5 h-4 w-4" />
+                          )}
+                          {isUploadingAvatar ? "Uploading…" : avatarPreviewUrl ? "Replace photo" : "Upload photo"}
+                        </Button>
+                        {avatarPreviewUrl ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                            <Check className="h-3.5 w-3.5" /> Photo ready
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                   <Input
                     id="bio-avatar"
@@ -435,6 +568,31 @@ export default function LinkInBio() {
                       A photo from your device is saved for this avatar. Paste a URL above to replace it.
                     </p>
                   ) : null}
+                  <div className="rounded-lg bg-muted/40 p-3">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-xs font-medium">Photo placement</p>
+                      <span className="ml-auto text-[10px] text-muted-foreground">Preview only</span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {(["top", "center", "bottom"] as AvatarPosition[]).map((position) => (
+                        <button
+                          key={position}
+                          type="button"
+                          onClick={() => setAvatarPosition(position)}
+                          className={`rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors ${
+                            avatarPosition === position
+                              ? "border-brand-500 bg-brand-50 text-brand-700"
+                              : "border-transparent bg-background text-muted-foreground hover:border-ink-200"
+                          }`}
+                          aria-pressed={avatarPosition === position}
+                          data-testid={`button-avatar-position-${position}`}
+                        >
+                          {position}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div>
@@ -455,22 +613,64 @@ export default function LinkInBio() {
             {/* Theme */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Theme</CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">Choose a template</CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">A starting style for your public page.</p>
+                  </div>
+                  <Palette className="h-4 w-4 text-brand-600" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {Object.entries(BIO_THEMES).map(([key, t]) => (
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2" aria-label="Template categories">
+                  {Object.entries(THEME_CATEGORIES).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setThemeFilter(key as keyof typeof THEME_CATEGORIES)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        themeFilter === key
+                          ? "bg-ink-900 text-white"
+                          : "bg-ink-100 text-ink-600 hover:bg-ink-200"
+                      }`}
+                      aria-pressed={themeFilter === key}
+                      data-testid={`button-template-filter-${key}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {visibleThemes.map(([key, t]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => { setTheme(key); markDirty(); }}
-                      className={`rounded-xl border-2 p-2 transition-colors ${
-                        theme === key ? "border-[#B8863B]" : "border-transparent hover:border-muted"
+                      className={`relative overflow-hidden rounded-xl border-2 p-3 text-left transition-all ${
+                        theme === key
+                          ? "border-brand-500 ring-2 ring-brand-100"
+                          : "border-transparent bg-muted/30 hover:border-ink-200"
                       }`}
+                      aria-pressed={theme === key}
                       data-testid={`button-theme-${key}`}
                     >
-                      <div className={`h-16 rounded-lg ${t.swatch}`} />
-                      <p className="text-xs font-medium mt-1.5 text-center">{t.label}</p>
+                      <div className={`h-20 rounded-lg ${t.swatch} p-3`}>
+                        <div className="mx-auto h-3 w-3 rounded-full bg-white/80" />
+                        <div className="mx-auto mt-2 h-1.5 w-16 rounded-full bg-white/75" />
+                        <div className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-white/50" />
+                        <div className="mt-3 h-5 rounded-md bg-white/65" />
+                      </div>
+                      <div className="mt-2 flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold">{t.label}</p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">{THEME_DESCRIPTIONS[key]}</p>
+                        </div>
+                        {theme === key ? (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white" aria-label="Selected">
+                            <Check className="h-3 w-3" />
+                          </span>
+                        ) : null}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -542,62 +742,169 @@ export default function LinkInBio() {
             {/* Custom links */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Links</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {(data.links ?? []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No links yet. Add your first one below.</p>
-                ) : null}
-                {(data.links ?? []).map((link: BioLink, i: number) => (
-                  <div key={link.id} className="flex items-center gap-2 rounded-lg border p-2.5">
-                    <div className="flex flex-col gap-0.5">
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                        disabled={i === 0 || reorderLinks.isPending}
-                        onClick={() => moveLink(i, -1)}
-                        data-testid={`button-link-up-${link.id}`}
-                      >
-                        <ArrowUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                        disabled={i === (data.links ?? []).length - 1 || reorderLinks.isPending}
-                        onClick={() => moveLink(i, 1)}
-                        data-testid={`button-link-down-${link.id}`}
-                      >
-                        <ArrowDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <Link2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{link.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{link.url}</p>
-                    </div>
-                    <span
-                      className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
-                      data-testid={`text-bio-link-clicks-${link.id}`}
-                      title="Link clicks"
-                    >
-                      <MousePointerClick className="h-3.5 w-3.5" />
-                      {(linkClicks.get(link.id) ?? 0).toLocaleString()}
-                    </span>
-                    <Switch
-                      checked={link.active}
-                      onCheckedChange={(v) => updateLink.mutate({ id: link.id, data: { active: v } })}
-                      data-testid={`switch-link-active-${link.id}`}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteLink.mutate(link.id)}
-                      data-testid={`button-delete-link-${link.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">Links</CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">Choose what people see first on your page.</p>
                   </div>
-                ))}
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    {(data.links ?? []).length} link{(data.links ?? []).length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-medium">Button appearance</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">Preview-only styling for every link button.</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">Preview only</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {([
+                      ["rounded", "Rounded"],
+                      ["pill", "Pill"],
+                      ["minimal", "Minimal"],
+                    ] as [LinkStyle, string][]).map(([style, label]) => (
+                      <button
+                        key={style}
+                        type="button"
+                        onClick={() => setLinkStyle(style)}
+                        className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                          linkStyle === style
+                            ? "border-brand-500 bg-brand-50 text-brand-700"
+                            : "border-transparent bg-background text-muted-foreground hover:border-ink-200"
+                        }`}
+                        aria-pressed={linkStyle === style}
+                        data-testid={`button-link-style-${style}`}
+                      >
+                        <span className={`mx-auto block h-2 w-8 border border-current ${style === "pill" ? "rounded-full" : style === "minimal" ? "rounded-sm" : "rounded-md"}`} />
+                        <span className="mt-1 block">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {(data.links ?? []).length === 0 ? (
+                  <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-6 text-center">
+                    <Link2 className="mx-auto h-5 w-5 text-muted-foreground" />
+                    <p className="mt-2 text-sm font-medium">No links yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Add a destination below to start your page.</p>
+                  </div>
+                ) : null}
+                {(data.links ?? []).map((link: BioLink, i: number) => {
+                  const draft = getLinkDraft(link);
+                  const isEditing = editingLinkId === link.id || !!linkDrafts[link.id];
+                  const isSaving = savingLinkId === link.id;
+                  return (
+                    <div key={link.id} className={`rounded-xl border p-3 transition-colors ${isEditing ? "border-brand-300 bg-brand-50/30" : "bg-card"}`}>
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 shrink-0 text-ink-300" aria-hidden="true" />
+                        <span className="text-xs font-semibold text-muted-foreground">Link {i + 1}</span>
+                        <span
+                          className="ml-auto flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
+                          data-testid={`text-bio-link-clicks-${link.id}`}
+                          title="Link clicks"
+                        >
+                          <MousePointerClick className="h-3.5 w-3.5" />
+                          {(linkClicks.get(link.id) ?? 0).toLocaleString()} clicks
+                        </span>
+                        <Switch
+                          checked={link.active}
+                          onCheckedChange={(v) => updateLink.mutate({ id: link.id, data: { active: v } })}
+                          aria-label={`${link.active ? "Hide" : "Show"} ${link.title}`}
+                          data-testid={`switch-link-active-${link.id}`}
+                        />
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+                        <div className="space-y-1">
+                          <Label htmlFor={`link-title-${link.id}`} className="text-[11px] text-muted-foreground">Label</Label>
+                          <Input
+                            id={`link-title-${link.id}`}
+                            value={draft.title}
+                            onFocus={() => setEditingLinkId(link.id)}
+                            onChange={(event) => setLinkDraft(link, { title: event.target.value })}
+                            maxLength={80}
+                            disabled={isSaving}
+                            data-testid={`input-link-title-${link.id}`}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`link-url-${link.id}`} className="text-[11px] text-muted-foreground">Destination URL</Label>
+                          <div className="relative">
+                            <Link2 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id={`link-url-${link.id}`}
+                              value={draft.url}
+                              onFocus={() => setEditingLinkId(link.id)}
+                              onChange={(event) => setLinkDraft(link, { url: event.target.value })}
+                              className="pl-8"
+                              inputMode="url"
+                            disabled={isSaving}
+                              data-testid={`input-link-url-${link.id}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Move up"
+                            disabled={isSaving || i === 0 || reorderLinks.isPending}
+                            onClick={() => moveLink(i, -1)}
+                            data-testid={`button-link-up-${link.id}`}
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Move down"
+                            disabled={isSaving || i === (data.links ?? []).length - 1 || reorderLinks.isPending}
+                            onClick={() => moveLink(i, 1)}
+                            data-testid={`button-link-down-${link.id}`}
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            disabled={isSaving}
+                            onClick={() => deleteLink.mutate(link.id)}
+                            data-testid={`button-delete-link-${link.id}`}
+                          >
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove
+                          </Button>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8"
+                          disabled={
+                            isSaving ||
+                            updateLink.isPending ||
+                            !draft.title.trim() ||
+                            !draft.url.trim() ||
+                            (!linkDrafts[link.id] && !isEditing)
+                          }
+                          onClick={() => saveLink(link)}
+                          data-testid={`button-save-link-${link.id}`}
+                        >
+                          {updateLink.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                          Save link
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
                 <div className="flex flex-col sm:flex-row gap-2 pt-1">
                   <Input
                     value={newTitle}
@@ -630,9 +937,23 @@ export default function LinkInBio() {
             {/* Products */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Products</CardTitle>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left"
+                  onClick={() => setProductsExpanded((expanded) => !expanded)}
+                  aria-expanded={productsExpanded}
+                  data-testid="button-toggle-bio-products"
+                >
+                  <div>
+                    <CardTitle className="text-base">Products</CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Feature published products right below your links.
+                    </p>
+                  </div>
+                  {productsExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
               </CardHeader>
-              <CardContent className="space-y-3">
+              {productsExpanded ? <CardContent className="space-y-3">
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div>
                     <p className="text-sm font-medium">Show products section</p>
@@ -646,11 +967,17 @@ export default function LinkInBio() {
                     data-testid="switch-show-products"
                   />
                 </div>
+                <div className="space-y-2">
                 {((products as ProductRow[] | undefined) ?? [])
                   .filter((p) => p.published && p.slug)
                   .map((p) => (
-                    <div key={p.id} className="flex items-center justify-between rounded-lg border p-2.5">
-                      <p className="text-sm font-medium truncate mr-3">{p.title}</p>
+                    <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{p.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {p.showOnBio ? "Visible on your bio page" : "Hidden from your bio page"}
+                        </p>
+                      </div>
                       <Switch
                         checked={p.showOnBio ?? false}
                         onCheckedChange={async (v) => {
@@ -665,22 +992,64 @@ export default function LinkInBio() {
                       />
                     </div>
                   ))}
+                </div>
                 {((products as ProductRow[] | undefined) ?? []).filter((p) => p.published && p.slug).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No published products yet. Publish a product in Sell → Products to feature it here.
-                  </p>
+                  <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-5 text-center">
+                    <p className="text-sm font-medium">No products ready to feature</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Publish a product in Sell → Products, then choose to show it here.
+                    </p>
+                  </div>
                 ) : null}
-              </CardContent>
+              </CardContent> : null}
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left"
+                  onClick={() => setOptionalExpanded((expanded) => !expanded)}
+                  aria-expanded={optionalExpanded}
+                  data-testid="button-toggle-bio-optional-content"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-brand-600" />
+                    <div>
+                      <CardTitle className="text-base">More ways to grow</CardTitle>
+                      <p className="mt-1 text-xs text-muted-foreground">Optional content blocks for a future release.</p>
+                    </div>
+                  </div>
+                  {optionalExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+              </CardHeader>
+              {optionalExpanded ? (
+                <CardContent>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {[
+                      ["Email capture", "Collect sign-ups directly from your page."],
+                      ["Bookings", "Let visitors request time with you."],
+                      ["Featured collections", "Group related links into a focused section."],
+                    ].map(([title, description]) => (
+                      <div key={title} className="rounded-lg border bg-muted/20 p-3">
+                        <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold text-ink-500">Coming soon</span>
+                        <p className="mt-3 text-sm font-medium">{title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              ) : null}
             </Card>
           </div>
 
           {/* Phone preview */}
-          <div className="lg:sticky lg:top-6">
+          <div className="order-first lg:order-none lg:sticky lg:top-6">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3 text-center">
               Live preview
             </p>
-            <div className="mx-auto w-[300px] rounded-[2.2rem] border-[10px] border-[#20242E] shadow-xl overflow-hidden bg-[#20242E]">
-              <div className="h-[560px] overflow-y-auto rounded-[1.6rem] bg-white">
+            <div className="mx-auto w-full max-w-[300px] overflow-hidden rounded-[2.2rem] border-[10px] border-[#20242E] bg-[#20242E] shadow-xl">
+              <div className="h-[500px] overflow-y-auto rounded-[1.6rem] bg-white sm:h-[560px]">
                 <BioPreview
                   data={previewData}
                   compact

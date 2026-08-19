@@ -1,17 +1,39 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useGetProducts } from "@workspace/api-client-react";
-import { useLocation } from "wouter";
 import {
+  getGetProductsQueryKey,
+  useArchiveProduct,
+  useDuplicateProduct,
+  useGetProducts,
+  useUnpublishProduct,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Archive,
   ArrowUpRight,
+  BarChart3,
+  Copy,
   Download,
+  ExternalLink,
   Eye,
   FileText,
+  MoreVertical,
+  Pencil,
   Link2,
   MousePointerClick,
   Plus,
   Sparkles,
+  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -28,10 +50,61 @@ interface ProductRow {
 
 export default function LeadMagnets() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const { data: products } = useGetProducts();
+  const duplicate = useDuplicateProduct();
+  const archive = useArchiveProduct();
+  const unpublish = useUnpublishProduct();
   const leadMagnets = ((products as ProductRow[] | undefined) ?? []).filter(
     (product) => product.type === "lead_magnet",
   );
+
+  const handleDuplicate = (product: ProductRow) => {
+    duplicate.mutate(
+      { productId: product.id },
+      {
+        onSuccess: (newProduct) => {
+          toast({ title: "Lead magnet duplicated", description: "A new draft was created." });
+          setLocation(`/create/lead-magnet?productId=${newProduct.id}`);
+        },
+        onError: () => {
+          toast({ title: "Couldn't duplicate lead magnet", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const handleArchive = (product: ProductRow) => {
+    if (!window.confirm("Archive this lead magnet? It will no longer appear in your active products.")) return;
+    archive.mutate(
+      { productId: product.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Lead magnet archived" });
+          qc.invalidateQueries({ queryKey: getGetProductsQueryKey() });
+        },
+        onError: () => {
+          toast({ title: "Couldn't archive lead magnet", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const handleUnpublish = (product: ProductRow) => {
+    unpublish.mutate(
+      { productId: product.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Lead magnet unpublished" });
+          qc.invalidateQueries({ queryKey: getGetProductsQueryKey() });
+        },
+        onError: () => {
+          toast({ title: "Couldn't unpublish lead magnet", variant: "destructive" });
+        },
+      },
+    );
+  };
 
   const metrics = [
     { label: "Total opt-ins", value: "0", icon: Users },
@@ -119,7 +192,81 @@ export default function LeadMagnets() {
                           </div>
                         )}
                       </div>
-                      <ArrowUpRight className="h-4 w-4 shrink-0 text-ink-400 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-700"
+                            aria-label={`More actions for ${product.title}`}
+                            data-testid={`button-lead-magnet-menu-${product.id}`}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-52 rounded-xl"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <DropdownMenuItem onClick={() => setLocation(`/create/lead-magnet?productId=${product.id}`)}>
+                            <Pencil className="mr-2 h-4 w-4" /> Edit / View
+                          </DropdownMenuItem>
+                          {product.slug ? (
+                            <DropdownMenuItem onClick={() => window.open(`${window.location.origin}${import.meta.env.BASE_URL}p/${product.slug}`, "_blank", "noopener,noreferrer")}>
+                              <ExternalLink className="mr-2 h-4 w-4" /> View landing page
+                            </DropdownMenuItem>
+                          ) : null}
+                          {product.published ? (
+                            <DropdownMenuItem onClick={() => handleUnpublish(product)}>
+                              <Eye className="mr-2 h-4 w-4" /> Unpublish
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDuplicate(product)}>
+                            <Copy className="mr-2 h-4 w-4" /> Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleArchive(product)}
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                          >
+                            <Archive className="mr-2 h-4 w-4" /> Archive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="mt-4">
+                      <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-ink-400">Resource analytics coming soon</p>
+                      <div className="grid grid-cols-3 divide-x rounded-lg border border-ink-100 bg-ink-50/60 py-2.5">
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <Users className="h-3.5 w-3.5 text-ink-400" />
+                        <span className="text-xs font-semibold text-ink-700">0</span>
+                        <span className="text-[10px] text-ink-400">opt-ins</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <Download className="h-3.5 w-3.5 text-ink-400" />
+                        <span className="text-xs font-semibold text-ink-700">0</span>
+                        <span className="text-[10px] text-ink-400">downloads</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <TrendingUp className="h-3.5 w-3.5 text-ink-400" />
+                        <span className="text-xs font-semibold text-ink-700">0%</span>
+                        <span className="text-[10px] text-ink-400">conversion</span>
+                      </div>
+                    </div>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-ink-400">
+                      <span>
+                        Created{" "}
+                        {product.createdAt
+                          ? new Date(product.createdAt).toLocaleDateString(undefined, {
+                              month: "numeric",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "recently"}
+                      </span>
+                      <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
                     </div>
                   </CardContent>
                 </Card>

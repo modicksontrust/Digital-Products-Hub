@@ -33,7 +33,9 @@ export interface BioPreviewData {
   displayName: string;
   bio: string;
   avatarUrl?: string | null;
+  avatarPosition?: "top" | "center" | "bottom";
   theme: string;
+  linkStyle?: "rounded" | "pill" | "minimal";
   socialLinks: { platform: string; url: string }[];
   links: BioPreviewLink[];
   products: BioPreviewProduct[];
@@ -139,6 +141,13 @@ export function BioPreview({
   onLinkClick?: (linkId: string) => void;
 }) {
   const theme = BIO_THEMES[data.theme] ?? BIO_THEMES["noir"]!;
+  const linkStyle = data.linkStyle ?? "rounded";
+  const linkShape =
+    linkStyle === "pill"
+      ? "rounded-full"
+      : linkStyle === "minimal"
+        ? "rounded-md"
+        : "rounded-xl";
   const initials =
     data.displayName
       .split(/\s+/)
@@ -156,7 +165,14 @@ export function BioPreview({
         )}
       >
         <Avatar className={cn(compact ? "w-16 h-16" : "w-24 h-24", "mb-3")}>
-          {data.avatarUrl ? <AvatarImage src={data.avatarUrl} alt={data.displayName} /> : null}
+          {data.avatarUrl ? (
+            <AvatarImage
+              src={data.avatarUrl}
+              alt={data.displayName}
+              className="object-cover"
+              style={{ objectPosition: data.avatarPosition ?? "center" }}
+            />
+          ) : null}
           <AvatarFallback className="bg-[#B8863B] text-white text-xl font-semibold">
             {initials}
           </AvatarFallback>
@@ -214,8 +230,9 @@ export function BioPreview({
               rel="noopener noreferrer"
               onClick={() => onLinkClick?.(link.id)}
               className={cn(
-                "block w-full rounded-xl text-center font-medium transition-colors",
+                "block w-full text-center font-medium transition-colors",
                 compact ? "px-3 py-2.5 text-xs" : "px-4 py-3.5 text-sm",
+                linkShape,
                 theme.card,
                 theme.cardHover,
               )}

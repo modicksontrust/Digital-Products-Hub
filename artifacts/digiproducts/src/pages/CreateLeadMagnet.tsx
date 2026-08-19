@@ -86,6 +86,62 @@ const COVER_DESIGNS = [
 
 const COVER_COLORS = ["#1E2B45", "#8F2341", "#0F8D88", "#5B3FC0", "#D17824", "#2A2D33"];
 
+type CoverTextMode = "auto" | "light" | "dark";
+
+function readableCoverText(hex: string) {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return "#FFFFFF";
+  const [r, g, b] = [0, 2, 4].map((index) => Number.parseInt(normalized.slice(index, index + 2), 16) / 255);
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.58 ? "#27211C" : "#FFFFFF";
+}
+
+function LeadMagnetMockup({
+  title,
+  subtitle,
+  color,
+  textColor,
+  design,
+}: {
+  title: string;
+  subtitle: string;
+  color: string;
+  textColor: string;
+  design: string;
+}) {
+  const coverBackground =
+    design === "gradient"
+      ? "linear-gradient(145deg, #1C2B55 0%, #6338B8 58%, #B343A9 100%)"
+      : color;
+
+  return (
+    <div className="relative h-[236px] w-full max-w-[390px] overflow-hidden rounded-2xl border border-ink-200/70 bg-gradient-to-br from-[#f5f1e9] via-[#ece8df] to-[#d9d3c8] px-6 pb-5 pt-4 shadow-inner">
+      <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.18em] text-ink-400">
+        <span>Product mockup</span>
+        <span>Digital guide</span>
+      </div>
+      <div className="absolute bottom-8 left-1/2 h-3 w-48 -translate-x-1/2 rounded-full bg-ink-900/20 blur-md" />
+      <div className="absolute bottom-8 left-[18%] h-[120px] w-[84px] rounded-[3px] bg-ink-900/65 shadow-lg [transform:rotate(-9deg)]" />
+      <div className="absolute bottom-8 right-[17%] h-[132px] w-[94px] rounded-[3px] bg-ink-700/70 shadow-lg [transform:rotate(9deg)]" />
+      <div
+        className="absolute bottom-7 left-1/2 h-[166px] w-[116px] -translate-x-1/2 rounded-[3px] shadow-2xl [transform:translateX(-50%)_perspective(700px)_rotateY(-18deg)_rotateZ(-2deg)]"
+        style={{ backgroundColor: "#16181E" }}
+      >
+        <div className="absolute -left-[7px] top-0 h-full w-[7px] origin-right rounded-l-sm bg-ink-700/80 [transform:skewY(-4deg)]" />
+        <div
+          className="relative h-full overflow-hidden rounded-r-[3px] p-4"
+          style={{ background: coverBackground, color: textColor }}
+        >
+          <p className="text-[5px] font-semibold uppercase tracking-[0.18em] opacity-70">PokiPoki presents</p>
+          <h3 className="mt-5 line-clamp-4 text-[14px] font-bold leading-[1.05]">{title}</h3>
+          <p className="mt-3 line-clamp-3 text-[6px] leading-relaxed opacity-80">{subtitle}</p>
+          <div className="absolute bottom-4 left-4 h-0.5 w-5 rounded-full bg-current opacity-70" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CreateLeadMagnet() {
   const searchParams = new URLSearchParams(useSearch());
   const urlProductId = searchParams.get("productId");
@@ -99,6 +155,7 @@ export default function CreateLeadMagnet() {
   const [coverDesign, setCoverDesign] = useState("centered");
   const [exportTheme, setExportTheme] = useState("minimal");
   const [coverColor, setCoverColor] = useState(COVER_COLORS[0]);
+  const [coverTextMode, setCoverTextMode] = useState<CoverTextMode>("auto");
   const [showBrand, setShowBrand] = useState(true);
   const [mockupReady, setMockupReady] = useState(false);
 
@@ -248,6 +305,14 @@ export default function CreateLeadMagnet() {
   const previewSubtitle = brief.audience
     ? `A practical guide for ${brief.audience}`
     : "A practical resource your audience will want to save.";
+  const coverTextColor =
+    coverDesign === "gradient"
+      ? "#FFFFFF"
+      : coverTextMode === "auto"
+        ? readableCoverText(coverColor)
+        : coverTextMode === "light"
+          ? "#FFFFFF"
+          : "#27211C";
   const isGenerating = createProduct.isPending || generate.isPending;
 
   return (
@@ -467,6 +532,40 @@ export default function CreateLeadMagnet() {
                         <div className="mt-6 grid grid-cols-3 gap-3">
                           {COVER_COLORS.map((color) => <button key={color} type="button" onClick={() => updateCoverColor(color)} className={cn("group rounded-xl border p-3 text-left", coverColor === color ? "border-ink-900 ring-1 ring-ink-300" : "border-ink-200 hover:border-brand-200")}><span className="block h-10 rounded-lg" style={{ backgroundColor: color }} /><span className="mt-2 flex items-center justify-between text-xs font-medium text-ink-700">{color}{coverColor === color && <Check className="h-3.5 w-3.5" />}</span></button>)}
                         </div>
+                        <div className="mt-7">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Cover text color</p>
+                            <span className="text-[10px] text-ink-400">Preview only</span>
+                          </div>
+                          <p className="mt-1 text-sm text-ink-500">Auto keeps your title readable, or choose the contrast you want.</p>
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {([
+                              ["auto", "Auto"],
+                              ["light", "White"],
+                              ["dark", "Ink"],
+                            ] as [CoverTextMode, string][]).map(([mode, label]) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setCoverTextMode(mode)}
+                                className={cn(
+                                  "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
+                                  coverTextMode === mode
+                                    ? "border-brand-500 bg-brand-50 text-brand-700"
+                                    : "border-ink-200 text-ink-600 hover:border-brand-200",
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    "mx-auto mb-1 block h-5 w-8 rounded",
+                                    mode === "dark" ? "bg-ink-800" : mode === "light" ? "bg-brand-600" : "bg-gradient-to-r from-ink-800 to-amber-300",
+                                  )}
+                                />
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </TabsContent>
                       <TabsContent value="fonts" className="mt-0 space-y-3">
                         <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Cover font pair</p>
@@ -488,9 +587,15 @@ export default function CreateLeadMagnet() {
                   <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3"><span className="text-sm font-semibold text-ink-800">Cover preview</span><span className="text-xs text-ink-400">Live changes</span></div>
                   <CardContent className="flex min-h-[530px] flex-col items-center justify-center bg-[#F8F7F5] p-7">
                     <div className={cn("relative flex w-full max-w-[330px] flex-col overflow-hidden bg-white shadow-xl transition-all duration-300", coverDesign === "banner" ? "aspect-[4/3]" : "aspect-[3/4]")} style={{ fontFamily: exportTheme === "serif" ? "Georgia, serif" : "Inter, sans-serif" }}>
-                      <div className={cn("p-7", coverDesign === "centered" && "text-center", coverDesign === "portrait" && "mt-auto", coverDesign === "gradient" && "bg-gradient-to-br from-[#1C2B55] via-[#6338B8] to-[#B343A9] text-white", coverDesign !== "gradient" && "text-white")} style={coverDesign === "gradient" ? undefined : { backgroundColor: coverColor }}>
+                      <div
+                        className={cn("p-7", coverDesign === "centered" && "text-center", coverDesign === "portrait" && "mt-auto")}
+                        style={{
+                          background: coverDesign === "gradient" ? "linear-gradient(145deg, #1C2B55 0%, #6338B8 58%, #B343A9 100%)" : coverColor,
+                          color: coverTextColor,
+                        }}
+                      >
                         <p className="text-[8px] font-semibold uppercase tracking-[0.18em] opacity-70">PokiPoki presents</p>
-                        <h2 className={cn("mt-5 text-2xl font-bold leading-[1.05]", coverDesign === "banner" && "text-xl")}>{previewTitle}</h2>
+                        <h2 className={cn("mt-5 text-2xl font-bold leading-[1.05]", coverDesign === "banner" && "text-xl")} style={{ color: coverTextColor }}>{previewTitle}</h2>
                         <p className="mt-4 text-xs leading-relaxed opacity-80">{previewSubtitle}</p>
                       </div>
                       {coverDesign !== "banner" && <div className="flex flex-1 flex-col justify-end p-7"><div className="h-1 w-9 rounded-full" style={{ backgroundColor: coverColor }} /><p className="mt-3 text-[9px] text-ink-500">A polished guide created with PokiPoki</p>{showBrand && <p className="mt-6 text-[9px] font-semibold text-ink-700">By {previewTitle.split(" ").slice(0, 2).join(" ")}</p>}</div>}
@@ -499,7 +604,17 @@ export default function CreateLeadMagnet() {
                       <Button variant="outline" size="sm" onClick={() => toast({ title: "Cover regenerated", description: "A refreshed visual treatment is now in your preview." })}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Regenerate cover</Button>
                       <Button variant="outline" size="sm" onClick={() => setMockupReady(!mockupReady)}><Wand2 className="mr-1.5 h-3.5 w-3.5" /> {mockupReady ? "Hide 3D mockup" : "Preview 3D mockup"}</Button>
                     </div>
-                    {mockupReady && <div className="mt-5 flex h-20 items-end justify-center gap-1.5"><span className="h-12 w-11 rounded-sm bg-ink-900 shadow-md" /><span className="h-16 w-12 rounded-sm shadow-lg" style={{ backgroundColor: coverColor }} /><span className="h-10 w-10 rounded-sm bg-ink-700 shadow-md" /></div>}
+                    {mockupReady && (
+                      <div className="mt-5 w-full">
+                        <LeadMagnetMockup
+                          title={previewTitle}
+                          subtitle={previewSubtitle}
+                          color={coverColor}
+                          textColor={coverTextColor}
+                          design={coverDesign}
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
