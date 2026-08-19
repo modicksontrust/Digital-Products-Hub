@@ -31,6 +31,9 @@ import OnlineCourses from "@/pages/OnlineCourses";
 import CreateOnlineCourse from "@/pages/CreateOnlineCourse";
 import AudienceAcademy from "@/pages/AudienceAcademy";
 import AudienceLeads from "@/pages/AudienceLeads";
+import GrowPixels from "@/pages/GrowPixels";
+import GrowAffiliates from "@/pages/GrowAffiliates";
+import GrowAnalytics from "@/pages/GrowAnalytics";
 import PromoteEbook from "@/pages/PromoteEbook";
 import ReviewQueue from "@/pages/ReviewQueue";
 import SellProducts from "@/pages/SellProducts";
@@ -137,6 +140,21 @@ export default function App() {
         <Route path="/audience/leads">
           <ProtectedRoute>
             <AudienceLeads />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/grow/pixels">
+          <ProtectedRoute>
+            <GrowPixels />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/grow/affiliates">
+          <ProtectedRoute>
+            <GrowAffiliates />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/grow/analytics">
+          <ProtectedRoute>
+            <GrowAnalytics />
           </ProtectedRoute>
         </Route>
         <Route path="/lead-magnets">

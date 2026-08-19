@@ -1033,7 +1033,7 @@ export default function CreateOnlineCourse() {
 
           <div>
             <h1
-              className="text-xl font-bold leading-tight outline-none"
+              className="text-xl font-bold leading-tight outline-none text-background"
               contentEditable
               suppressContentEditableWarning
               onBlur={(e) => update({ title: e.currentTarget.textContent ?? course.title })}
@@ -1052,7 +1052,6 @@ export default function CreateOnlineCourse() {
           </div>
         </div>
       </div>
-
       {/* Tab bar */}
       <div className="border-b border-ink-200 bg-white">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
@@ -1080,7 +1079,6 @@ export default function CreateOnlineCourse() {
           </nav>
         </div>
       </div>
-
       {/* Tab content */}
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
 

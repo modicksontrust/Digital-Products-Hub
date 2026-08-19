@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
   CreditCard, History, PenTool, LayoutTemplate, Megaphone,
   LogOut, User, Bell, ChevronDown, CheckCircle, Menu,
-  ShoppingBag, Tag, Link2, UserCheck,
+  ShoppingBag, Tag, Link2, UserCheck, Radio, BarChart3,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,14 @@ function useNavigation() {
       items: [
         { name: "Academy", href: "/audience/academy", icon: GraduationCap, locked: isLocked },
         { name: "Leads", href: "/audience/leads", icon: UserCheck, locked: isLocked },
+      ]
+    },
+    {
+      name: "GROW",
+      items: [
+        { name: "Marketing Pixels", href: "/grow/pixels", icon: Radio, locked: isLocked },
+        { name: "Affiliate Program", href: "/grow/affiliates", icon: Users, locked: isLocked },
+        { name: "Analytics", href: "/grow/analytics", icon: BarChart3, locked: isLocked },
       ]
     },
     {
