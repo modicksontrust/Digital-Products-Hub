@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
   CreditCard, History, PenTool, LayoutTemplate, Megaphone,
   LogOut, User, Bell, ChevronDown, CheckCircle, Menu,
-  ShoppingBag, Tag, Link2,
+  ShoppingBag, Tag, Link2, UserCheck,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +44,7 @@ function useNavigation() {
         { name: "eBook / PDF Generator", href: "/create/ebook", icon: PenTool, locked: isLocked },
         { name: "Promote eBook", href: "/create/promote-ebook", icon: Megaphone, locked: isLocked },
         { name: "Lead Magnet", href: "/lead-magnets", icon: LayoutTemplate, locked: isLocked },
+        { name: "Online Course", href: "/online-courses", icon: GraduationCap, locked: isLocked },
       ]
     },
     {
@@ -51,6 +52,13 @@ function useNavigation() {
       items: [
         { name: "Products", href: "/sell/products", icon: ShoppingBag, locked: isLocked },
         { name: "Discount Codes", href: "/sell/discounts", icon: Tag, locked: isLocked },
+      ]
+    },
+    {
+      name: "AUDIENCE",
+      items: [
+        { name: "Academy", href: "/audience/academy", icon: GraduationCap, locked: isLocked },
+        { name: "Leads", href: "/audience/leads", icon: UserCheck, locked: isLocked },
       ]
     },
     {

@@ -27,6 +27,10 @@ import SalesPage from "@/pages/SalesPage";
 
 import CreateLeadMagnet from "@/pages/CreateLeadMagnet";
 import LeadMagnets from "@/pages/LeadMagnets";
+import OnlineCourses from "@/pages/OnlineCourses";
+import CreateOnlineCourse from "@/pages/CreateOnlineCourse";
+import AudienceAcademy from "@/pages/AudienceAcademy";
+import AudienceLeads from "@/pages/AudienceLeads";
 import PromoteEbook from "@/pages/PromoteEbook";
 import ReviewQueue from "@/pages/ReviewQueue";
 import SellProducts from "@/pages/SellProducts";
@@ -113,6 +117,26 @@ export default function App() {
         <Route path="/create/lead-magnet">
           <ProtectedRoute>
             <CreateLeadMagnet />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/online-courses">
+          <ProtectedRoute>
+            <OnlineCourses />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/create/online-course">
+          <ProtectedRoute>
+            <CreateOnlineCourse />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/audience/academy">
+          <ProtectedRoute>
+            <AudienceAcademy />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/audience/leads">
+          <ProtectedRoute>
+            <AudienceLeads />
           </ProtectedRoute>
         </Route>
         <Route path="/lead-magnets">
