@@ -269,7 +269,7 @@ export function PublicFooter() {
 
         {/* Bottom bar */}
         <div className="mt-14 flex flex-col items-center gap-3 border-t border-white/10 pt-8 text-center text-xs text-ink-600 sm:flex-row sm:justify-between sm:text-left">
-          <span>© {year} PokiPoki. All rights reserved.</span>
+          <span>© {year} Goldcoast Technologies Hub. All rights reserved.</span>
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
             Secure checkout powered by Stripe &amp; Paystack
