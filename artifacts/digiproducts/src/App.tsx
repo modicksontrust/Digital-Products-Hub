@@ -43,6 +43,11 @@ import SellDiscounts from "@/pages/SellDiscounts";
 import LinkInBio from "@/pages/LinkInBio";
 import PublicBio from "@/pages/PublicBio";
 import Checkout from "@/pages/Checkout";
+import ShopPage from "@/pages/ShopPage";
+import FaqPage from "@/pages/FaqPage";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import Terms from "@/pages/Terms";
+import BuyerDashboard from "@/pages/BuyerDashboard";
 
 export default function App() {
   return (
@@ -51,6 +56,23 @@ export default function App() {
         {/* Public Checkout */}
         <Route path="/checkout/:slug">
           <Checkout />
+        </Route>
+
+        {/* Public store routes */}
+        <Route path="/shop">
+          <ShopPage />
+        </Route>
+        <Route path="/faq">
+          <FaqPage />
+        </Route>
+        <Route path="/privacy">
+          <PrivacyPolicy />
+        </Route>
+        <Route path="/terms">
+          <Terms />
+        </Route>
+        <Route path="/my-purchases">
+          <BuyerDashboard />
         </Route>
 
         {/* Public Marketing Routes */}

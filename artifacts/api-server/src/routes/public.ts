@@ -386,4 +386,26 @@ router.post(
   },
 );
 
+// GET /api/public/products — list all published products (no auth required)
+router.get(
+  "/public/products",
+  async (_req, res): Promise<void> => {
+    const rows = await db
+      .select({
+        id: productsTable.id,
+        title: productsTable.title,
+        slug: productsTable.slug,
+        priceCents: productsTable.priceCents,
+        currency: productsTable.currency,
+        topic: productsTable.topic,
+        type: productsTable.type,
+        authorName: productsTable.authorName,
+      })
+      .from(productsTable)
+      .where(eq(productsTable.published, true))
+      .orderBy(asc(productsTable.createdAt));
+    res.json(rows);
+  },
+);
+
 export default router;
