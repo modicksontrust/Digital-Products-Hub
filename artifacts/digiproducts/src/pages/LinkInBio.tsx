@@ -256,7 +256,7 @@ export default function LinkInBio() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full max-w-7xl mx-auto p-8">
         {/* Header bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
