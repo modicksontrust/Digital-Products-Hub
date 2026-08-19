@@ -124,11 +124,14 @@ function CardVisual({ number, holder, expiry, brand }: { number: string; holder:
 // ─── Session purchase store ────────────────────────────────────────────────────
 
 export interface Purchase {
+  id?: string;
   slug: string;
   title: string;
   authorName: string | null;
   priceCents: number | null;
   currency: string;
+  topic?: string | null;
+  type?: string | null;
   purchasedAt: string;
   buyerName: string;
   buyerEmail: string;

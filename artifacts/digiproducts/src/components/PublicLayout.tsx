@@ -5,11 +5,16 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Menu, X, ShoppingBag } from "lucide-react";
+import {
+  Menu, X, ShoppingBag, Mail, ArrowRight,
+  ShieldCheck, Download, Star, Twitter,
+  Instagram, Youtube, CheckCircle2,
+} from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/shop", label: "Shop" },
   { href: "/faq", label: "FAQ" },
+  { href: "/my-purchases", label: "My Account" },
 ];
 
 export function PublicNav() {
@@ -82,49 +87,114 @@ export function PublicNav() {
 
 export function PublicFooter() {
   const year = new Date().getFullYear();
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (email.trim()) setSubscribed(true);
+  }
+
   return (
-    <footer className="border-t border-ink-200 bg-ink-950 text-white">
+    <footer className="bg-ink-950 text-white">
+
+      {/* Newsletter strip */}
+      <div className="border-b border-white/10 bg-white/5">
+        <div className="mx-auto max-w-7xl px-6 py-10">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/20 text-brand-400">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-white text-sm">Get new products in your inbox</p>
+                <p className="text-xs text-white/50 mt-0.5">New drops, limited deals, and expert picks. No spam, ever.</p>
+              </div>
+            </div>
+            {subscribed ? (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                You're subscribed — welcome aboard!
+              </div>
+            ) : (
+              <form onSubmit={handleSubscribe} className="flex w-full max-w-sm gap-2">
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="flex-1 rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition"
+                />
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-500 whitespace-nowrap"
+                >
+                  Subscribe <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main footer grid */}
       <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid gap-12 md:grid-cols-4">
-          {/* Brand */}
-          <div className="md:col-span-2">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 text-sm font-bold text-white">
+        <div className="grid gap-12 md:grid-cols-12">
+
+          {/* Brand column */}
+          <div className="md:col-span-4">
+            <div className="mb-5 flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 text-sm font-bold text-white shadow-md">
                 P
               </div>
-              <span className="font-display text-xl font-bold">PokiPoki</span>
+              <span className="font-display text-xl font-bold text-white">PokiPoki</span>
             </div>
-            <p className="max-w-xs text-sm leading-relaxed text-ink-400">
-              Premium digital products — eBooks, courses, and guides — curated to help you
-              level up your health, wealth, and career.
+            <p className="text-sm leading-relaxed text-ink-400 max-w-xs">
+              Premium digital knowledge products — eBooks, guides, and courses — curated
+              to help you level up your health, wealth, and career. Made for Africa
+              and the world.
             </p>
 
-            {/* How it works mini (footer) */}
-            <div className="mt-8">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-ink-500">
-                How it works
-              </p>
-              <div className="space-y-3 text-sm text-ink-400">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">1</span>
-                  <span>Browse the shop and find a product you love</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">2</span>
-                  <span>Complete checkout in under 60 seconds — pick your currency</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">3</span>
-                  <span>Instant access — download your product or start your course</span>
-                </div>
-              </div>
+            {/* Trust badges */}
+            <div className="mt-8 space-y-2">
+              {[
+                { icon: ShieldCheck, text: "256-bit SSL · PCI-DSS compliant", color: "text-emerald-400" },
+                { icon: Download,    text: "Instant delivery on every purchase", color: "text-brand-400" },
+                { icon: Star,        text: "7-day money-back guarantee", color: "text-amber-400" },
+              ].map((b) => {
+                const Icon = b.icon;
+                return (
+                  <div key={b.text} className="flex items-center gap-2.5 text-xs text-ink-400">
+                    <Icon className={cn("h-4 w-4 shrink-0", b.color)} />
+                    {b.text}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Social links */}
+            <div className="mt-8 flex items-center gap-3">
+              {[
+                { Icon: Twitter,   label: "Twitter"   },
+                { Icon: Instagram, label: "Instagram" },
+                { Icon: Youtube,   label: "YouTube"   },
+              ].map(({ Icon, label }) => (
+                <button
+                  key={label}
+                  aria-label={label}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-ink-400 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Browse */}
-          <div>
-            <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-ink-500">Browse</h4>
-            <ul className="space-y-3 text-sm text-ink-400">
+          {/* Browse column */}
+          <div className="md:col-span-2">
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500">Browse</h4>
+            <ul className="space-y-3">
               {[
                 { href: "/shop", label: "All Products" },
                 { href: "/shop?category=Health+%26+Wellness", label: "Health & Wellness" },
@@ -135,37 +205,75 @@ export function PublicFooter() {
               ].map((l) => (
                 <li key={l.href}>
                   <Link href={l.href}>
-                    <span className="cursor-pointer transition hover:text-white">{l.label}</span>
+                    <span className="cursor-pointer text-sm text-ink-400 transition hover:text-white">{l.label}</span>
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Company */}
-          <div>
-            <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-ink-500">Company</h4>
-            <ul className="space-y-3 text-sm text-ink-400">
+          {/* Support column */}
+          <div className="md:col-span-2">
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500">Support</h4>
+            <ul className="space-y-3">
               {[
                 { href: "/faq", label: "FAQ" },
+                { href: "/my-purchases", label: "My Purchases" },
+                { href: "mailto:support@pokipoki.co", label: "Contact Us" },
+              ].map((l) => (
+                <li key={l.label}>
+                  <Link href={l.href}>
+                    <span className="cursor-pointer text-sm text-ink-400 transition hover:text-white">{l.label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company column */}
+          <div className="md:col-span-2">
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500">Company</h4>
+            <ul className="space-y-3">
+              {[
                 { href: "/privacy", label: "Privacy Policy" },
                 { href: "/terms", label: "Terms of Service" },
-                { href: "/my-purchases", label: "My Purchases" },
                 { href: "/login", label: "Creator Login" },
               ].map((l) => (
                 <li key={l.href}>
                   <Link href={l.href}>
-                    <span className="cursor-pointer transition hover:text-white">{l.label}</span>
+                    <span className="cursor-pointer text-sm text-ink-400 transition hover:text-white">{l.label}</span>
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
+
+          {/* Payment methods column */}
+          <div className="md:col-span-2">
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500">We accept</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {["Visa", "Mastercard", "Verve", "Paystack", "Stripe", "USD · NGN"].map((p) => (
+                <div
+                  key={p}
+                  className="flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-[10px] font-semibold text-ink-400"
+                >
+                  {p}
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-[11px] leading-relaxed text-ink-600">
+              Prices convert automatically to your local currency at checkout.
+            </p>
+          </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-2 border-t border-ink-800 pt-8 text-center text-xs text-ink-600 sm:flex-row sm:justify-between">
+        {/* Bottom bar */}
+        <div className="mt-14 flex flex-col items-center gap-3 border-t border-white/10 pt-8 text-center text-xs text-ink-600 sm:flex-row sm:justify-between sm:text-left">
           <span>© {year} PokiPoki. All rights reserved.</span>
-          <span>Secure checkout powered by Stripe &amp; Paystack</span>
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+            Secure checkout powered by Stripe &amp; Paystack
+          </span>
         </div>
       </div>
     </footer>
