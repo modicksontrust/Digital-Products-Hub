@@ -19,9 +19,12 @@ import {
   useGenerateLeadMagnet,
   useGetJob,
   useGetProduct,
+  useUpdateChapter,
+  useDeleteChapter,
   useUpdateProduct,
   getGetJobQueryKey,
   getGetProductQueryKey,
+  type Chapter,
 } from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import {
@@ -29,14 +32,19 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Download,
   FileOutput,
   FileText,
   ImageIcon,
   Loader2,
   Palette,
+  Pencil,
   RefreshCw,
+  Save,
   Sparkles,
+  Trash2,
   Type,
   UserRound,
   Wand2,
@@ -169,6 +177,8 @@ export default function CreateLeadMagnet() {
 
   const createProduct = useCreateProduct();
   const generate = useGenerateLeadMagnet();
+  const updateChapter = useUpdateChapter();
+  const deleteChapter = useDeleteChapter();
   const updateProduct = useUpdateProduct();
   const exportProduct = useExportProduct();
 
@@ -176,7 +186,8 @@ export default function CreateLeadMagnet() {
     { num: 1, label: "Brief" },
     { num: 2, label: "Create" },
     { num: 3, label: "Generate" },
-    { num: 4, label: "Design" },
+    { num: 4, label: "Review" },
+    { num: 5, label: "Design" },
   ];
 
   const { data: job } = useGetJob(urlJobId || "", {
@@ -197,6 +208,12 @@ export default function CreateLeadMagnet() {
     },
   });
 
+  const [reviewChapters, setReviewChapters] = useState<Chapter[]>([]);
+  const [expandedReviewChapterId, setExpandedReviewChapterId] = useState<string | null>(null);
+  const [reviewDrafts, setReviewDrafts] = useState<
+    Record<string, { title: string; summary: string; contentMd: string }>
+  >({});
+
   useEffect(() => {
     if (step === 3 && job?.status === "succeeded") setStep(4);
     if (step === 3 && job?.status === "failed") {
@@ -207,6 +224,12 @@ export default function CreateLeadMagnet() {
       });
     }
   }, [job?.errorMessage, job?.status, step, toast]);
+
+  useEffect(() => {
+    if (!detail?.chapters) return;
+    setReviewChapters(detail.chapters);
+    setExpandedReviewChapterId((current) => current ?? detail.chapters[0]?.id ?? null);
+  }, [detail?.chapters]);
 
   useEffect(() => {
     const savedColor = (detail?.product.coverConfig as { primaryColor?: string } | null)?.primaryColor;
@@ -225,6 +248,82 @@ export default function CreateLeadMagnet() {
     }
     setLocation("/lead-magnets");
   }, [detail, setLocation, urlJobId, urlProductId]);
+
+  const getReviewDraft = (chapter: Chapter) =>
+    reviewDrafts[chapter.id] ?? {
+      title: chapter.title,
+      summary: chapter.summary ?? "",
+      contentMd: chapter.contentMd ?? "",
+    };
+
+  const updateReviewDraft = (chapter: Chapter, next: Partial<ReturnType<typeof getReviewDraft>>) => {
+    setReviewDrafts((current) => ({
+      ...current,
+      [chapter.id]: { ...getReviewDraft(chapter), ...next },
+    }));
+  };
+
+  const saveReviewChapter = (chapter: Chapter) => {
+    if (!urlProductId) return;
+    const draft = getReviewDraft(chapter);
+    if (!draft.title.trim()) {
+      toast({ title: "Add a section title before saving", variant: "destructive" });
+      return;
+    }
+    updateChapter.mutate(
+      {
+        productId: urlProductId,
+        chapterId: chapter.id,
+        data: {
+          title: draft.title.trim(),
+          summary: draft.summary.trim(),
+          contentMd: draft.contentMd.trim(),
+        },
+      },
+      {
+        onSuccess: (savedChapter) => {
+          setReviewChapters((current) =>
+            current.map((item) => (item.id === savedChapter.id ? savedChapter : item)),
+          );
+          setReviewDrafts((current) => {
+            const next = { ...current };
+            delete next[chapter.id];
+            return next;
+          });
+          toast({ title: "Section updated" });
+        },
+        onError: () => {
+          toast({
+            title: "Couldn't save this section",
+            description: "Try again before moving to design.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const removeReviewChapter = (chapter: Chapter) => {
+    if (!urlProductId || !window.confirm(`Remove “${chapter.title}” from this lead magnet?`)) return;
+    deleteChapter.mutate(
+      { productId: urlProductId, chapterId: chapter.id },
+      {
+        onSuccess: () => {
+          setReviewChapters((current) => current.filter((item) => item.id !== chapter.id));
+          setReviewDrafts((current) => {
+            const next = { ...current };
+            delete next[chapter.id];
+            return next;
+          });
+          setExpandedReviewChapterId(null);
+          toast({ title: "Section removed" });
+        },
+        onError: () => {
+          toast({ title: "Couldn't remove this section", variant: "destructive" });
+        },
+      },
+    );
+  };
 
   const startCreation = () => {
     if (!brief.topic.trim()) {
@@ -294,6 +393,10 @@ export default function CreateLeadMagnet() {
       setStep(1);
       return;
     }
+    if (step === 5) {
+      setStep(4);
+      return;
+    }
     if (step === 4 && !urlProductId) {
       setStep(1);
       return;
@@ -323,7 +426,7 @@ export default function CreateLeadMagnet() {
             <Button variant="ghost" size="sm" onClick={returnToPrevious} className="gap-2 text-ink-600">
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
-            <div className="flex items-center gap-1.5" aria-label={`Step ${step} of 4`}>
+            <div className="flex items-center gap-1.5" aria-label={`Step ${step} of 5`}>
               {flowSteps.map((item) => (
                 <span
                   key={item.num}
@@ -342,7 +445,7 @@ export default function CreateLeadMagnet() {
             <section className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-8 text-center">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                  <Sparkles className="h-3.5 w-3.5" /> Step 1 of 4
+                    <Sparkles className="h-3.5 w-3.5" /> Step 1 of 5
                 </p>
                 <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">Start your lead magnet</h1>
                 <p className="mt-2 text-ink-500">Give us the essentials, then shape the content and cover around your audience.</p>
@@ -439,7 +542,7 @@ export default function CreateLeadMagnet() {
             <section className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-8 text-center">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                  <Sparkles className="h-3.5 w-3.5" /> Step 2 of 4
+                    <Sparkles className="h-3.5 w-3.5" /> Step 2 of 5
                 </p>
                 <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">How should we create the content?</h1>
                 <p className="mt-2 text-ink-500">Creating: <span className="font-medium text-ink-700">{brief.title || brief.topic}</span></p>
@@ -474,7 +577,7 @@ export default function CreateLeadMagnet() {
                 <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-brand-300 bg-brand-50">
                   <Sparkles className="h-8 w-8 animate-pulse text-brand-600" />
                 </div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Step 3 of 4</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Step 3 of 5</p>
                 <h1 className="font-display text-3xl font-bold text-ink-900">Creating your lead magnet...</h1>
                 <p className="mt-3 text-ink-500">{job?.progressLabel || "Researching pain points and writing the first draft..."}</p>
                 <p className="mt-6 text-xs text-ink-400">{urlJobId ? "This may take 30–60 seconds. You can keep this tab open while we work." : "This draft is still being created. Return to Lead Magnets and open it once it is ready."}</p>
@@ -486,16 +589,173 @@ export default function CreateLeadMagnet() {
             <section className="flex min-h-[520px] items-center justify-center">
               <div className="text-center">
                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand-600" />
-                <p className="mt-4 text-sm text-ink-500">Preparing your design workspace...</p>
+                <p className="mt-4 text-sm text-ink-500">Loading your generated content...</p>
               </div>
             </section>
           )}
 
           {step === 4 && detail && (
+            <section className="mx-auto max-w-5xl animate-in fade-in slide-in-from-bottom-3 duration-500">
+              <div className="mb-7 text-center">
+                <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Step 4 of 5
+                </p>
+                <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">Review your generated lead magnet</h1>
+                <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-ink-500">
+                  Read through what the AI created, refine each section, or remove anything you do not want before styling the final PDF.
+                </p>
+              </div>
+
+              <div className="mb-6 grid gap-3 sm:grid-cols-3">
+                <Card className="border-ink-200 shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Topic</p>
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold text-ink-800">{detail.product.topic || "Your selected topic"}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-ink-200 shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Audience</p>
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold text-ink-800">{detail.product.audience || "Your audience"}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-ink-200 shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Generated content</p>
+                    <p className="mt-2 text-sm font-semibold text-ink-800">
+                      {reviewChapters.length} section{reviewChapters.length === 1 ? "" : "s"} · {detail.product.wordCount.toLocaleString()} words
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="border-ink-200 shadow-sm">
+                <CardContent className="p-0">
+                  <div className="flex flex-col gap-2 border-b border-ink-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-base font-semibold text-ink-900">What your lead magnet contains</h2>
+                      <p className="mt-1 text-xs text-ink-500">Open a section to edit its title, summary, or full body text.</p>
+                    </div>
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
+                      <Pencil className="h-3 w-3" /> Editable
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-ink-100">
+                    {reviewChapters.map((chapter, index) => {
+                      const expanded = expandedReviewChapterId === chapter.id;
+                      const draft = getReviewDraft(chapter);
+                      return (
+                        <div key={chapter.id} className={cn("transition-colors", expanded && "bg-brand-50/20")}>
+                          <div className="flex items-center gap-3 px-4 py-4 sm:px-5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink-100 text-xs font-bold text-ink-600">
+                              {index + 1}
+                            </span>
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() => setExpandedReviewChapterId(expanded ? null : chapter.id)}
+                              aria-expanded={expanded}
+                              data-testid={`button-review-section-${chapter.id}`}
+                            >
+                              <p className="truncate text-sm font-semibold text-ink-900">{chapter.title}</p>
+                              <p className="mt-0.5 line-clamp-1 text-xs text-ink-500">
+                                {chapter.summary || `${chapter.wordCount.toLocaleString()} words generated`}
+                              </p>
+                            </button>
+                            <span className="hidden text-xs text-ink-400 sm:inline">{chapter.wordCount.toLocaleString()} words</span>
+                            {expanded ? <ChevronUp className="h-4 w-4 text-ink-400" /> : <ChevronDown className="h-4 w-4 text-ink-400" />}
+                          </div>
+
+                          {expanded ? (
+                            <div className="space-y-4 border-t border-brand-100 px-4 pb-5 pt-4 sm:px-5">
+                              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
+                                <div className="space-y-1.5">
+                                  <Label htmlFor={`review-title-${chapter.id}`}>Section title</Label>
+                                  <Input
+                                    id={`review-title-${chapter.id}`}
+                                    value={draft.title}
+                                    onChange={(event) => updateReviewDraft(chapter, { title: event.target.value })}
+                                    maxLength={160}
+                                  />
+                                </div>
+                                <div className="rounded-lg bg-white px-3 py-2.5 text-xs text-ink-500">
+                                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-ink-400">Status</span>
+                                  <span className="mt-1 inline-block capitalize">{chapter.status}</span>
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor={`review-summary-${chapter.id}`}>Section summary</Label>
+                                <Textarea
+                                  id={`review-summary-${chapter.id}`}
+                                  value={draft.summary}
+                                  onChange={(event) => updateReviewDraft(chapter, { summary: event.target.value })}
+                                  placeholder="A short description of what this section covers."
+                                  className="min-h-[72px] resize-y"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor={`review-content-${chapter.id}`}>Generated content</Label>
+                                <Textarea
+                                  id={`review-content-${chapter.id}`}
+                                  value={draft.contentMd}
+                                  onChange={(event) => updateReviewDraft(chapter, { contentMd: event.target.value })}
+                                  placeholder="The generated content for this section will appear here."
+                                  className="min-h-[220px] resize-y font-mono text-xs leading-relaxed"
+                                />
+                              </div>
+                              <div className="flex flex-col-reverse gap-2 border-t border-brand-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="w-fit text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => removeReviewChapter(chapter)}
+                                  disabled={deleteChapter.isPending}
+                                >
+                                  <Trash2 className="mr-1.5 h-4 w-4" /> Remove section
+                                </Button>
+                                <Button
+                                  type="button"
+                                  className="gap-2"
+                                  onClick={() => saveReviewChapter(chapter)}
+                                  disabled={updateChapter.isPending || !draft.title.trim()}
+                                  data-testid={`button-save-review-section-${chapter.id}`}
+                                >
+                                  {updateChapter.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                  Save section
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+
+                    {reviewChapters.length === 0 ? (
+                      <div className="px-6 py-12 text-center">
+                        <FileText className="mx-auto h-6 w-6 text-ink-300" />
+                        <p className="mt-3 text-sm font-medium text-ink-700">No generated sections are available yet</p>
+                        <p className="mt-1 text-xs text-ink-500">Return to your lead magnets and try the generation again.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-ink-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <Button variant="outline" onClick={() => setLocation("/lead-magnets")}>Save and leave</Button>
+                <Button size="lg" className="gap-2 rounded-xl px-6" onClick={() => setStep(5)} disabled={reviewChapters.length === 0}>
+                  Continue to design <ArrowLeft className="h-4 w-4 rotate-180" />
+                </Button>
+              </div>
+            </section>
+          )}
+
+          {step === 5 && detail && (
             <section className="animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700"><Sparkles className="h-3.5 w-3.5" /> Step 4 of 4</p>
+                  <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700"><Sparkles className="h-3.5 w-3.5" /> Step 5 of 5</p>
                   <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">Design your lead magnet</h1>
                   <p className="mt-1 text-sm text-ink-500">Choose a cover, customize the details, then download your finished PDF.</p>
                 </div>
