@@ -45,12 +45,25 @@ export interface ModuleRecord {
   lessons: LessonRecord[];
 }
 
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: [string, string, string, string];
+  correct: number; // index 0–3
+}
+
 export interface LessonRecord {
   id: string;
   title: string;
   type: "video" | "text" | "download" | "quiz";
   duration: string;
   free: boolean;
+  // Type-specific content
+  videoUrl?: string;
+  textContent?: string;
+  fileUrl?: string;
+  fileName?: string;
+  quizQuestions?: QuizQuestion[];
 }
 
 export interface StudentRecord {

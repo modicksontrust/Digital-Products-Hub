@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "iei60nib33vYv_clb15fp"
+uri = "file://tmp-leads-preview.html"
+type = "text"
+title = "Leads table — populated view"
+description = "How a lead row looks when someone subscribes via a lead magnet or bio page"
+logical_id = "6d088130-ae39-4970-8e9a-9615a6ec57a9"
+content_hash = "sha256:17c1cefef0e1fe5b2b8299e57af997e865382419e46f953eace25adc2c0e1385"
+size = 9779
+mtime_ms = 1787131994704
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:08364cdc-2873-4ec1-b7a1-c80ac227fa77/6d088130-ae39-4970-8e9a-9615a6ec57a9/96daee59-638f-462f-864a-283cb8eb5763"
+storage_version_token = "1787131995335695"
+content_type = "text/html"

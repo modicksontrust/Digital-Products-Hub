@@ -26,6 +26,7 @@ import {
   type ModuleRecord,
   type LessonRecord,
   type StudentRecord,
+  type QuizQuestion,
 } from "@/lib/courseStore";
 import {
   ArrowLeft,
@@ -175,6 +176,99 @@ function blankCourseData(): Omit<CourseRecord, "id" | "createdAt" | "updatedAt" 
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+function QuizEditor({
+  questions,
+  onChange,
+}: {
+  questions: QuizQuestion[];
+  onChange: (qs: QuizQuestion[]) => void;
+}) {
+  const addQuestion = () => {
+    onChange([
+      ...questions,
+      { id: uid(), question: "", options: ["", "", "", ""], correct: 0 },
+    ]);
+  };
+
+  const updateQuestion = (idx: number, patch: Partial<QuizQuestion>) =>
+    onChange(questions.map((q, i) => (i === idx ? { ...q, ...patch } : q)));
+
+  const removeQuestion = (idx: number) =>
+    onChange(questions.filter((_, i) => i !== idx));
+
+  const updateOption = (qIdx: number, oIdx: number, val: string) => {
+    const q = questions[qIdx];
+    const opts = q.options.slice() as [string, string, string, string];
+    opts[oIdx] = val;
+    updateQuestion(qIdx, { options: opts });
+  };
+
+  return (
+    <div className="space-y-3">
+      {questions.length === 0 && (
+        <p className="text-center text-xs text-ink-400 py-2">
+          No questions yet — add the first one below.
+        </p>
+      )}
+      {questions.map((q, qIdx) => (
+        <div key={q.id} className="rounded-xl border border-ink-200 bg-white p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-xs font-bold text-ink-500">Q{qIdx + 1}</span>
+            <Input
+              className="flex-1 text-sm"
+              placeholder="Write your question…"
+              value={q.question}
+              onChange={(e) => updateQuestion(qIdx, { question: e.target.value })}
+            />
+            <button
+              type="button"
+              onClick={() => removeQuestion(qIdx)}
+              className="shrink-0 text-ink-400 hover:text-destructive transition"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {q.options.map((opt, oIdx) => (
+              <div key={oIdx} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  title="Mark as correct answer"
+                  onClick={() => updateQuestion(qIdx, { correct: oIdx })}
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold transition",
+                    q.correct === oIdx
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-ink-300 text-ink-400 hover:border-emerald-400",
+                  )}
+                >
+                  {String.fromCharCode(65 + oIdx)}
+                </button>
+                <Input
+                  className="h-8 text-sm"
+                  placeholder={`Option ${String.fromCharCode(65 + oIdx)}`}
+                  value={opt}
+                  onChange={(e) => updateOption(qIdx, oIdx, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-ink-400">
+            Click a letter to mark the correct answer (shown in green).
+          </p>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addQuestion}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-300 py-2.5 text-xs font-medium text-ink-500 hover:border-brand-300 hover:text-brand-600 transition"
+      >
+        <Plus className="h-3.5 w-3.5" /> Add Question
+      </button>
+    </div>
+  );
+}
+
 function LessonRow({
   lesson,
   onChange,
@@ -184,75 +278,164 @@ function LessonRow({
   onChange: (l: LessonRecord) => void;
   onRemove: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
   const [draft, setDraft] = useState(lesson.title);
+  const [expanded, setExpanded] = useState(false);
+
   const opt = LESSON_TYPE_OPTIONS.find((o) => o.type === lesson.type);
   const LIcon = opt?.icon ?? Video;
   const lColor = opt?.color ?? "bg-blue-500";
 
+  const hasContent =
+    (lesson.type === "video" && !!lesson.videoUrl) ||
+    (lesson.type === "text" && !!lesson.textContent) ||
+    (lesson.type === "download" && (!!lesson.fileUrl || !!lesson.fileName)) ||
+    (lesson.type === "quiz" && (lesson.quizQuestions?.length ?? 0) > 0);
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-ink-100 bg-white px-3 py-2.5 text-sm">
-      <span
-        className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white",
-          lColor,
-        )}
-      >
-        <LIcon className="h-3.5 w-3.5" />
-      </span>
+    <div className="overflow-hidden rounded-lg border border-ink-100 bg-white shadow-sm">
+      {/* ── Header row ── */}
+      <div className="flex items-center gap-3 px-3 py-2.5 text-sm">
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white",
+            lColor,
+          )}
+        >
+          <LIcon className="h-3.5 w-3.5" />
+        </span>
 
-      {editing ? (
-        <input
-          autoFocus
-          className="flex-1 rounded border border-brand-300 px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-brand-400"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => {
-            onChange({ ...lesson, title: draft.trim() || lesson.title });
-            setEditing(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
+        {editingTitle ? (
+          <input
+            autoFocus
+            className="flex-1 rounded border border-brand-300 px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-brand-400"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
               onChange({ ...lesson, title: draft.trim() || lesson.title });
-              setEditing(false);
-            }
-            if (e.key === "Escape") {
-              setDraft(lesson.title);
-              setEditing(false);
-            }
-          }}
-        />
-      ) : (
-        <span className="flex-1 truncate text-ink-800">{lesson.title}</span>
+              setEditingTitle(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onChange({ ...lesson, title: draft.trim() || lesson.title });
+                setEditingTitle(false);
+              }
+              if (e.key === "Escape") {
+                setDraft(lesson.title);
+                setEditingTitle(false);
+              }
+            }}
+          />
+        ) : (
+          <span
+            className="flex-1 truncate cursor-pointer text-ink-800 hover:text-ink-900"
+            onClick={() => { setDraft(lesson.title); setEditingTitle(true); }}
+          >
+            {lesson.title}
+          </span>
+        )}
+
+        <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] capitalize text-ink-500">
+          {lesson.type}
+        </span>
+
+        <label className="flex cursor-pointer select-none items-center gap-1 text-[10px] text-ink-400">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={lesson.free}
+            onChange={(e) => onChange({ ...lesson, free: e.target.checked })}
+          />
+          Free
+        </label>
+
+        {/* Content toggle — highlights when content has been entered */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className={cn(
+            "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition",
+            expanded
+              ? "bg-brand-100 text-brand-700"
+              : hasContent
+                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                : "bg-ink-100 text-ink-500 hover:bg-ink-200 hover:text-ink-700",
+          )}
+        >
+          <Pencil className="h-3 w-3" />
+          {expanded ? "Close" : hasContent ? "Edit content" : "Add content"}
+        </button>
+
+        <button type="button" onClick={onRemove} className="text-ink-400 hover:text-destructive transition">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* ── Expandable content panel ── */}
+      {expanded && (
+        <div className="border-t border-ink-100 bg-ink-50/40 px-4 py-4 space-y-4">
+          {lesson.type === "video" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Video URL</Label>
+              <Input
+                placeholder="Paste a YouTube, Vimeo, or direct .mp4 URL…"
+                value={lesson.videoUrl ?? ""}
+                onChange={(e) => onChange({ ...lesson, videoUrl: e.target.value })}
+              />
+              <p className="text-[11px] text-ink-400">
+                Students will see an embedded player. Supports YouTube, Vimeo, and direct video links.
+              </p>
+            </div>
+          )}
+
+          {lesson.type === "text" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Lesson Content</Label>
+              <Textarea
+                rows={7}
+                placeholder="Write your lesson text here…"
+                value={lesson.textContent ?? ""}
+                onChange={(e) => onChange({ ...lesson, textContent: e.target.value })}
+                className="resize-y text-sm"
+              />
+            </div>
+          )}
+
+          {lesson.type === "download" && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">File Name</Label>
+                <Input
+                  placeholder="e.g. Course Workbook.pdf"
+                  value={lesson.fileName ?? ""}
+                  onChange={(e) => onChange({ ...lesson, fileName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">File URL</Label>
+                <Input
+                  placeholder="Paste a direct download link…"
+                  value={lesson.fileUrl ?? ""}
+                  onChange={(e) => onChange({ ...lesson, fileUrl: e.target.value })}
+                />
+                <p className="text-[11px] text-ink-400">
+                  Students will see a Download button that opens this link.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {lesson.type === "quiz" && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Quiz Questions</Label>
+              <QuizEditor
+                questions={lesson.quizQuestions ?? []}
+                onChange={(qs) => onChange({ ...lesson, quizQuestions: qs })}
+              />
+            </div>
+          )}
+        </div>
       )}
-
-      <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] capitalize text-ink-500">
-        {lesson.type}
-      </span>
-
-      <label className="flex cursor-pointer select-none items-center gap-1 text-[10px] text-ink-400">
-        <input
-          type="checkbox"
-          className="rounded"
-          checked={lesson.free}
-          onChange={(e) => onChange({ ...lesson, free: e.target.checked })}
-        />
-        Free preview
-      </label>
-
-      <button
-        type="button"
-        onClick={() => {
-          setDraft(lesson.title);
-          setEditing(true);
-        }}
-        className="text-ink-400 hover:text-ink-700"
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button type="button" onClick={onRemove} className="text-ink-400 hover:text-destructive">
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }
@@ -383,11 +566,20 @@ function ModuleCard({
           ))}
 
           {pickingType ? (
-            <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-500">
-                Choose lesson type
-              </p>
-              <div className="grid grid-cols-4 gap-3">
+            <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm font-semibold text-ink-700">
+                  Choose lesson type
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPickingType(false)}
+                  className="text-ink-400 hover:text-ink-700 transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {LESSON_TYPE_OPTIONS.map((opt) => {
                   const Icon = opt.icon;
                   return (
@@ -395,28 +587,29 @@ function ModuleCard({
                       key={opt.type}
                       type="button"
                       onClick={() => addLesson(opt.type)}
-                      className="flex flex-col items-center gap-2 rounded-xl border border-ink-200 bg-white p-4 text-xs font-medium text-ink-700 transition hover:border-brand-300 hover:shadow-sm"
+                      className="flex flex-col items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-5 text-sm font-medium text-ink-700 transition hover:border-brand-300 hover:shadow-md hover:-translate-y-0.5"
                     >
                       <span
                         className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-full text-white",
+                          "flex h-12 w-12 items-center justify-center rounded-full text-white shadow-sm",
                           opt.color,
                         )}
                       >
-                        <Icon className="h-5 w-5" />
+                        <Icon className="h-6 w-6" />
                       </span>
-                      {opt.label}
+                      <span className="text-center leading-tight">
+                        <span className="block font-semibold">{opt.label}</span>
+                        <span className="block text-[11px] font-normal text-ink-400 mt-0.5">
+                          {opt.type === "video" && "URL or embed"}
+                          {opt.type === "text" && "Rich text"}
+                          {opt.type === "download" && "File or link"}
+                          {opt.type === "quiz" && "Q&A questions"}
+                        </span>
+                      </span>
                     </button>
                   );
                 })}
               </div>
-              <button
-                type="button"
-                onClick={() => setPickingType(false)}
-                className="mt-3 text-xs text-ink-500 hover:text-ink-700"
-              >
-                Cancel
-              </button>
             </div>
           ) : (
             <button
@@ -991,7 +1184,7 @@ export default function CreateOnlineCourse() {
   return (
     <AppLayout>
       {/* Gradient header */}
-      <div className="bg-gradient-to-r from-[#5B2B8C] via-[#7B3AB0] to-[#C0599A] text-white">
+      <div className="bg-gradient-to-r from-[#14532d] via-[#16a34a] to-[#4ade80] text-white">
         <div className="mx-auto max-w-7xl px-5 pb-5 pt-4 sm:px-8">
           <div className="mb-3 flex items-center justify-between">
             <button

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BookOpen, GraduationCap, Users, Settings, 
   CreditCard, History, PenTool, LayoutTemplate, Megaphone,
   LogOut, User, Bell, ChevronDown, CheckCircle, Menu,
-  ShoppingBag, Tag, Link2, UserCheck, Radio, BarChart3,
+  ShoppingBag, Tag, Link2, UserCheck, Radio, BarChart3, Wallet,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +88,7 @@ function useNavigation() {
       name: "ADMIN",
       items: [
         { name: "Users", href: "/admin/users", icon: Users, locked: false },
+        { name: "Payments", href: "/admin/payments", icon: Wallet, locked: false },
         { name: "AI Usage", href: "/admin/credits", icon: CreditCard, locked: false },
         { name: "Brand Kit", href: "/admin/brand", icon: PenTool, locked: false },
         { name: "Settings", href: "/admin/settings", icon: Settings, locked: false },

@@ -1,7 +1,6 @@
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useSearch } from "wouter";
 import { useGetPublicSalesPage, getGetPublicSalesPageQueryKey } from "@workspace/api-client-react";
-import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { SalesPagePreview } from "@/components/SalesPagePreview";
 
@@ -16,7 +15,7 @@ export default function SalesPage() {
       queryKey: getGetPublicSalesPageQueryKey(slug || "", previewToken),
     },
   });
-  const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   if (isLoading) {
     return (
@@ -42,10 +41,7 @@ export default function SalesPage() {
     : null;
 
   const handleBuy = () => {
-    toast({
-      title: "Checkout coming soon",
-      description: "Payments aren't enabled on this sales page yet.",
-    });
+    navigate(`/checkout/${slug}`);
   };
 
   return (

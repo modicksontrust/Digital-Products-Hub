@@ -19,6 +19,7 @@ import AdminCredits from "@/pages/AdminCredits";
 import AdminBrandKit from "@/pages/AdminBrandKit";
 import AdminSettings from "@/pages/AdminSettings";
 import AdminAudit from "@/pages/AdminAudit";
+import AdminPayments from "@/pages/AdminPayments";
 import ProductDetail from "@/pages/ProductDetail";
 import Account from "@/pages/Account";
 import AcceptInvite from "@/pages/AcceptInvite";
@@ -41,11 +42,17 @@ import SellProductSetup from "@/pages/SellProductSetup";
 import SellDiscounts from "@/pages/SellDiscounts";
 import LinkInBio from "@/pages/LinkInBio";
 import PublicBio from "@/pages/PublicBio";
+import Checkout from "@/pages/Checkout";
 
 export default function App() {
   return (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <Switch>
+        {/* Public Checkout */}
+        <Route path="/checkout/:slug">
+          <Checkout />
+        </Route>
+
         {/* Public Marketing Routes */}
         <Route path="/">
           <LandingPage />
@@ -231,6 +238,11 @@ export default function App() {
         <Route path="/admin/audit">
           <ProtectedRoute>
             <AdminAudit />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/payments">
+          <ProtectedRoute>
+            <AdminPayments />
           </ProtectedRoute>
         </Route>
 
