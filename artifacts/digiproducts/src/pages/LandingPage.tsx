@@ -381,8 +381,14 @@ export default function LandingPage() {
                     <span className="text-xs text-white/60 ml-1">5.0</span>
                   </div>
                 </div>
-                <div className="h-44 rounded-xl overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center">
-                  <BookOpen className="h-16 w-16 text-white/40" />
+                <div className="h-44 rounded-xl overflow-hidden bg-black">
+                  <iframe
+                    src="https://www.youtube.com/embed/35VzPlY1-kI?autoplay=1&mute=1&loop=1&playlist=35VzPlY1-kI&controls=0&modestbranding=1&rel=0"
+                    title="PokiPoki preview"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="mt-4">
                   <p className="font-bold text-white text-sm leading-snug">The GLP-1 Companion Diet</p>
