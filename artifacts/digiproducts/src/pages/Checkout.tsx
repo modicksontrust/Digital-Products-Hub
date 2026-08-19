@@ -328,7 +328,6 @@ export default function Checkout() {
           </div>
         </div>
       </header>
-
       <div className="mx-auto max-w-6xl gap-8 px-5 py-8 lg:grid lg:grid-cols-[1fr_400px]">
         {/* ── Right: order summary (shown first on mobile via order) ─────── */}
         <div className="order-first lg:order-last lg:row-span-2">
@@ -532,14 +531,7 @@ export default function Checkout() {
           {/* Pay button */}
           <button
             onClick={handlePay}
-            className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white shadow-lg transition",
-              isFree
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : gateway === "paystack"
-                  ? "bg-[#00C3F7] hover:bg-[#00aee0]"
-                  : "bg-[#635BFF] hover:bg-[#4f46e5]",
-            )}
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold text-white shadow-lg transition hover:bg-[#00aee0] bg-[#0086ad]"
           >
             <Lock className="h-4 w-4" />
             {isFree ? "Get for Free" : `Pay ${displayPrice} via ${gateway === "paystack" ? "Paystack" : "Stripe"}`}
