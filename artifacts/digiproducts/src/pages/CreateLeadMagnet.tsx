@@ -48,6 +48,7 @@ import {
   Type,
   UserRound,
   Wand2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -95,6 +96,26 @@ const COVER_DESIGNS = [
 const COVER_COLORS = ["#1E2B45", "#8F2341", "#0F8D88", "#5B3FC0", "#D17824", "#2A2D33"];
 
 type CoverTextMode = "auto" | "light" | "dark";
+
+type LandingPageForm = {
+  title: string;
+  subtitle: string;
+  description: string;
+  authorName: string;
+  authorBio: string;
+  benefits: string[];
+  ctaText: string;
+  ctaUrl: string;
+  emailProvider: string;
+  emailTag: string;
+  emailAutomation: string;
+};
+
+const DEFAULT_LANDING_BENEFITS = [
+  "A clear plan you can put into action today",
+  "Practical examples that make the next step easier",
+  "A focused checklist to help you stay on track",
+];
 
 function readableCoverText(hex: string) {
   const normalized = hex.replace("#", "");
@@ -154,10 +175,11 @@ export default function CreateLeadMagnet() {
   const searchParams = new URLSearchParams(useSearch());
   const urlProductId = searchParams.get("productId");
   const urlJobId = searchParams.get("jobId");
+  const urlStage = searchParams.get("stage");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [step, setStep] = useState(urlJobId ? 3 : 1);
+  const [step, setStep] = useState(urlJobId ? 3 : urlStage === "landing" ? 6 : 1);
   const [creationMode, setCreationMode] = useState<"write" | "guide">("write");
   const [designTab, setDesignTab] = useState("cover");
   const [coverDesign, setCoverDesign] = useState("centered");
@@ -166,6 +188,20 @@ export default function CreateLeadMagnet() {
   const [coverTextMode, setCoverTextMode] = useState<CoverTextMode>("auto");
   const [showBrand, setShowBrand] = useState(true);
   const [mockupReady, setMockupReady] = useState(false);
+  const [landingProductId, setLandingProductId] = useState<string | null>(null);
+  const [landingForm, setLandingForm] = useState<LandingPageForm>({
+    title: "",
+    subtitle: "",
+    description: "",
+    authorName: "",
+    authorBio: "",
+    benefits: DEFAULT_LANDING_BENEFITS,
+    ctaText: "Get the free guide",
+    ctaUrl: "",
+    emailProvider: "none",
+    emailTag: "",
+    emailAutomation: "none",
+  });
 
   const [brief, setBrief] = useState({
     title: "",
@@ -188,6 +224,7 @@ export default function CreateLeadMagnet() {
     { num: 3, label: "Generate" },
     { num: 4, label: "Review" },
     { num: 5, label: "Design" },
+    { num: 6, label: "Landing page" },
   ];
 
   const { data: job } = useGetJob(urlJobId || "", {
@@ -237,9 +274,33 @@ export default function CreateLeadMagnet() {
   }, [detail?.product.coverConfig]);
 
   useEffect(() => {
+    if (!detail || landingProductId === detail.product.id) return;
+    const savedLanding = (
+      detail.product.coverConfig as { landingPage?: Partial<LandingPageForm> } | null
+    )?.landingPage;
+    const savedBenefits = Array.isArray(savedLanding?.benefits)
+      ? savedLanding.benefits.filter((benefit): benefit is string => typeof benefit === "string" && benefit.trim().length > 0)
+      : [];
+    setLandingForm({
+      title: detail.product.title,
+      subtitle: detail.product.subtitle || `A practical guide for ${detail.product.audience || "your audience"}`,
+      description: savedLanding?.description || detail.product.topic || "A helpful resource your audience will want to keep nearby.",
+      authorName: detail.product.authorName || detail.product.ownerName || "",
+      authorBio: savedLanding?.authorBio || "",
+      benefits: savedBenefits.length ? savedBenefits : DEFAULT_LANDING_BENEFITS,
+      ctaText: savedLanding?.ctaText || "Get the free guide",
+      ctaUrl: savedLanding?.ctaUrl || "",
+      emailProvider: savedLanding?.emailProvider || "none",
+      emailTag: savedLanding?.emailTag || "",
+      emailAutomation: savedLanding?.emailAutomation || "none",
+    });
+    setLandingProductId(detail.product.id);
+  }, [detail, landingProductId]);
+
+  useEffect(() => {
     if (!urlProductId || urlJobId || !detail) return;
     if (["ready", "in_review", "changes_requested", "approved"].includes(detail.product.status)) {
-      setStep(4);
+      setStep(urlStage === "landing" ? 6 : 4);
       return;
     }
     if (detail.product.status === "generating") {
@@ -247,7 +308,7 @@ export default function CreateLeadMagnet() {
       return;
     }
     setLocation("/lead-magnets");
-  }, [detail, setLocation, urlJobId, urlProductId]);
+  }, [detail, setLocation, urlJobId, urlProductId, urlStage]);
 
   const getReviewDraft = (chapter: Chapter) =>
     reviewDrafts[chapter.id] ?? {
@@ -325,6 +386,62 @@ export default function CreateLeadMagnet() {
     );
   };
 
+  const updateLandingForm = (next: Partial<LandingPageForm>) => {
+    setLandingForm((current) => ({ ...current, ...next }));
+  };
+
+  const addLandingBenefit = () => {
+    updateLandingForm({ benefits: [...landingForm.benefits, "A new benefit for your audience"] });
+  };
+
+  const removeLandingBenefit = (index: number) => {
+    updateLandingForm({ benefits: landingForm.benefits.filter((_, benefitIndex) => benefitIndex !== index) });
+  };
+
+  const updateLandingBenefit = (index: number, value: string) => {
+    updateLandingForm({
+      benefits: landingForm.benefits.map((benefit, benefitIndex) => benefitIndex === index ? value : benefit),
+    });
+  };
+
+  const saveLandingPage = (leaveAfterSaving = false) => {
+    if (!urlProductId) return;
+    if (!landingForm.title.trim()) {
+      toast({ title: "Add a landing page title before saving", variant: "destructive" });
+      return;
+    }
+    const currentCoverConfig = (detail?.product.coverConfig ?? {}) as Record<string, unknown>;
+    updateProduct.mutate(
+      {
+        productId: urlProductId,
+        data: {
+          title: landingForm.title.trim(),
+          subtitle: landingForm.subtitle.trim(),
+          authorName: landingForm.authorName.trim(),
+          coverConfig: {
+            ...currentCoverConfig,
+            landingPage: {
+              ...landingForm,
+              title: undefined,
+              subtitle: undefined,
+              authorName: undefined,
+              benefits: landingForm.benefits.map((benefit) => benefit.trim()).filter(Boolean),
+            },
+          },
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Landing page saved", description: "Your edits are ready for visitors to see." });
+          if (leaveAfterSaving) setLocation("/lead-magnets");
+        },
+        onError: () => {
+          toast({ title: "Couldn't save landing page", description: "Try again in a moment.", variant: "destructive" });
+        },
+      },
+    );
+  };
+
   const startCreation = () => {
     if (!brief.topic.trim()) {
       toast({ title: "Add a core topic to continue", variant: "destructive" });
@@ -393,6 +510,10 @@ export default function CreateLeadMagnet() {
       setStep(1);
       return;
     }
+    if (step === 6) {
+      setStep(5);
+      return;
+    }
     if (step === 5) {
       setStep(4);
       return;
@@ -426,7 +547,7 @@ export default function CreateLeadMagnet() {
             <Button variant="ghost" size="sm" onClick={returnToPrevious} className="gap-2 text-ink-600">
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
-            <div className="flex items-center gap-1.5" aria-label={`Step ${step} of 5`}>
+            <div className="flex items-center gap-1.5" aria-label={`Step ${step} of 6`}>
               {flowSteps.map((item) => (
                 <span
                   key={item.num}
@@ -445,7 +566,7 @@ export default function CreateLeadMagnet() {
             <section className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-8 text-center">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                    <Sparkles className="h-3.5 w-3.5" /> Step 1 of 5
+                    <Sparkles className="h-3.5 w-3.5" /> Step 1 of 6
                 </p>
                 <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">Start your lead magnet</h1>
                 <p className="mt-2 text-ink-500">Give us the essentials, then shape the content and cover around your audience.</p>
@@ -542,7 +663,7 @@ export default function CreateLeadMagnet() {
             <section className="mx-auto max-w-4xl animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-8 text-center">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                    <Sparkles className="h-3.5 w-3.5" /> Step 2 of 5
+                    <Sparkles className="h-3.5 w-3.5" /> Step 2 of 6
                 </p>
                 <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">How should we create the content?</h1>
                 <p className="mt-2 text-ink-500">Creating: <span className="font-medium text-ink-700">{brief.title || brief.topic}</span></p>
@@ -577,7 +698,7 @@ export default function CreateLeadMagnet() {
                 <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-brand-300 bg-brand-50">
                   <Sparkles className="h-8 w-8 animate-pulse text-brand-600" />
                 </div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Step 3 of 5</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Step 3 of 6</p>
                 <h1 className="font-display text-3xl font-bold text-ink-900">Creating your lead magnet...</h1>
                 <p className="mt-3 text-ink-500">{job?.progressLabel || "Researching pain points and writing the first draft..."}</p>
                 <p className="mt-6 text-xs text-ink-400">{urlJobId ? "This may take 30–60 seconds. You can keep this tab open while we work." : "This draft is still being created. Return to Lead Magnets and open it once it is ready."}</p>
@@ -598,7 +719,7 @@ export default function CreateLeadMagnet() {
             <section className="mx-auto max-w-5xl animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-7 text-center">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Step 4 of 5
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Step 4 of 6
                 </p>
                 <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">Review your generated lead magnet</h1>
                 <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-ink-500">
@@ -755,7 +876,7 @@ export default function CreateLeadMagnet() {
             <section className="animate-in fade-in slide-in-from-bottom-3 duration-500">
               <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700"><Sparkles className="h-3.5 w-3.5" /> Step 5 of 5</p>
+                  <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700"><Sparkles className="h-3.5 w-3.5" /> Step 5 of 6</p>
                   <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">Design your lead magnet</h1>
                   <p className="mt-1 text-sm text-ink-500">Choose a cover, customize the details, then download your finished PDF.</p>
                 </div>
@@ -881,8 +1002,236 @@ export default function CreateLeadMagnet() {
 
               <div className="mt-6 flex flex-col-reverse gap-3 border-t border-ink-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-ink-500">Everything looks good? Your PDF is ready for the next step.</p>
-                <Button size="lg" onClick={exportPdf} disabled={exportProduct.isPending} className="gap-2 rounded-xl px-6">
-                  {exportProduct.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Compiling PDF...</> : <><Download className="h-4 w-4" /> Download PDF guide</>}
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" onClick={exportPdf} disabled={exportProduct.isPending} className="gap-2 rounded-xl">
+                    {exportProduct.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Compiling PDF...</> : <><Download className="h-4 w-4" /> Download PDF guide</>}
+                  </Button>
+                  <Button size="lg" onClick={() => setStep(6)} className="gap-2 rounded-xl px-6">
+                    Set up landing page <ArrowLeft className="h-4 w-4 rotate-180" />
+                  </Button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {step === 6 && !detail && (
+            <section className="flex min-h-[520px] items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand-600" />
+                <p className="mt-4 text-sm text-ink-500">Loading your landing page settings...</p>
+              </div>
+            </section>
+          )}
+
+          {step === 6 && detail && (
+            <section className="animate-in fade-in slide-in-from-bottom-3 duration-500">
+              <div className="mb-7 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+                    <Sparkles className="h-3.5 w-3.5" /> Step 6 of 6
+                  </p>
+                  <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">Set up your landing page</h1>
+                  <p className="mt-1 max-w-2xl text-sm text-ink-500">Choose exactly what visitors see before they request your free resource.</p>
+                </div>
+                <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Preview refreshed", description: "Your latest landing page edits are visible on the right." })}>
+                  <RefreshCw className="h-4 w-4" /> Refresh preview
+                </Button>
+              </div>
+
+              <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(360px,.98fr)]">
+                <div className="space-y-5">
+                  <Card className="border-ink-200 shadow-sm">
+                    <CardContent className="space-y-4 p-5 sm:p-6">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Lead magnet details</p>
+                        <p className="mt-1 text-sm text-ink-500">These are the words visitors see first on your landing page.</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-title">Title</Label>
+                        <Input id="landing-title" value={landingForm.title} onChange={(event) => updateLandingForm({ title: event.target.value })} maxLength={160} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-subtitle">Subtitle</Label>
+                        <Input id="landing-subtitle" value={landingForm.subtitle} onChange={(event) => updateLandingForm({ subtitle: event.target.value })} maxLength={220} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-description">Description</Label>
+                        <Textarea
+                          id="landing-description"
+                          value={landingForm.description}
+                          onChange={(event) => updateLandingForm({ description: event.target.value })}
+                          placeholder="Explain why someone should request this resource."
+                          className="min-h-[112px] resize-y"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-ink-200 shadow-sm">
+                    <CardContent className="space-y-4 p-5 sm:p-6">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Author info</p>
+                        <p className="mt-1 text-sm text-ink-500">Build trust by introducing the person behind the guide.</p>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)]">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-base font-bold text-brand-700">
+                          {(landingForm.authorName || "P").charAt(0).toUpperCase()}
+                        </span>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="landing-author">Author name</Label>
+                          <Input id="landing-author" value={landingForm.authorName} onChange={(event) => updateLandingForm({ authorName: event.target.value })} placeholder="Your name or brand" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-author-bio">Author bio</Label>
+                        <Textarea id="landing-author-bio" value={landingForm.authorBio} onChange={(event) => updateLandingForm({ authorBio: event.target.value })} placeholder="Tell visitors why you are the right person to guide them." className="min-h-[96px] resize-y" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-ink-200 shadow-sm">
+                    <CardContent className="space-y-4 p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">What they&apos;ll learn</p>
+                          <p className="mt-1 text-sm text-ink-500">These benefits appear as a checklist on the landing page.</p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={addLandingBenefit}>+ Add</Button>
+                      </div>
+                      <div className="space-y-2">
+                        {landingForm.benefits.map((benefit, index) => (
+                          <div key={`${index}-${benefit}`} className="flex items-center gap-2">
+                            <Check className="h-4 w-4 shrink-0 text-brand-600" />
+                            <Input value={benefit} onChange={(event) => updateLandingBenefit(index, event.target.value)} aria-label={`Landing page benefit ${index + 1}`} />
+                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-ink-400 hover:bg-destructive/10 hover:text-destructive" onClick={() => removeLandingBenefit(index)} aria-label={`Remove benefit ${index + 1}`}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-ink-200 shadow-sm">
+                    <CardContent className="space-y-4 p-5 sm:p-6">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">CTA link in your PDF</p>
+                        <p className="mt-1 text-sm text-ink-500">Optionally send readers to your next offer after they finish the guide.</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-cta-text">CTA text</Label>
+                        <Input id="landing-cta-text" value={landingForm.ctaText} onChange={(event) => updateLandingForm({ ctaText: event.target.value })} placeholder="Explore the next step" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-cta-url">CTA URL</Label>
+                        <Input id="landing-cta-url" type="url" value={landingForm.ctaUrl} onChange={(event) => updateLandingForm({ ctaUrl: event.target.value })} placeholder="https://yourwebsite.com/next-step" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-gold-200 bg-gold-50/40 shadow-sm">
+                    <CardContent className="space-y-4 p-5 sm:p-6">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gold-800">Email capture settings</p>
+                        <p className="mt-1 text-sm text-ink-600">Choose what should happen when someone requests this lead magnet.</p>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="landing-email-provider">Add leads to</Label>
+                          <Select value={landingForm.emailProvider} onValueChange={(emailProvider) => updateLandingForm({ emailProvider })}>
+                            <SelectTrigger id="landing-email-provider"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No list yet (contacts only)</SelectItem>
+                              <SelectItem value="mailchimp">Mailchimp list</SelectItem>
+                              <SelectItem value="convertkit">Kit / ConvertKit form</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="landing-email-tag">Tag new leads</Label>
+                          <Input id="landing-email-tag" value={landingForm.emailTag} onChange={(event) => updateLandingForm({ emailTag: event.target.value })} placeholder="e.g. social-toolkit" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="landing-email-automation">Trigger automation</Label>
+                        <Select value={landingForm.emailAutomation} onValueChange={(emailAutomation) => updateLandingForm({ emailAutomation })}>
+                          <SelectTrigger id="landing-email-automation"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No automation</SelectItem>
+                            <SelectItem value="welcome">Send a welcome email</SelectItem>
+                            <SelectItem value="nurture">Start a nurture sequence</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <aside className="xl:sticky xl:top-6">
+                  <Card className="overflow-hidden border-ink-200 shadow-md">
+                    <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3">
+                      <span className="text-sm font-semibold text-ink-800">Live landing page preview</span>
+                      <span className="rounded-full bg-lime-100 px-2 py-0.5 text-[10px] font-semibold text-lime-800">Visitor view</span>
+                    </div>
+                    <CardContent className="bg-[#F8F7F5] p-4 sm:p-6">
+                      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3 text-xs">
+                          <span className="font-semibold text-brand-700">PokiPoki</span>
+                          <span className="text-ink-400">Free resource</span>
+                        </div>
+                        <div className="px-6 py-8 text-center sm:px-8">
+                          <div className="mx-auto flex h-28 w-20 items-end overflow-hidden rounded-[4px] p-3 text-left shadow-lg" style={{ backgroundColor: coverColor, color: coverTextColor }}>
+                            <p className="line-clamp-4 text-[9px] font-bold leading-tight">{landingForm.title || "Your lead magnet title"}</p>
+                          </div>
+                          <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-700">Free guide</p>
+                          <h2 className="mt-3 font-display text-2xl font-bold leading-tight text-ink-900">{landingForm.title || "Your lead magnet title"}</h2>
+                          {landingForm.subtitle ? <p className="mt-3 text-sm font-medium text-ink-700">{landingForm.subtitle}</p> : null}
+                          {landingForm.description ? <p className="mt-4 text-sm leading-relaxed text-ink-500">{landingForm.description}</p> : null}
+
+                          {landingForm.benefits.filter(Boolean).length > 0 ? (
+                            <div className="mt-6 rounded-xl bg-ink-50 p-4 text-left">
+                              <p className="text-xs font-semibold text-ink-800">Inside this guide:</p>
+                              <ul className="mt-3 space-y-2">
+                                {landingForm.benefits.filter(Boolean).map((benefit) => (
+                                  <li key={benefit} className="flex gap-2 text-xs leading-relaxed text-ink-600">
+                                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" /> {benefit}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+
+                          <div className="mt-6 text-left">
+                            <Label htmlFor="landing-preview-email" className="text-xs">Enter your email to get the guide</Label>
+                            <Input id="landing-preview-email" type="email" placeholder="you@example.com" className="mt-2 bg-white" readOnly />
+                            <Button type="button" className="mt-3 w-full" style={{ backgroundColor: coverColor }}>
+                              {landingForm.ctaText || "Get the free guide"}
+                            </Button>
+                            <p className="mt-2 text-center text-[10px] text-ink-400">No spam. Unsubscribe at any time.</p>
+                          </div>
+
+                          {landingForm.authorName || landingForm.authorBio ? (
+                            <div className="mt-7 border-t border-ink-100 pt-5 text-left">
+                              <div className="flex gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">{(landingForm.authorName || "P").charAt(0).toUpperCase()}</span>
+                                <div>
+                                  <p className="text-xs font-semibold text-ink-800">Created by {landingForm.authorName || "PokiPoki creator"}</p>
+                                  {landingForm.authorBio ? <p className="mt-1 text-[11px] leading-relaxed text-ink-500">{landingForm.authorBio}</p> : null}
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </aside>
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-ink-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <Button variant="outline" onClick={() => saveLandingPage(true)} disabled={updateProduct.isPending || !landingForm.title.trim()}>Save and leave</Button>
+                <Button size="lg" onClick={() => saveLandingPage()} disabled={updateProduct.isPending || !landingForm.title.trim()} className="gap-2 rounded-xl px-6">
+                  {updateProduct.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save landing page
                 </Button>
               </div>
             </section>

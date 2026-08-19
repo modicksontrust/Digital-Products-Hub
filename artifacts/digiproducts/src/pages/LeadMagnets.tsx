@@ -212,9 +212,12 @@ export default function LeadMagnets() {
                           <DropdownMenuItem onClick={() => setLocation(`/create/lead-magnet?productId=${product.id}`)}>
                             <Pencil className="mr-2 h-4 w-4" /> Edit / View
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setLocation(`/create/lead-magnet?productId=${product.id}&stage=landing`)}>
+                            <ExternalLink className="mr-2 h-4 w-4" /> View / edit landing page
+                          </DropdownMenuItem>
                           {product.slug ? (
                             <DropdownMenuItem onClick={() => window.open(`${window.location.origin}${import.meta.env.BASE_URL}p/${product.slug}`, "_blank", "noopener,noreferrer")}>
-                              <ExternalLink className="mr-2 h-4 w-4" /> View landing page
+                              <ArrowUpRight className="mr-2 h-4 w-4" /> Open published page
                             </DropdownMenuItem>
                           ) : null}
                           {product.published ? (
