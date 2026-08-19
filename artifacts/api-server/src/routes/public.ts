@@ -7,6 +7,7 @@ import {
   productChaptersTable,
   salesCopyTable,
   previewTokensTable,
+  bioAnalyticsEventsTable,
   bioSettingsTable,
   bioLinksTable,
 } from "@workspace/db";
@@ -14,11 +15,31 @@ import { asc } from "drizzle-orm";
 import {
   GetPublicSalesPageResponse,
   GetPublicBioResponse,
+  PublicBioLinkClickParams,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+async function recordBioAnalyticsEvent(
+  req: Request,
+  event: {
+    userId: string;
+    eventType: "page_view" | "link_click";
+    bioLinkId?: string;
+  },
+): Promise<void> {
+  try {
+    await db.insert(bioAnalyticsEventsTable).values(event);
+  } catch (error) {
+    // Analytics must never make a published creator page unavailable.
+    req.log.error(
+      { err: error, eventType: event.eventType },
+      "Failed to record bio analytics event",
+    );
+  }
+}
 
 async function loadPublishedProductByslug(slug: string) {
   const [product] = await db
@@ -202,6 +223,11 @@ router.get("/public/bio/:slug", async (req, res): Promise<void> => {
       );
   }
 
+  await recordBioAnalyticsEvent(req, {
+    userId: settings.userId,
+    eventType: "page_view",
+  });
+
   res.json(
     GetPublicBioResponse.parse({
       displayName: settings.displayName,
@@ -232,5 +258,47 @@ router.get("/public/bio/:slug", async (req, res): Promise<void> => {
     }),
   );
 });
+
+router.post(
+  "/public/bio/:slug/links/:linkId/click",
+  async (req, res): Promise<void> => {
+    const params = PublicBioLinkClickParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid bio link" });
+      return;
+    }
+
+    const [settings] = await db
+      .select()
+      .from(bioSettingsTable)
+      .where(eq(bioSettingsTable.slug, params.data.slug));
+    if (!settings || !settings.published) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const [link] = await db
+      .select({ id: bioLinksTable.id })
+      .from(bioLinksTable)
+      .where(
+        and(
+          eq(bioLinksTable.id, params.data.linkId),
+          eq(bioLinksTable.userId, settings.userId),
+          eq(bioLinksTable.active, true),
+        ),
+      );
+    if (!link) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    await recordBioAnalyticsEvent(req, {
+      userId: settings.userId,
+      bioLinkId: link.id,
+      eventType: "link_click",
+    });
+    res.sendStatus(204);
+  },
+);
 
 export default router;

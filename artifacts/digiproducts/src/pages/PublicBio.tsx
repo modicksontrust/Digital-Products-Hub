@@ -1,6 +1,9 @@
 import { useParams } from "wouter";
 import { useEffect } from "react";
-import { useGetPublicBio } from "@workspace/api-client-react";
+import {
+  trackPublicBioLinkClick,
+  useGetPublicBio,
+} from "@workspace/api-client-react";
 import { Loader2 } from "lucide-react";
 import { BioPreview } from "@/components/BioPreview";
 
@@ -53,6 +56,9 @@ export default function PublicBio() {
           })),
         }}
         productHref={(s) => `${base}/p/${s}`}
+        onLinkClick={(linkId) => {
+          void trackPublicBioLinkClick(slug || "", linkId).catch(() => undefined);
+        }}
       />
     </div>
   );

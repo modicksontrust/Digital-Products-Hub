@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { setNavigationGuard } from "@/lib/navigationGuard";
 import {
   useGetBio,
+  useGetBioAnalytics,
   useUpdateBioSettings,
   useCreateBioLink,
   useUpdateBioLink,
@@ -38,6 +39,8 @@ import {
   Copy,
   ExternalLink,
   Link2,
+  Eye,
+  MousePointerClick,
 } from "lucide-react";
 import { socialIconFor } from "@/components/BioPreview";
 
@@ -69,6 +72,9 @@ export default function LinkInBio() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data, isLoading } = useGetBio();
+  const { data: analytics } = useGetBioAnalytics({
+    query: { refetchInterval: 30_000 },
+  });
   const { data: products } = useGetProducts();
   const updateSettings = useUpdateBioSettings();
   const createLink = useCreateBioLink();
@@ -137,6 +143,13 @@ export default function LinkInBio() {
         (p) => p.published && p.showOnBio && p.slug,
       ),
     [products],
+  );
+  const linkClicks = useMemo(
+    () =>
+      new Map(
+        (analytics?.linkClicks ?? []).map((link) => [link.linkId, link.clicks]),
+      ),
+    [analytics],
   );
 
   const previewData: BioPreviewData = {
@@ -273,6 +286,22 @@ export default function LinkInBio() {
               {dirty ? "Save changes" : "Save"}
             </Button>
           </div>
+        </div>
+
+        <div
+          className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-muted/30 px-4 py-3"
+          data-testid="bio-analytics"
+        >
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Page views</span>
+            <span className="text-sm font-semibold" data-testid="text-bio-page-views">
+              {(analytics?.pageViews ?? 0).toLocaleString()}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            All-time totals. Visitor details are not collected.
+          </p>
         </div>
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
@@ -470,6 +499,14 @@ export default function LinkInBio() {
                       <p className="text-sm font-medium truncate">{link.title}</p>
                       <p className="text-xs text-muted-foreground truncate">{link.url}</p>
                     </div>
+                    <span
+                      className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
+                      data-testid={`text-bio-link-clicks-${link.id}`}
+                      title="Link clicks"
+                    >
+                      <MousePointerClick className="h-3.5 w-3.5" />
+                      {(linkClicks.get(link.id) ?? 0).toLocaleString()}
+                    </span>
                     <Switch
                       checked={link.active}
                       onCheckedChange={(v) => updateLink.mutate({ id: link.id, data: { active: v } })}

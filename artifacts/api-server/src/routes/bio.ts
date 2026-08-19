@@ -1,7 +1,13 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq } from "drizzle-orm";
-import { db, bioSettingsTable, bioLinksTable } from "@workspace/db";
+import { and, asc, count, eq } from "drizzle-orm";
 import {
+  db,
+  bioAnalyticsEventsTable,
+  bioSettingsTable,
+  bioLinksTable,
+} from "@workspace/db";
+import {
+  GetBioAnalyticsResponse,
   GetBioResponse,
   UpdateBioSettingsBody,
   CreateBioLinkBody,
@@ -96,6 +102,46 @@ router.get("/bio", async (req, res): Promise<void> => {
     GetBioResponse.parse({
       settings: serializeSettings(settings),
       links: links.map(serializeLink),
+    }),
+  );
+});
+
+router.get("/bio/analytics", async (req, res): Promise<void> => {
+  const user = req.user!;
+  const [pageViewRows, linkClickRows] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(bioAnalyticsEventsTable)
+      .where(
+        and(
+          eq(bioAnalyticsEventsTable.userId, user.id),
+          eq(bioAnalyticsEventsTable.eventType, "page_view"),
+        ),
+      ),
+    db
+      .select({
+        linkId: bioAnalyticsEventsTable.bioLinkId,
+        clicks: count(),
+      })
+      .from(bioAnalyticsEventsTable)
+      .where(
+        and(
+          eq(bioAnalyticsEventsTable.userId, user.id),
+          eq(bioAnalyticsEventsTable.eventType, "link_click"),
+        ),
+      )
+      .groupBy(bioAnalyticsEventsTable.bioLinkId),
+  ]);
+
+  res.json(
+    GetBioAnalyticsResponse.parse({
+      pageViews: Number(pageViewRows[0]?.count ?? 0),
+      linkClicks: linkClickRows
+        .filter((row) => row.linkId !== null)
+        .map((row) => ({
+          linkId: row.linkId!,
+          clicks: Number(row.clicks),
+        })),
     }),
   );
 });

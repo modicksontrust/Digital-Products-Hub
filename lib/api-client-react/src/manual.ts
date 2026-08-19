@@ -224,6 +224,7 @@ import type {
   CreateBioLinkBody,
   UpdateBioLinkBody,
   GetPublicBioResponse,
+  GetBioAnalyticsResponse,
 } from "@workspace/api-zod";
 
 export type BioData = z.infer<typeof GetBioResponse>;
@@ -232,6 +233,7 @@ export type BioLink = z.infer<typeof BioLinkItem>;
 export type CreateBioLinkInput = z.infer<typeof CreateBioLinkBody>;
 export type UpdateBioLinkInput = z.infer<typeof UpdateBioLinkBody>;
 export type PublicBio = z.infer<typeof GetPublicBioResponse>;
+export type BioAnalytics = z.infer<typeof GetBioAnalyticsResponse>;
 
 export const getGetBioQueryKey = () => ["/api/bio"] as const;
 
@@ -244,6 +246,20 @@ export const useGetBio = <TError = unknown>(options?: {
   useQuery({
     queryKey: getGetBioQueryKey(),
     queryFn: () => getBio(),
+    ...options?.query,
+  });
+
+export const getGetBioAnalyticsQueryKey = () => ["/api/bio/analytics"] as const;
+
+export const getBioAnalytics = (options?: Parameters<typeof customFetch>[1]) =>
+  customFetch<BioAnalytics>("/api/bio/analytics", options);
+
+export const useGetBioAnalytics = <TError = unknown>(options?: {
+  query?: Partial<UseQueryOptions<BioAnalytics, TError>>;
+}) =>
+  useQuery({
+    queryKey: getGetBioAnalyticsQueryKey(),
+    queryFn: () => getBioAnalytics(),
     ...options?.query,
   });
 
@@ -380,6 +396,16 @@ export const getPublicBio = (
   slug: string,
   options?: Parameters<typeof customFetch>[1],
 ) => customFetch<PublicBio>(`/api/public/bio/${slug}`, options);
+
+export const trackPublicBioLinkClick = (
+  slug: string,
+  linkId: string,
+  options?: Parameters<typeof customFetch>[1],
+) =>
+  customFetch<void>(`/api/public/bio/${slug}/links/${linkId}/click`, {
+    method: "POST",
+    ...options,
+  });
 
 export const useGetPublicBio = <TError = unknown>(
   slug: string,

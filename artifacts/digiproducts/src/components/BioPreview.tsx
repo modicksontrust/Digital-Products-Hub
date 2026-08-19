@@ -129,11 +129,14 @@ export function BioPreview({
   data,
   productHref,
   compact = false,
+  onLinkClick,
 }: {
   data: BioPreviewData;
   /** Builds the href for a product card given its slug. */
   productHref?: (slug: string) => string;
   compact?: boolean;
+  /** Called when a public custom link is opened. */
+  onLinkClick?: (linkId: string) => void;
 }) {
   const theme = BIO_THEMES[data.theme] ?? BIO_THEMES["noir"]!;
   const initials =
@@ -209,6 +212,7 @@ export function BioPreview({
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onLinkClick?.(link.id)}
               className={cn(
                 "block w-full rounded-xl text-center font-medium transition-colors",
                 compact ? "px-3 py-2.5 text-xs" : "px-4 py-3.5 text-sm",

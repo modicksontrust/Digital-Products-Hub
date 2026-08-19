@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
+import { db } from "@workspace/db";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-test DB state
@@ -46,11 +47,17 @@ vi.mock("@workspace/db", () => {
   return {
     db: {
       select: vi.fn(() => makeChain(selectQueue.shift() ?? [])),
+      insert: vi.fn(() => ({
+        values: vi.fn().mockResolvedValue([]),
+      })),
     },
     productsTable: tableStub,
     productChaptersTable: tableStub,
     salesCopyTable: tableStub,
     previewTokensTable: tableStub,
+    bioSettingsTable: tableStub,
+    bioLinksTable: tableStub,
+    bioAnalyticsEventsTable: tableStub,
   };
 });
 
@@ -194,6 +201,53 @@ describe("GET /public/sales-page/:slug", () => {
 
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({ error: "Not found" });
+  });
+});
+
+describe("public bio analytics", () => {
+  let app: express.Express;
+
+  beforeEach(() => {
+    selectQueue.length = 0;
+    vi.clearAllMocks();
+    app = buildApp();
+  });
+
+  it("records one anonymous page-view event after loading a published bio page", async () => {
+    selectQueue.push(
+      [
+        {
+          userId: "user-1",
+          published: true,
+          displayName: "Alice",
+          bio: "",
+          avatarUrl: null,
+          theme: "noir",
+          socialLinks: [],
+          showProducts: false,
+        },
+      ],
+      [],
+    );
+
+    const res = await request(app).get("/public/bio/alice");
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.insert)).toHaveBeenCalledOnce();
+  });
+
+  it("records a click only for an active link owned by the published bio page", async () => {
+    selectQueue.push(
+      [{ userId: "user-1", published: true }],
+      [{ id: "11111111-1111-4111-8111-111111111111" }],
+    );
+
+    const res = await request(app).post(
+      "/public/bio/alice/links/11111111-1111-4111-8111-111111111111/click",
+    );
+
+    expect(res.status).toBe(204);
+    expect(vi.mocked(db.insert)).toHaveBeenCalledOnce();
   });
 });
 

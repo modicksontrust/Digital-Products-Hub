@@ -196,6 +196,16 @@ export const GetBioResponse = zod.object({
   links: zod.array(BioLinkItem),
 });
 
+export const BioLinkAnalytics = zod.object({
+  linkId: zod.string(),
+  clicks: zod.number().int().nonnegative(),
+});
+
+export const GetBioAnalyticsResponse = zod.object({
+  pageViews: zod.number().int().nonnegative(),
+  linkClicks: zod.array(BioLinkAnalytics),
+});
+
 export const UpdateBioSettingsBody = zod.object({
   slug: zod
     .string()
@@ -246,4 +256,9 @@ export const GetPublicBioResponse = zod.object({
   socialLinks: zod.array(BioSocialLink),
   links: zod.array(BioLinkItem.omit({ active: true, sortOrder: true })),
   products: zod.array(PublicBioProduct),
+});
+
+export const PublicBioLinkClickParams = zod.object({
+  slug: zod.string().min(1).max(40),
+  linkId: zod.string().uuid(),
 });
