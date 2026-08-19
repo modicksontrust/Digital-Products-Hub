@@ -294,7 +294,6 @@ export default function LandingPage() {
 
   return (
     <PublicLayout>
-
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-ink-950 via-[#0b1120] to-ink-900 text-white">
         {/* Ambient blobs */}
@@ -314,7 +313,7 @@ export default function LandingPage() {
               </div>
 
               {/* Headline */}
-              <h1 className="font-display text-5xl font-extrabold leading-[1.08] tracking-tight md:text-6xl lg:text-[68px]">
+              <h1 className="font-display text-5xl font-extrabold leading-[1.08] tracking-tight md:text-6xl lg:text-[68px] text-[#ffffff]">
                 Knowledge that<br />
                 <span className="bg-gradient-to-r from-brand-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
                   changes lives
@@ -432,7 +431,6 @@ export default function LandingPage() {
         {/* Wave divider */}
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-b from-transparent to-white" />
       </section>
-
       {/* ── STATS STRIP ──────────────────────────────────────────────────── */}
       <section className="border-b border-ink-100 bg-white">
         <div className="mx-auto max-w-7xl px-6">
@@ -452,7 +450,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* ── FEATURED PRODUCTS ────────────────────────────────────────────── */}
       {featured.length > 0 && (
         <section className="bg-ink-50 py-24">
@@ -492,7 +489,6 @@ export default function LandingPage() {
           </div>
         </section>
       )}
-
       {/* ── WHY POKIPOKI ─────────────────────────────────────────────────── */}
       <section className="py-24 bg-white">
         <div className="mx-auto max-w-7xl px-6">
@@ -528,7 +524,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* ── TESTIMONIALS ─────────────────────────────────────────────────── */}
       <section className="py-24 bg-ink-950 text-white">
         <div className="mx-auto max-w-7xl px-6">
@@ -571,7 +566,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
       <section id="how-it-works" className="py-24 bg-white">
         <div className="mx-auto max-w-7xl px-6">
@@ -621,7 +615,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* ── CATEGORIES ───────────────────────────────────────────────────── */}
       <section className="py-24 bg-ink-50">
         <div className="mx-auto max-w-7xl px-6">
@@ -664,7 +657,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* ── MID-PAGE CTA BANNER ──────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-r from-brand-700 via-brand-600 to-emerald-600 py-20 text-white">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08)_0%,transparent_70%)]" />
@@ -693,7 +685,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
       <section className="py-24 bg-white">
         <div className="mx-auto max-w-3xl px-6">
@@ -725,7 +716,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
     </PublicLayout>
   );
 }
